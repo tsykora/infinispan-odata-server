@@ -18,7 +18,7 @@ public class ExampleConsumer extends AbstractExample {
       example.run(args);
    }
 
-   private void run(String[] args) {
+   public void run(String[] args) {
 
       // CONSUME IT
       // format is null, method to tunnel is null (ok?)

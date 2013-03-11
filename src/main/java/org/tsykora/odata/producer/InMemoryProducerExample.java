@@ -39,21 +39,21 @@ public class InMemoryProducerExample extends AbstractExample {
    private static Cache<String, String> c = new DefaultCacheManager().getCache();
 
    public static void main(String[] args) {
-
-      c.put("key1", "value1");
-      c.put("key2", "value2");
-      c.put("key3", "value3");
-      c.put("key4", "value4");
-      c.put("key5", "value5");
-
       InMemoryProducerExample example = new InMemoryProducerExample();
       example.run(args);
    }
 
    @SuppressWarnings({"unchecked", "rawtypes"})
-   private void run(String[] args) {
+   public void run(String[] args) {
 
       String endpointUri = "http://localhost:8887/InMemoryProducerExample.svc/";
+
+      // feed it
+      c.put("key1", "value1");
+      c.put("key2", "value2");
+      c.put("key3", "value3");
+      c.put("key4", "value4");
+      c.put("key5", "value5");
 
       // InMemoryProducer is a readonly odata provider that serves up POJOs as entities using bean properties
       // call InMemoryProducer.register to declare a new entity-set, providing a entity source function and a propertyname to serve as the key
