@@ -115,14 +115,7 @@ public class InfinispanProducer implements ODataProducer {
 
    protected InMemoryEdmGenerator newEdmGenerator(String namespace, InMemoryTypeMapping typeMapping, String idPropName, Map<String, InMemoryEntityInfo<?>> eis,
                                                   Map<String, InMemoryComplexTypeInfo<?>> complexTypesInfo) {
-
-
-
-//      return new InMemoryEdmGenerator(namespace, containerName, typeMapping, ID_PROPNAME,  eis, complexTypesInfo, this.flattenEdm);
-//      System.err.println("internal WARNING: InMemoryEntityInfo eis = null !!!! " +
-//                               "(TODO: implement own EDM Generator, copy InMemoryEdmGenerator)");
       return new InMemoryEdmGenerator(namespace, containerName, typeMapping, ID_PROPNAME,  eis, complexTypesInfo, this.flattenEdm);
-
    }
 
    @Override
@@ -698,8 +691,7 @@ public class InfinispanProducer implements ODataProducer {
       // TODO set proper namespace here  "CacheEntries" entitySetName
       System.out.println("About to register new entry...");
 
-      // IMPORTANT - changed namespace to something else was NOT cause deletion of old entries
-      // TODO check links which point to new entries (they are returned in response)
+      // new entries are registered here: http://localhost:8887/InMemoryProducerExample.svc/CacheEntriesNew
       register(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, "CacheEntriesNew",
                new Func<Iterable<InMemoryProducerExample.MyInternalCacheEntry>>() {
          public Iterable<InMemoryProducerExample.MyInternalCacheEntry> apply() {
@@ -1144,24 +1136,6 @@ public class InfinispanProducer implements ODataProducer {
    }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
    public class InMemoryEntityInfo<TEntity> {
 
       String entitySetName;
@@ -1215,22 +1189,6 @@ public class InfinispanProducer implements ODataProducer {
          return entityClass.getSuperclass() != null && !entityClass.getSuperclass().equals(Object.class) ? entityClass.getSuperclass() : null;
       }
    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
    public class InMemoryEdmGenerator implements EdmGenerator {
       private static final boolean DUMP = false;
@@ -1739,8 +1697,5 @@ public class InfinispanProducer implements ODataProducer {
          // overridable :)
       }
    }
-
-
-
 
 }
