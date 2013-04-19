@@ -610,6 +610,7 @@ public class InfinispanProducer implements ODataProducer {
    EntityQueryInfo entityQueryInfoGlobal = null;
 
 
+   // If there is a getEntity() call on consumer then this getEntity() method on producer is called
    @Override
    public EntityResponse getEntity(final String entitySetName, final OEntityKey entityKey, final EntityQueryInfo queryInfo) {
 
@@ -658,6 +659,13 @@ public class InfinispanProducer implements ODataProducer {
    public EntityResponse createEntity(String entitySetName, final OEntity entity) {
 
 
+      // TODO
+      // pass entity here
+      // register it
+      // and return it back as entity response
+
+      // need proper entity key and entitySetName
+
       QueryInfo queryInfo = entityQueryInfoGlobal;
       OEntityKey entityKey = oEntityKeyGlobal;
 
@@ -683,6 +691,12 @@ public class InfinispanProducer implements ODataProducer {
 
 
 
+
+
+
+
+
+
       final Set<InMemoryProducerExample.MyInternalCacheEntry> setOfEntries = new HashSet<InMemoryProducerExample.MyInternalCacheEntry>();
       setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key66", "value66"));
       setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key77", "value77"));
@@ -699,12 +713,12 @@ public class InfinispanProducer implements ODataProducer {
          }
       }, Funcs.method(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, "toString"));
 
-      System.out.println("New entry was succesfully registered!!!");
+      System.out.println("New entry was successfully registered!!!");
 //
 //      // Some more logic
 //      // connect it to the cache / cache store etc., this cache (or cache manager needs to be in some ('general') context then
 //
-//      // TODO: do I need to set some status, some response, correctly?
+//      // TODO: do I need to set some status, some response, correctly? !!!
 //
 //      return new EntityResponse() {
 //         @Override
@@ -714,6 +728,10 @@ public class InfinispanProducer implements ODataProducer {
 //      };
 //
 ////      throw new NotImplementedException();
+      // TODO: what to return, for which object to set status response to 200 OK, to not throw exception?
+
+
+
 
 
 

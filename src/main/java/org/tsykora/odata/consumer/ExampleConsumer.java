@@ -41,12 +41,15 @@ public class ExampleConsumer extends AbstractExample {
 
       // http://datajs.codeplex.com/discussions/391490  ??
 
+      // TODO: it returns key1 value1 -- this what I was consumer.getEntity ^ above (why?)
       // creates new entity in given set
       OEntity newCacheEntry = consumer.createEntity("CacheEntries")
             .properties(OProperties.string("Key", "key6"))
             .properties(OProperties.string("Value", "value6")).execute();
 
       reportEntity(" new cache entry report: ", newCacheEntry);
+
+
 
 //      OEntity cacheKey6 = consumer.getEntity("CacheEntriesNew", "key6").execute();
 //      reportEntity("This is key1 entity report: ", cacheKey6);
