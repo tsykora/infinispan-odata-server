@@ -23,15 +23,26 @@ public class ExampleConsumer extends AbstractExample {
 
    public void run(String[] args) {
 
+
+      // ********** HINT **********
+      // To dump all the HTTP trafic
+      // Sends http request and/or response information to standard out.  Useful for debugging.
+      ODataConsumer.dump.all(true);
+      // TODO: enable it for producer as well? Is it even possible?
+
+
       // CONSUME IT
       // format is null, method to tunnel is null (ok?)
       System.out.println("Creating instance of ExampleConsumer, initializing oDataConsumer...");
       ODataConsumer consumer = this.rtFacde.create(endpointUri, null, null);
 
+
       System.out.println("Some simple debug outputs...");
 
       OEntity cacheKey1 = consumer.getEntity("CacheEntries", "key1").execute();
       reportEntity("This is key1 entity report: ", cacheKey1);
+      // TODO: soma handler which will translate it into CacheEntry
+      // Or I already have InternalCacheEntry... what to do with this?
 
 
 //      cacheKey1.getProperty("Key").getValue();
@@ -53,10 +64,6 @@ public class ExampleConsumer extends AbstractExample {
 
 //      OEntity cacheKey6 = consumer.getEntity("CacheEntriesNew", "key6").execute();
 //      reportEntity("This is key1 entity report: ", cacheKey6);
-
-
-
-
 
 
 //      consumer.updateEntity(cacheKey1).properties(OProperties.string("Value","Updated")).execute();

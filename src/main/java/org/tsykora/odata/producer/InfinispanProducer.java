@@ -32,12 +32,15 @@ import java.util.logging.Logger;
 //import org.odata4j.producer.inmemory.InMemoryProducer.RequestContext.RequestType;
 
 /**
- * An in-memory implementation of an ODATA Producer.  Uses the standard Java bean
- * and property model to access information within entities.
+ * An in-memory implementation of an ODATA Producer.  Uses the standard Java bean and property model to access
+ * information within entities.
  */
 public class InfinispanProducer implements ODataProducer {
    private static final boolean DUMP = false;
-   private static void dump(String msg) { if (DUMP) System.out.println(msg); }
+
+   private static void dump(String msg) {
+      if (DUMP) System.out.println(msg);
+   }
 
    public static final String ID_PROPNAME = "EntityId";
 
@@ -60,7 +63,7 @@ public class InfinispanProducer implements ODataProducer {
    /**
     * Creates a new instance of an in-memory POJO producer.
     *
-    * @param namespace  the namespace of the schema registrations
+    * @param namespace the namespace of the schema registrations
     */
    public InfinispanProducer(String namespace) {
       this(namespace, DEFAULT_MAX_RESULTS);
@@ -70,7 +73,7 @@ public class InfinispanProducer implements ODataProducer {
     * Creates a new instance of an in-memory POJO producer.
     *
     * @param namespace  the namespace of the schema registrations
-    * @param maxResults  the maximum number of entities to return in a single call
+    * @param maxResults the maximum number of entities to return in a single call
     */
    public InfinispanProducer(String namespace, int maxResults) {
       this(namespace, null, maxResults, null, null);
@@ -79,11 +82,11 @@ public class InfinispanProducer implements ODataProducer {
    /**
     * Creates a new instance of an in-memory POJO producer.
     *
-    * @param namespace  the namespace of the schema registrations
-    * @param containerName  the container name for generated metadata
-    * @param maxResults  the maximum number of entities to return in a single call
-    * @param decorator  a decorator to use for edm customizations
-    * @param typeMapping  optional mapping between java types and edm types, null for default
+    * @param namespace     the namespace of the schema registrations
+    * @param containerName the container name for generated metadata
+    * @param maxResults    the maximum number of entities to return in a single call
+    * @param decorator     a decorator to use for edm customizations
+    * @param typeMapping   optional mapping between java types and edm types, null for default
     */
    public InfinispanProducer(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping) {
       this(namespace, containerName, maxResults, decorator, typeMapping,
@@ -91,7 +94,7 @@ public class InfinispanProducer implements ODataProducer {
    }
 
    public InfinispanProducer(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
-                           boolean flattenEdm) {
+                             boolean flattenEdm) {
       this.namespace = namespace;
       this.containerName = containerName != null && !containerName.isEmpty() ? containerName : "Container";
       this.maxResults = maxResults;
@@ -115,7 +118,7 @@ public class InfinispanProducer implements ODataProducer {
 
    protected InMemoryEdmGenerator newEdmGenerator(String namespace, InMemoryTypeMapping typeMapping, String idPropName, Map<String, InMemoryEntityInfo<?>> eis,
                                                   Map<String, InMemoryComplexTypeInfo<?>> complexTypesInfo) {
-      return new InMemoryEdmGenerator(namespace, containerName, typeMapping, ID_PROPNAME,  eis, complexTypesInfo, this.flattenEdm);
+      return new InMemoryEdmGenerator(namespace, containerName, typeMapping, ID_PROPNAME, eis, complexTypesInfo, this.flattenEdm);
    }
 
    @Override
@@ -156,10 +159,10 @@ public class InfinispanProducer implements ODataProducer {
    /**
     * Registers a new entity based on a POJO, with support for composite keys.
     *
-    * @param entityClass  the class of the entities that are to be stored in the set
-    * @param entitySetName  the alias the set will be known by; this is what is used in the OData url
-    * @param get  a function to iterate over the elements in the set
-    * @param keys  one or more keys for the entity
+    * @param entityClass   the class of the entities that are to be stored in the set
+    * @param entitySetName the alias the set will be known by; this is what is used in the OData url
+    * @param get           a function to iterate over the elements in the set
+    * @param keys          one or more keys for the entity
     */
    public <TEntity> void register(Class<TEntity> entityClass, String entitySetName, Func<Iterable<TEntity>> get, String... keys) {
       register(entityClass, entitySetName, entitySetName, get, keys);
@@ -168,11 +171,11 @@ public class InfinispanProducer implements ODataProducer {
    /**
     * Registers a new entity based on a POJO, with support for composite keys.
     *
-    * @param entityClass  the class of the entities that are to be stored in the set
+    * @param entityClass    the class of the entities that are to be stored in the set
     * @param entitySetName  the alias the set will be known by; this is what is used in the OData url
-    * @param entityTypeName  type name of the entity
-    * @param get  a function to iterate over the elements in the set
-    * @param keys  one or more keys for the entity
+    * @param entityTypeName type name of the entity
+    * @param get            a function to iterate over the elements in the set
+    * @param keys           one or more keys for the entity
     */
    public <TEntity> void register(Class<TEntity> entityClass, String entitySetName, String entityTypeName, Func<Iterable<TEntity>> get, String... keys) {
       PropertyModel model = new BeanBasedPropertyModel(entityClass, this.flattenEdm);
@@ -193,11 +196,11 @@ public class InfinispanProducer implements ODataProducer {
    /**
     * Registers a new entity set based on a POJO type and a property model.
     *
-    * @param entityClass  the class of the entities that are to be stored in the set
+    * @param entityClass   the class of the entities that are to be stored in the set
     * @param propertyModel a way to get/set properties on the POJO
-    * @param entitySetName  the alias the set will be known by; this is what is used in the ODATA URL
-    * @param get  a function to iterate over the elements in the set
-    * @param keys  one or more keys for the entity
+    * @param entitySetName the alias the set will be known by; this is what is used in the ODATA URL
+    * @param get           a function to iterate over the elements in the set
+    * @param keys          one or more keys for the entity
     */
    public <TEntity, TKey> void register(
          Class<TEntity> entityClass,
@@ -249,6 +252,14 @@ public class InfinispanProducer implements ODataProducer {
          }
       };
 
+      // TODO!!
+      // TODO!!
+      //is it map? I need to ADD it here, not replace key-value!!!
+
+//      InMemoryEntityInfo<?> old = eis.get(entitySetName);
+//      System.out.println("KEYS of old eis.get(entitySetName) = " + old.);
+
+
       eis.put(entitySetName, ei);
       metadata = null;
    }
@@ -284,18 +295,16 @@ public class InfinispanProducer implements ODataProducer {
    }
 
    /**
-    * Transforms a POJO into a list of OProperties based on a given
-    * EdmStructuralType.
+    * Transforms a POJO into a list of OProperties based on a given EdmStructuralType.
     *
-    * @param obj the POJO to transform
-    * @param propertyModel the PropertyModel to use to access POJO class
-    * structure and values.
+    * @param obj            the POJO to transform
+    * @param propertyModel  the PropertyModel to use to access POJO class structure and values.
     * @param structuralType the EdmStructuralType
-    * @param properties put properties into this list.
+    * @param properties     put properties into this list.
     */
    protected void addPropertiesFromObject(Object obj, PropertyModel propertyModel, EdmStructuralType structuralType, List<OProperty<?>> properties, PropertyPathHelper pathHelper) {
       dump("addPropertiesFromObject: " + obj.getClass().getName());
-      for (Iterator<EdmProperty> it = structuralType.getProperties().iterator(); it.hasNext();) {
+      for (Iterator<EdmProperty> it = structuralType.getProperties().iterator(); it.hasNext(); ) {
          EdmProperty property = it.next();
 
          // $select projections not allowed for complex types....hmmh...why?
@@ -494,7 +503,7 @@ public class InfinispanProducer implements ODataProducer {
 
       // skip records by $skipToken
       if (queryInfo != null && queryInfo.skipToken != null) {
-         final Boolean[] skipping = new Boolean[] { true };
+         final Boolean[] skipping = new Boolean[]{true};
          entities = entities.skipWhile(new Predicate1<OEntity>() {
             @Override
             public boolean apply(OEntity input) {
@@ -596,7 +605,7 @@ public class InfinispanProducer implements ODataProducer {
    private Enumerable<Object> orderBy(Enumerable<Object> iter, List<OrderByExpression> orderBys, final PropertyModel properties) {
       for (final OrderByExpression orderBy : Enumerable.create(orderBys).reverse())
          iter = iter.orderBy(new Comparator<Object>() {
-            @SuppressWarnings({ "unchecked", "rawtypes" })
+            @SuppressWarnings({"unchecked", "rawtypes"})
             public int compare(Object o1, Object o2) {
                Comparable lhs = (Comparable) InMemoryEvaluation.evaluate(orderBy.getExpression(), o1, properties);
                Comparable rhs = (Comparable) InMemoryEvaluation.evaluate(orderBy.getExpression(), o2, properties);
@@ -655,65 +664,55 @@ public class InfinispanProducer implements ODataProducer {
    }
 
    @Override
-   // TODO: final here is problem - do some retype inside method?
    public EntityResponse createEntity(String entitySetName, final OEntity entity) {
 
+      System.out.println("\n\nI am in the createEntity method.....\n\n");
 
-      // TODO
+
       // pass entity here
       // register it
       // and return it back as entity response
 
       // need proper entity key and entitySetName
+      // first pass via OData from consumer, register into memory and then get it via OData with proper http responses etc.
 
-      QueryInfo queryInfo = entityQueryInfoGlobal;
-      OEntityKey entityKey = oEntityKeyGlobal;
-
-
-      PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
-
-      RequestContext rc = RequestContext.newBuilder(RequestType.GetEntity)
-            .entitySetName(entitySetName)
-            .entitySet(getMetadata()
-                             .getEdmEntitySet(entitySetName))
-            .entityKey(entityKey)
-            .queryInfo(queryInfo)
-            .pathHelper(pathHelper).build();
-
-      final Object rt = getEntityPojo(rc);
-      if (rt == null)
-         throw new NotFoundException("No entity found in entityset " + entitySetName
-                                           + " for key " + entityKey.toKeyStringWithoutParentheses()
-                                           + " and query info " + queryInfo);
-
-      OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
+//      try {
 
 
+         InMemoryProducerExample.MyInternalCacheEntry entry = new
+               InMemoryProducerExample.MyInternalCacheEntry((String) entity.getProperty("Key").getValue(),
+                                                            (String) entity.getProperty("Value").getValue());
+
+      // TODO: why I am deleting all entries which were in that entity set?
 
 
+         final Set<InMemoryProducerExample.MyInternalCacheEntry> setOfEntries = new HashSet<InMemoryProducerExample.MyInternalCacheEntry>();
+//         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key66", "value66"));
+//         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key77", "value77"));
+//         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key88", "value88"));
+
+         setOfEntries.add(entry);
 
 
+         System.out.println("About to register new entry into entitySetName: " + entitySetName);
+         System.out.println("Entry was transfered to pojo: key:" + entry.getKey() + " value: " + entry.getValue());
+         // TODO: REGISTER entity immediately from OEntity -- do some processing in register method
+         // TODO: rename register to sume put? I don't know
 
 
+         // Store into memory (will be instance cache, which will be configured by configuration sent via OData too in init phase)
+         // new entries are registered here: http://localhost:8887/InMemoryProducerExample.svc/CacheEntriesNew
+         // TODO: implement register function for one entry and this use for some kind of batching
+         register(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, entitySetName,
+                  new Func<Iterable<InMemoryProducerExample.MyInternalCacheEntry>>() {
+                     public Iterable<InMemoryProducerExample.MyInternalCacheEntry> apply() {
+                        return setOfEntries;
+                     }
+                  }, Funcs.method(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, "toString"));
+
+         System.out.println("New entry was successfully registered!!!");
 
 
-      final Set<InMemoryProducerExample.MyInternalCacheEntry> setOfEntries = new HashSet<InMemoryProducerExample.MyInternalCacheEntry>();
-      setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key66", "value66"));
-      setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key77", "value77"));
-      setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key88", "value88"));
-
-      // TODO set proper namespace here  "CacheEntries" entitySetName
-      System.out.println("About to register new entry...");
-
-      // new entries are registered here: http://localhost:8887/InMemoryProducerExample.svc/CacheEntriesNew
-      register(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, "CacheEntriesNew",
-               new Func<Iterable<InMemoryProducerExample.MyInternalCacheEntry>>() {
-         public Iterable<InMemoryProducerExample.MyInternalCacheEntry> apply() {
-            return setOfEntries;
-         }
-      }, Funcs.method(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, "toString"));
-
-      System.out.println("New entry was successfully registered!!!");
 //
 //      // Some more logic
 //      // connect it to the cache / cache store etc., this cache (or cache manager needs to be in some ('general') context then
@@ -728,17 +727,51 @@ public class InfinispanProducer implements ODataProducer {
 //      };
 //
 ////      throw new NotImplementedException();
-      // TODO: what to return, for which object to set status response to 200 OK, to not throw exception?
+         // TODO: what to return, for which object to set status response to 200 OK, to not throw exception?
+
+
+         // TODO
+         // pass entity here
+         // register it
+         // and return it back as entity response
+
+         // need proper entity key and entitySetName
+
+         // normally call GET ENTITY here with returning RESPONSE
+         // pass proper parameters
+
+         QueryInfo queryInfo = entityQueryInfoGlobal;
+         OEntityKey entityKey = OEntityKey.create(entry.getKey());
+         // and set entity set name as set into which is entry stored newcacheentries.
+
+         PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
+
+         RequestContext rc = RequestContext.newBuilder(RequestType.GetEntity)
+               .entitySetName(entitySetName)
+               .entitySet(getMetadata()
+                                .getEdmEntitySet(entitySetName))
+               .entityKey(entityKey)
+               .queryInfo(queryInfo)
+               .pathHelper(pathHelper).build();
+
+         final Object rt = getEntityPojo(rc);
+         if (rt == null)
+            throw new NotFoundException("No entity found in entityset " + entitySetName
+                                              + " for key " + entityKey.toKeyStringWithoutParentheses()
+                                              + " and query info " + queryInfo);
+
+         OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
+         // it returned status CREATED succesfully  (status 201)
+
+         return Responses.entity(oe);
 
 
 
-
-
-
-      return Responses.entity(oe);
-
-      // it returned status CREATED succesfully  (status 201)
-
+//      } catch (Exception e) {
+//         System.err.println("I HAVE EXCEPTION WHILE CALLING TO POJO : " + e.getMessage() + " " + e.getStackTrace().toString());
+//      }
+//
+//      return null;
    }
 
    @Override
@@ -798,8 +831,8 @@ public class InfinispanProducer implements ODataProducer {
    /**
     * Gets the entity(s) on the target end of a NavigationProperty.
     *
-    * @param navProp  the navigation property
-    * @param rc  the request context
+    * @param navProp the navigation property
+    * @param rc      the request context
     * @return a BaseResponse with either a single Entity (can be null) or a set of entities.
     */
    protected BaseResponse getNavProperty(EdmNavigationProperty navProp, RequestContext rc) {
@@ -857,7 +890,9 @@ public class InfinispanProducer implements ODataProducer {
 
       public enum RequestType {
          GetEntity, GetEntities, GetEntitiesCount, GetNavProperty
-      };
+      }
+
+      ;
 
       public final RequestType requestType;
       private final String entitySetName;
@@ -962,11 +997,10 @@ public class InfinispanProducer implements ODataProducer {
    }
 
    /**
-    * Given an entity set and an entity key, returns the pojo that is that entity instance.
-    * The default implementation iterates over the entire set of pojos to find the
-    * desired instance.
+    * Given an entity set and an entity key, returns the pojo that is that entity instance. The default implementation
+    * iterates over the entire set of pojos to find the desired instance.
     *
-    * @param rc  the current ReqeustContext, may be valuable to the ei.getWithContext impl
+    * @param rc the current ReqeustContext, may be valuable to the ei.getWithContext impl
     * @return the pojo
     */
    @SuppressWarnings("unchecked")
@@ -1012,7 +1046,9 @@ public class InfinispanProducer implements ODataProducer {
 
    private enum TriggerType {
       Before, After
-   };
+   }
+
+   ;
 
    protected void fireUnmarshalEvent(Object pojo, OStructuralObject sobj, TriggerType ttype)
          throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
@@ -1047,7 +1083,7 @@ public class InfinispanProducer implements ODataProducer {
       T pojo = pojoClass.newInstance();
       fireUnmarshalEvent(pojo, sobj, TriggerType.Before);
 
-      for (Iterator<EdmProperty> it = stype.getProperties().iterator(); it.hasNext();) {
+      for (Iterator<EdmProperty> it = stype.getProperties().iterator(); it.hasNext(); ) {
          EdmProperty property = it.next();
          Object value = null;
          try {
@@ -1126,7 +1162,7 @@ public class InfinispanProducer implements ODataProducer {
       T pojo = fillInPojo(entity, entitySet.getType(), e.getPropertyModel(), pojoClass);
 
       // nav props
-      for (Iterator<EdmNavigationProperty> it = entitySet.getType().getNavigationProperties().iterator(); it.hasNext();) {
+      for (Iterator<EdmNavigationProperty> it = entitySet.getType().getNavigationProperties().iterator(); it.hasNext(); ) {
          EdmNavigationProperty np = it.next();
          OLink link = null;
          try {
@@ -1302,7 +1338,7 @@ public class InfinispanProducer implements ODataProducer {
             List<EdmProperty.Builder> properties = new ArrayList<EdmProperty.Builder>();
 
             // no keys
-            properties.addAll(toEdmProperties(decorator, typeInfo.getPropertyModel(), new String[] {}, complexTypeName));
+            properties.addAll(toEdmProperties(decorator, typeInfo.getPropertyModel(), new String[]{}, complexTypeName));
 
             EdmComplexType.Builder typeBuilder = EdmComplexType.newBuilder()
                   .setNamespace(namespace)
@@ -1446,7 +1482,7 @@ public class InfinispanProducer implements ODataProducer {
             InfinispanProducer.InMemoryEntityInfo<?> ei2 = entitySetName2 == null ? null : eis.get(entitySetName2);
 
             if (log.isLoggable(Level.FINE)) {
-               log.log(Level.FINE, "genToOnNavProp {0} - {1}({2}) eetName2: {3}", new Object[] { entityTypeName, assocProp, clazz2, entitySetName2 });
+               log.log(Level.FINE, "genToOnNavProp {0} - {1}({2}) eetName2: {3}", new Object[]{entityTypeName, assocProp, clazz2, entitySetName2});
             }
 
             if (eet1.findProperty(assocProp) != null || ei2 == null)
@@ -1648,8 +1684,7 @@ public class InfinispanProducer implements ODataProducer {
 
             if (type != null) {
                ep.setType(type);
-            }
-            else {
+            } else {
                ep.setType(typeBuilder);
             }
 
@@ -1699,6 +1734,7 @@ public class InfinispanProducer implements ODataProducer {
 
       /**
        * get the Edm namespace
+       *
        * @return the Edm namespace
        */
       public String getNamespace() {
@@ -1706,8 +1742,8 @@ public class InfinispanProducer implements ODataProducer {
       }
 
       /**
-       * provides an override point for applications to add application specific
-       * EdmFunctions to their producer.
+       * provides an override point for applications to add application specific EdmFunctions to their producer.
+       *
        * @param schema    the EdmSchema.Builder
        * @param container the EdmEntityContainer.Builder
        */
