@@ -679,38 +679,51 @@ public class InfinispanProducer implements ODataProducer {
 //      try {
 
 
-         InMemoryProducerExample.MyInternalCacheEntry entry = new
-               InMemoryProducerExample.MyInternalCacheEntry((String) entity.getProperty("Key").getValue(),
-                                                            (String) entity.getProperty("Value").getValue());
+      // TODO do this transformation in some aggregate method (using some EDM model for it?) To transfer OEntity to Pojos?
+      InMemoryProducerExample.MyInternalCacheEntry entry = new
+            InMemoryProducerExample.MyInternalCacheEntry((String) entity.getProperty("Key").getValue(),
+                                                         (String) entity.getProperty("Value").getValue());
 
       // TODO: why I am deleting all entries which were in that entity set?
 
 
-         final Set<InMemoryProducerExample.MyInternalCacheEntry> setOfEntries = new HashSet<InMemoryProducerExample.MyInternalCacheEntry>();
+      final Set<InMemoryProducerExample.MyInternalCacheEntry> setOfEntries = new HashSet<InMemoryProducerExample.MyInternalCacheEntry>();
+
+      for (OEntity oe : getEntities(entitySetName, entityQueryInfoGlobal).getEntities()) {
+
+         InMemoryProducerExample.MyInternalCacheEntry oldEntry = new
+               InMemoryProducerExample.MyInternalCacheEntry((String) oe.getProperty("Key").getValue(),
+                                                            (String) oe.getProperty("Value").getValue());
+
+         setOfEntries.add(oldEntry);
+      }
+
+
 //         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key66", "value66"));
 //         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key77", "value77"));
 //         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key88", "value88"));
 
-         setOfEntries.add(entry);
+      // And ADD NEW ENTRY HERE INTO SET and register all
+      setOfEntries.add(entry);
 
 
-         System.out.println("About to register new entry into entitySetName: " + entitySetName);
-         System.out.println("Entry was transfered to pojo: key:" + entry.getKey() + " value: " + entry.getValue());
-         // TODO: REGISTER entity immediately from OEntity -- do some processing in register method
-         // TODO: rename register to sume put? I don't know
+      System.out.println("About to register new entry into entitySetName: " + entitySetName);
+      System.out.println("Entry was transfered to pojo: key:" + entry.getKey() + " value: " + entry.getValue());
+      // TODO: REGISTER entity immediately from OEntity -- do some processing in register method
+      // TODO: rename register to sume put? I don't know
 
 
-         // Store into memory (will be instance cache, which will be configured by configuration sent via OData too in init phase)
-         // new entries are registered here: http://localhost:8887/InMemoryProducerExample.svc/CacheEntriesNew
-         // TODO: implement register function for one entry and this use for some kind of batching
-         register(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, entitySetName,
-                  new Func<Iterable<InMemoryProducerExample.MyInternalCacheEntry>>() {
-                     public Iterable<InMemoryProducerExample.MyInternalCacheEntry> apply() {
-                        return setOfEntries;
-                     }
-                  }, Funcs.method(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, "toString"));
+      // Store into memory (will be instance cache, which will be configured by configuration sent via OData too in init phase)
+      // new entries are registered here: http://localhost:8887/InMemoryProducerExample.svc/CacheEntriesNew
+      // TODO: implement register function for one entry and this use for some kind of batching
+      register(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, entitySetName,
+               new Func<Iterable<InMemoryProducerExample.MyInternalCacheEntry>>() {
+                  public Iterable<InMemoryProducerExample.MyInternalCacheEntry> apply() {
+                     return setOfEntries;
+                  }
+               }, Funcs.method(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, "toString"));
 
-         System.out.println("New entry was successfully registered!!!");
+      System.out.println("New entry was successfully registered!!!");
 
 
 //
@@ -727,44 +740,43 @@ public class InfinispanProducer implements ODataProducer {
 //      };
 //
 ////      throw new NotImplementedException();
-         // TODO: what to return, for which object to set status response to 200 OK, to not throw exception?
+      // TODO: what to return, for which object to set status response to 200 OK, to not throw exception?
 
 
-         // TODO
-         // pass entity here
-         // register it
-         // and return it back as entity response
+      // TODO
+      // pass entity here
+      // register it
+      // and return it back as entity response
 
-         // need proper entity key and entitySetName
+      // need proper entity key and entitySetName
 
-         // normally call GET ENTITY here with returning RESPONSE
-         // pass proper parameters
+      // normally call GET ENTITY here with returning RESPONSE
+      // pass proper parameters
 
-         QueryInfo queryInfo = entityQueryInfoGlobal;
-         OEntityKey entityKey = OEntityKey.create(entry.getKey());
-         // and set entity set name as set into which is entry stored newcacheentries.
+      QueryInfo queryInfo = entityQueryInfoGlobal;
+      OEntityKey entityKey = OEntityKey.create(entry.getKey());
+      // and set entity set name as set into which is entry stored newcacheentries.
 
-         PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
+      PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
 
-         RequestContext rc = RequestContext.newBuilder(RequestType.GetEntity)
-               .entitySetName(entitySetName)
-               .entitySet(getMetadata()
-                                .getEdmEntitySet(entitySetName))
-               .entityKey(entityKey)
-               .queryInfo(queryInfo)
-               .pathHelper(pathHelper).build();
+      RequestContext rc = RequestContext.newBuilder(RequestType.GetEntity)
+            .entitySetName(entitySetName)
+            .entitySet(getMetadata()
+                             .getEdmEntitySet(entitySetName))
+            .entityKey(entityKey)
+            .queryInfo(queryInfo)
+            .pathHelper(pathHelper).build();
 
-         final Object rt = getEntityPojo(rc);
-         if (rt == null)
-            throw new NotFoundException("No entity found in entityset " + entitySetName
-                                              + " for key " + entityKey.toKeyStringWithoutParentheses()
-                                              + " and query info " + queryInfo);
+      final Object rt = getEntityPojo(rc);
+      if (rt == null)
+         throw new NotFoundException("No entity found in entityset " + entitySetName
+                                           + " for key " + entityKey.toKeyStringWithoutParentheses()
+                                           + " and query info " + queryInfo);
 
-         OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
-         // it returned status CREATED succesfully  (status 201)
+      OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
+      // it returned status CREATED succesfully  (status 201)
 
-         return Responses.entity(oe);
-
+      return Responses.entity(oe);
 
 
 //      } catch (Exception e) {
