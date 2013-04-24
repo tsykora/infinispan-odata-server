@@ -18,7 +18,6 @@ import org.odata4j.core.OSimpleObjects;
 import org.odata4j.core.PrefixedNamespace;
 import org.odata4j.edm.*;
 import org.odata4j.producer.PropertyPath;
-import org.odata4j.producer.inmemory.InMemoryProducer;
 import org.odata4j.producer.resources.DefaultODataProducerProvider;
 
 import java.net.URL;
@@ -57,7 +56,12 @@ public class InMemoryProducerExample extends AbstractExample {
 
       // InMemoryProducer is a readonly odata provider that serves up POJOs as entities using bean properties
       // call InMemoryProducer.register to declare a new entity-set, providing a entity source function and a propertyname to serve as the key
-      final InMemoryProducer producer = new InMemoryProducer("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
+//      final InMemoryProducer producer = new InMemoryProducer("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
+
+      // Call own infinispan producer which implements properly all methods
+      // There will be probably more producers?
+      // Is there need to do my own consumer? How it will be different from ODataJerseyConsumer for example.
+      final InfinispanProducer producer = new InfinispanProducer("InMemoryProducerExample", null, 100, null, null);
 
 // <editor-fold defaultstate="collapsed" desc="other producer's registrations">    
 //    // expose this jvm's thread information (Thread instances) as an entity-set called "Threads"
@@ -147,7 +151,7 @@ public class InMemoryProducerExample extends AbstractExample {
       private final String key;
       private final String value;
 
-      private MyInternalCacheEntry(String key, String value) {
+      public MyInternalCacheEntry(String key, String value) {
          this.key = key;
          this.value = value;
       }
