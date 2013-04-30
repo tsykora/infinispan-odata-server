@@ -31,8 +31,8 @@ public class Runner {
       };
 
       // wait for server starting
-      Thread.sleep(5000);
-      consumerThread.start();
+//      Thread.sleep(25000);
+//      consumerThread.start();
 
    }
 

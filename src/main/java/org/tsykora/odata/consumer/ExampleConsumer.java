@@ -41,7 +41,9 @@ public class ExampleConsumer extends AbstractExample {
 
       OEntity cacheKey1 = consumer.getEntity("CacheEntries", "key1").execute();
       reportEntity("This is key1 entity report: ", cacheKey1);
-      // TODO: soma handler which will translate it into CacheEntry
+      
+      
+      // TODO: some handler which will translate it into CacheEntry
       // Or I already have InternalCacheEntry... what to do with this?
 
 

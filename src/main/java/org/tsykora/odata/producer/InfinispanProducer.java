@@ -92,7 +92,7 @@ public class InfinispanProducer implements ODataProducer {
       this(namespace, containerName, maxResults, decorator, typeMapping,
            true); // legacy: flatten edm
    }
-
+   
    public InfinispanProducer(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
                              boolean flattenEdm) {
       this.namespace = namespace;
