@@ -56,6 +56,9 @@ public class ExampleConsumer extends AbstractExample {
 
       // TODO: it returns key1 value1 -- this what I was consumer.getEntity ^ above (why?)
       // creates new entity in given set
+
+      // NOTE/SKILL: to call it from here Producer need to implement findExtension (it can return null)
+      // + it needs some successful response for ConsumerCreateEntityRequest
       OEntity newCacheEntry = consumer.createEntity("CacheEntries")
             .properties(OProperties.string("Key", "key6"))
             .properties(OProperties.string("Value", "value6")).execute();

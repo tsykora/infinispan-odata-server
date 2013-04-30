@@ -1,22 +1,14 @@
 package org.tsykora.odata.producer;
 
-import org.core4j.Enumerable;
 import org.core4j.Enumerables;
 import org.core4j.Func;
 import org.core4j.Func1;
 import org.core4j.Funcs;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
-import org.odata4j.core.NamespacedAnnotation;
-import org.odata4j.core.OCollection;
-import org.odata4j.core.OCollections;
-import org.odata4j.core.OComplexObject;
-import org.odata4j.core.OComplexObjects;
-import org.odata4j.core.OProperties;
-import org.odata4j.core.OProperty;
-import org.odata4j.core.OSimpleObjects;
-import org.odata4j.core.PrefixedNamespace;
+import org.odata4j.core.*;
 import org.odata4j.edm.*;
+import org.odata4j.producer.EntityResponse;
 import org.odata4j.producer.PropertyPath;
 import org.odata4j.producer.resources.DefaultODataProducerProvider;
 
@@ -28,11 +20,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import org.odata4j.core.OEntities;
-import org.odata4j.core.OEntity;
-import org.odata4j.core.OEntityKey;
-import org.odata4j.producer.EntityResponse;
-import org.odata4j.producer.Responses;
 
 /**
  * @author tsykora
@@ -75,12 +62,10 @@ public class InMemoryProducerExample extends AbstractExample {
         // register CacheEntries entity set and it should be given by metadata then...
         // TODO: reveal magic here and REGISTER this entitySet lightweightly
         producerBig.register(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "CacheEntries", new Func<Iterable<MyInternalCacheEntry>>() {
-
             public Iterable<MyInternalCacheEntry> apply() {
                 return returnInternalCacheEntrySet();
             }
         }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
-
 
         
         // temporary usage of metadata given by Heavy InMemory Producer (all decorators etc. and InMemoryEdmGenerator!!)
@@ -137,15 +122,11 @@ public class InMemoryProducerExample extends AbstractExample {
 //            return Enumerable.range(0, 150);
 //         }
 //      }, Funcs.method(Integer.class, Integer.class, "intValue"));
-//
-//
 //      producer.register(String.class, String.class, "CacheKeys", new Func<Iterable<String>>() {
 //         public Iterable<String> apply() {
 //            return c.keySet();
 //         }
 //      }, Funcs.method(String.class, String.class, "toString"));
-
-
 //      producer.register(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "CacheEntries", new Func<Iterable<MyInternalCacheEntry>>() {
 //         public Iterable<MyInternalCacheEntry> apply() {
 //            return returnInternalCacheEntrySet();

@@ -1,13 +1,15 @@
 package org.tsykora.odata.producer;
 
-import java.util.ArrayList;
-import java.util.List;
+import org.odata4j.core.OEntities;
 import org.odata4j.core.OEntity;
 import org.odata4j.core.OEntityId;
 import org.odata4j.core.OEntityKey;
 import org.odata4j.core.OExtension;
 import org.odata4j.core.OFunctionParameter;
+import org.odata4j.core.OProperties;
+import org.odata4j.core.OProperty;
 import org.odata4j.edm.EdmDataServices;
+import org.odata4j.edm.EdmEntitySet;
 import org.odata4j.edm.EdmFunctionImport;
 import org.odata4j.producer.BaseResponse;
 import org.odata4j.producer.CountResponse;
@@ -17,14 +19,12 @@ import org.odata4j.producer.EntityQueryInfo;
 import org.odata4j.producer.EntityResponse;
 import org.odata4j.producer.ODataProducer;
 import org.odata4j.producer.QueryInfo;
+import org.odata4j.producer.Responses;
 import org.odata4j.producer.edm.MetadataProducer;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
-import org.odata4j.core.OEntities;
-import org.odata4j.core.OProperties;
-import org.odata4j.core.OProperty;
-import org.odata4j.edm.EdmEntitySet;
-import org.odata4j.producer.Responses;
 
 /**
  * This is lightweight infinispan OData producer which implements ODataProducer interface.
@@ -340,7 +340,7 @@ public class LightweightInfinispanProducer implements ODataProducer {
      */
     @Override
     public <TExtension extends OExtension<ODataProducer>> TExtension findExtension(Class<TExtension> clazz) {
-        throw new UnsupportedOperationException("LightweightInfinispanProducer does not support this method:" + " " + new Exception().getStackTrace()[0].getMethodName());
+        return null;
     }
 
     // ******************** ADDED METHODS apart of Overriden methods ******************
