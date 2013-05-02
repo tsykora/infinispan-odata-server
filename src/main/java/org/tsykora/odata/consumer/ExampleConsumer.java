@@ -40,7 +40,7 @@ public class ExampleConsumer extends AbstractExample {
       System.out.println("Some simple debug outputs...");
 
       OEntity cacheKey1 = consumer.getEntity("CacheEntries", "key1").execute();
-      reportEntity("This is key1 entity report: ", cacheKey1);
+      reportEntity("This is key1 entity report (from ExampleConsumer): ", cacheKey1);
       
       
       // TODO: some handler which will translate it into CacheEntry
@@ -64,6 +64,12 @@ public class ExampleConsumer extends AbstractExample {
             .properties(OProperties.string("Value", "value6")).execute();
 
       reportEntity(" new cache entry report: ", newCacheEntry);
+
+
+
+
+
+
 
 
 

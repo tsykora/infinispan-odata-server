@@ -68,8 +68,14 @@ public class InMemoryProducerExample extends AbstractExample {
         }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
 
         
-        // temporary usage of metadata given by Heavy InMemory Producer (all decorators etc. and InMemoryEdmGenerator!!)
+        // temporary usage of metadata given by Heavy InMemory Producer (all decorators etc. and LightEdmGenerator!!)
         final LightweightInfinispanProducer producer = new LightweightInfinispanProducer(producerBig.getMetadata());
+
+       // TODO:
+       // I want to LightProducer to create metadata itself (EDMGenerator, register EntitySet names - during creation? / entry creation?)
+
+
+
 
 
 
@@ -151,7 +157,7 @@ public class InMemoryProducerExample extends AbstractExample {
                 p, null));
         
         OEntity createdRightNow = response.getEntity();
-        reportEntity("This is response from producer, created OEntity: ", createdRightNow);
+        reportEntity("This is response from producer (InMemoryProducerExample), recently created OEntity: ", createdRightNow);
         
 
         // START ODATA SERVER

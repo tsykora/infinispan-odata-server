@@ -252,14 +252,6 @@ public class InfinispanProducer implements ODataProducer {
          }
       };
 
-      // TODO!!
-      // TODO!!
-      //is it map? I need to ADD it here, not replace key-value!!!
-
-//      InMemoryEntityInfo<?> old = eis.get(entitySetName);
-//      System.out.println("KEYS of old eis.get(entitySetName) = " + old.);
-
-
       eis.put(entitySetName, ei);
       metadata = null;
    }
@@ -1306,6 +1298,8 @@ public class InfinispanProducer implements ODataProducer {
          List<EdmAssociation.Builder> associations = new ArrayList<EdmAssociation.Builder>();
          List<EdmAssociationSet.Builder> associationSets = new ArrayList<EdmAssociationSet.Builder>();
 
+
+
          createComplexTypes(decorator, edmComplexTypes);
 
          // creates id other basic SUPPORTED_TYPE properties(structural) entities
@@ -1314,6 +1308,8 @@ public class InfinispanProducer implements ODataProducer {
          // TODO handle back references too
          // create hashmaps from sets
 
+         // TODO!!!
+         // Looks like I need this to properly register EntitySetNames!!!
          createNavigationProperties(associations, associationSets,
                                     entityTypesByName, entitySetsByName, entitySetNameByClass);
 
@@ -1541,6 +1537,7 @@ public class InfinispanProducer implements ODataProducer {
          }
       }
 
+
       protected EdmEntitySet.Builder getEntitySetForEntityTypeName(String entityTypeName) {
 
          for (InfinispanProducer.InMemoryEntityInfo<?> ti : eis.values()) {
@@ -1550,6 +1547,7 @@ public class InfinispanProducer implements ODataProducer {
          }
          return null;
       }
+
 
       protected void generateToManyNavProperties(List<EdmAssociation.Builder> associations,
                                                  List<EdmAssociationSet.Builder> associationSets,

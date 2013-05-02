@@ -56,6 +56,8 @@ public class LightweightInfinispanProducer implements ODataProducer {
 
     private EdmDataServices metadata;
 
+   // private final EdmDecorator decorator; // decorator can be null (do I need it in future?)
+
     public LightweightInfinispanProducer(EdmDataServices metadata) {
         // Temporary: use metadata from Heavy Producer
         this.metadata = metadata;
