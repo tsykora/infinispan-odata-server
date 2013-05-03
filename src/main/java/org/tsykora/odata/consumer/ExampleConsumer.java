@@ -39,8 +39,8 @@ public class ExampleConsumer extends AbstractExample {
 
       System.out.println("Some simple debug outputs...");
 
-      OEntity cacheKey1 = consumer.getEntity("CacheEntries", "key1").execute();
-      reportEntity("This is key1 entity report (from ExampleConsumer): ", cacheKey1);
+      OEntity cacheKey1 = consumer.getEntity("CacheEntries", "key8").execute();
+      reportEntity("\n\nThis is key8 entity report (from ExampleConsumer): ", cacheKey1);
       
       
       // TODO: some handler which will translate it into CacheEntry

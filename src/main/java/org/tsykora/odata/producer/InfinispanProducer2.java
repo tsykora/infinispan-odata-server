@@ -3,7 +3,6 @@ package org.tsykora.odata.producer;
 import org.core4j.Enumerable;
 import org.core4j.Func;
 import org.core4j.Func1;
-import org.core4j.Funcs;
 import org.core4j.Predicate1;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
@@ -688,51 +687,51 @@ public class InfinispanProducer2 implements ODataProducer {
 //      try {
 
 
-      // TODO do this transformation in some aggregate method (using some EDM model for it?) To transfer OEntity to Pojos?
-      InMemoryProducerExample.MyInternalCacheEntry entry = new
-            InMemoryProducerExample.MyInternalCacheEntry((String) entity.getProperty("Key").getValue(),
-                                                         (String) entity.getProperty("Value").getValue());
-
-      // TODO: why I am deleting all entries which were in that entity set?
-
-
-      final Set<InMemoryProducerExample.MyInternalCacheEntry> setOfEntries = new HashSet<InMemoryProducerExample.MyInternalCacheEntry>();
-
-      for (OEntity oe : getEntities(entitySetName, entityQueryInfoGlobal).getEntities()) {
-
-         InMemoryProducerExample.MyInternalCacheEntry oldEntry = new
-               InMemoryProducerExample.MyInternalCacheEntry((String) oe.getProperty("Key").getValue(),
-                                                            (String) oe.getProperty("Value").getValue());
-
-         setOfEntries.add(oldEntry);
-      }
-
-
-//         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key66", "value66"));
-//         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key77", "value77"));
-//         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key88", "value88"));
-
-      // And ADD NEW ENTRY HERE INTO SET and register all
-      setOfEntries.add(entry);
-
-
-      System.out.println("About to register new entry into entitySetName: " + entitySetName);
-      System.out.println("Entry was transfered to pojo: key:" + entry.getKey() + " value: " + entry.getValue());
-      // TODO: REGISTER entity immediately from OEntity -- do some processing in register method
-      // TODO: rename register to sume put? I don't know
-
-
-      // Store into memory (will be instance cache, which will be configured by configuration sent via OData too in init phase)
-      // new entries are registered here: http://localhost:8887/InMemoryProducerExample.svc/CacheEntriesNew
-      // TODO: implement register function for one entry and this use for some kind of batching
-      register(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, entitySetName,
-               new Func<Iterable<InMemoryProducerExample.MyInternalCacheEntry>>() {
-                  public Iterable<InMemoryProducerExample.MyInternalCacheEntry> apply() {
-                     return setOfEntries;
-                  }
-               }, Funcs.method(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, "toString"));
-
-      System.out.println("New entry was successfully registered!!!");
+//      // TODO do this transformation in some aggregate method (using some EDM model for it?) To transfer OEntity to Pojos?
+//      InMemoryProducerExample.MyInternalCacheEntry entry = new
+//            InMemoryProducerExample.MyInternalCacheEntry((String) entity.getProperty("Key").getValue(),
+//                                                         (String) entity.getProperty("Value").getValue());
+//
+//      // TODO: why I am deleting all entries which were in that entity set?
+//
+//
+//      final Set<InMemoryProducerExample.MyInternalCacheEntry> setOfEntries = new HashSet<InMemoryProducerExample.MyInternalCacheEntry>();
+//
+//      for (OEntity oe : getEntities(entitySetName, entityQueryInfoGlobal).getEntities()) {
+//
+//         InMemoryProducerExample.MyInternalCacheEntry oldEntry = new
+//               InMemoryProducerExample.MyInternalCacheEntry((String) oe.getProperty("Key").getValue(),
+//                                                            (String) oe.getProperty("Value").getValue());
+//
+//         setOfEntries.add(oldEntry);
+//      }
+//
+//
+////         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key66", "value66"));
+////         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key77", "value77"));
+////         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key88", "value88"));
+//
+//      // And ADD NEW ENTRY HERE INTO SET and register all
+//      setOfEntries.add(entry);
+//
+//
+//      System.out.println("About to register new entry into entitySetName: " + entitySetName);
+//      System.out.println("Entry was transfered to pojo: key:" + entry.getKey() + " value: " + entry.getValue());
+//      // TODO: REGISTER entity immediately from OEntity -- do some processing in register method
+//      // TODO: rename register to sume put? I don't know
+//
+//
+//      // Store into memory (will be instance cache, which will be configured by configuration sent via OData too in init phase)
+//      // new entries are registered here: http://localhost:8887/InMemoryProducerExample.svc/CacheEntriesNew
+//      // TODO: implement register function for one entry and this use for some kind of batching
+//      register(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, entitySetName,
+//               new Func<Iterable<InMemoryProducerExample.MyInternalCacheEntry>>() {
+//                  public Iterable<InMemoryProducerExample.MyInternalCacheEntry> apply() {
+//                     return setOfEntries;
+//                  }
+//               }, Funcs.method(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, "toString"));
+//
+//      System.out.println("New entry was successfully registered!!!");
 
 
 //
@@ -788,6 +787,11 @@ public class InfinispanProducer2 implements ODataProducer {
 //      // it returned status CREATED succesfully  (status 201)
 
 
+
+
+      // TODO: properly handle abstract object into cache and cache keys
+      // TODO: some handler? + <Object, Object> cache
+      ispnCache.put(entity.getProperty("key").getValue().toString(), entity.getProperty("value").getValue().toString());
 
 
 
@@ -1042,36 +1046,52 @@ public class InfinispanProducer2 implements ODataProducer {
 
 
       // TODO: get rt object directly from cache (CacheEntry - InternalCacheEntry)
+      // I need to transfer cache entry to InternalCacheEntry probably
+      // because this is Entity and I have EntityInfo about this class
+      // RequestContext is my internal class here and it has rc.getEntityKey()
 
-      final Object rt = Enumerable.create(iter).firstOrNull(new Predicate1<Object>() {
-         public boolean apply(Object input) {
-            HashMap<String, Object> idObjectMap = ei.id.apply(input);
+      String requestedCacheEntryKey = rc.getEntityKey().toString();
 
-            if (keyList.length == 1) {
-               Object idValue = rc.getEntityKey().asSingleValue();
-               return idObjectMap.get(keyList[0]).equals(idValue);
-            } else if (keyList.length > 1) {
-               for (String key : keyList) {
-                  Object curValue = null;
-                  Iterator<OProperty<?>> keyProps = rc.getEntityKey().asComplexProperties().iterator();
-                  while (keyProps.hasNext()) {
-                     OProperty<?> keyProp = keyProps.next();
-                     if (keyProp.getName().equalsIgnoreCase(key)) {
-                        curValue = keyProp.getValue();
-                     }
-                  }
-                  if (curValue == null) {
-                     return false;
-                  } else if (!idObjectMap.get(key).equals(curValue)) {
-                     return false;
-                  }
-               }
-               return true;
-            } else {
-               return false;
-            }
-         }
-      });
+      InMemoryProducerExample.MyInternalCacheEntry ice =
+            new InMemoryProducerExample.MyInternalCacheEntry(requestedCacheEntryKey, ispnCache.get(requestedCacheEntryKey));
+
+      final Object rt = ice;
+
+
+      // TODO:
+      // IMPORTANT: CAN I HAVE ENTITY INFO ABOUT CACHE ENTRY DIRECTLY? is it even beneficial?
+
+
+
+//      final Object rt = Enumerable.create(iter).firstOrNull(new Predicate1<Object>() {
+//         public boolean apply(Object input) {
+//            HashMap<String, Object> idObjectMap = ei.id.apply(input);
+//
+//            if (keyList.length == 1) {
+//               Object idValue = rc.getEntityKey().asSingleValue();
+//               return idObjectMap.get(keyList[0]).equals(idValue);
+//            } else if (keyList.length > 1) {
+//               for (String key : keyList) {
+//                  Object curValue = null;
+//                  Iterator<OProperty<?>> keyProps = rc.getEntityKey().asComplexProperties().iterator();
+//                  while (keyProps.hasNext()) {
+//                     OProperty<?> keyProp = keyProps.next();
+//                     if (keyProp.getName().equalsIgnoreCase(key)) {
+//                        curValue = keyProp.getValue();
+//                     }
+//                  }
+//                  if (curValue == null) {
+//                     return false;
+//                  } else if (!idObjectMap.get(key).equals(curValue)) {
+//                     return false;
+//                  }
+//               }
+//               return true;
+//            } else {
+//               return false;
+//            }
+//         }
+//      });
       return rt;
    }
 
