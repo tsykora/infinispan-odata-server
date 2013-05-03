@@ -6,9 +6,16 @@ import org.core4j.Func1;
 import org.core4j.Funcs;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
-import org.odata4j.core.*;
+import org.odata4j.core.NamespacedAnnotation;
+import org.odata4j.core.OCollection;
+import org.odata4j.core.OCollections;
+import org.odata4j.core.OComplexObject;
+import org.odata4j.core.OComplexObjects;
+import org.odata4j.core.OProperties;
+import org.odata4j.core.OProperty;
+import org.odata4j.core.OSimpleObjects;
+import org.odata4j.core.PrefixedNamespace;
 import org.odata4j.edm.*;
-import org.odata4j.producer.EntityResponse;
 import org.odata4j.producer.PropertyPath;
 import org.odata4j.producer.resources.DefaultODataProducerProvider;
 
@@ -63,13 +70,17 @@ public class InMemoryProducerExample extends AbstractExample {
         // TODO: reveal magic here and REGISTER this entitySet lightweightly
         producerBig.register(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "CacheEntries", new Func<Iterable<MyInternalCacheEntry>>() {
             public Iterable<MyInternalCacheEntry> apply() {
+
+               // IMPORTANT!!!
+               // TODO udelat funci apply() tak, aby pracovala, vracela to, co je aktualne v nejake cachi
+
                 return returnInternalCacheEntrySet();
             }
         }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
 
         
         // temporary usage of metadata given by Heavy InMemory Producer (all decorators etc. and LightEdmGenerator!!)
-        final LightweightInfinispanProducer producer = new LightweightInfinispanProducer(producerBig.getMetadata());
+//        final LightweightInfinispanProducer producer = new LightweightInfinispanProducer(producerBig.getMetadata());
 
        // TODO:
        // I want to LightProducer to create metadata itself (EDMGenerator, register EntitySet names - during creation? / entry creation?)
@@ -151,18 +162,29 @@ public class InMemoryProducerExample extends AbstractExample {
         List<OProperty<?>> p = new ArrayList<OProperty<?>>();
             p.add(OProperties.string("entrykey", "key1"));
             p.add(OProperties.string("entryvalue", "value1"));
-        
-        EntityResponse response = producer.createEntity("CacheEntries",
-                OEntities.create(producer.getEntitySet("CacheEntries"), OEntityKey.create(entityKeysValues),
-                p, null));
-        
-        OEntity createdRightNow = response.getEntity();
-        reportEntity("This is response from producer (InMemoryProducerExample), recently created OEntity: ", createdRightNow);
+
+       // for lightweight
+//        EntityResponse response = producer.createEntity("CacheEntries",
+//                OEntities.create(producer.getEntitySet("CacheEntries"), OEntityKey.create(entityKeysValues),
+//                p, null));
+
+       // IMPORTANT!!!
+
+       // IMPORTANT!!!
+
+       // IMPORTANT!!!
+
+       // ENTRIES (InternalCacheEntries - are stored in InMemoryEntityInfo class in get function!!!!)
+       // get.apply() -- how does it exactly work??
+
+
+//        OEntity createdRightNow = response.getEntity();
+//        reportEntity("This is response from producer (InMemoryProducerExample), recently created OEntity: ", createdRightNow);
         
 
         // START ODATA SERVER
         // register the producer as the static instance, then launch the http server
-        DefaultODataProducerProvider.setInstance(producer);
+        DefaultODataProducerProvider.setInstance(producerBig);
         this.rtFacde.hostODataServer(endpointUri);
 
     }

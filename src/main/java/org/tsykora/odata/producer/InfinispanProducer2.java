@@ -23,7 +23,7 @@ import org.odata4j.producer.inmemory.InMemoryComplexTypeInfo;
 import org.odata4j.producer.inmemory.InMemoryEvaluation;
 import org.odata4j.producer.inmemory.InMemoryTypeMapping;
 import org.odata4j.producer.inmemory.PropertyModel;
-import org.tsykora.odata.producer.InfinispanProducer.RequestContext.RequestType;
+import org.tsykora.odata.producer.InfinispanProducer2.RequestContext.RequestType;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -34,10 +34,11 @@ import java.util.logging.Logger;
 //import org.odata4j.producer.inmemory.InMemoryProducer.RequestContext.RequestType;
 
 /**
- * An in-memory implementation of an ODATA Producer.  Uses the standard Java bean and property model to access
- * information within entities.
+ *
+ * InMemoryProducer with implemented direct access to Infinispan Cache.
+ *
  */
-public class InfinispanProducer implements ODataProducer {
+public class InfinispanProducer2 implements ODataProducer {
    private static final boolean DUMP = false;
 
    private static void dump(String msg) {
@@ -70,7 +71,7 @@ public class InfinispanProducer implements ODataProducer {
     *
     * @param namespace the namespace of the schema registrations
     */
-   public InfinispanProducer(String namespace) {
+   public InfinispanProducer2(String namespace) {
       this(namespace, DEFAULT_MAX_RESULTS);
    }
 
@@ -80,7 +81,7 @@ public class InfinispanProducer implements ODataProducer {
     * @param namespace  the namespace of the schema registrations
     * @param maxResults the maximum number of entities to return in a single call
     */
-   public InfinispanProducer(String namespace, int maxResults) {
+   public InfinispanProducer2(String namespace, int maxResults) {
       this(namespace, null, maxResults, null, null);
    }
 
@@ -93,13 +94,13 @@ public class InfinispanProducer implements ODataProducer {
     * @param decorator     a decorator to use for edm customizations
     * @param typeMapping   optional mapping between java types and edm types, null for default
     */
-   public InfinispanProducer(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping) {
+   public InfinispanProducer2(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping) {
       this(namespace, containerName, maxResults, decorator, typeMapping,
            true); // legacy: flatten edm
    }
-   
-   public InfinispanProducer(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
-                             boolean flattenEdm) {
+
+   public InfinispanProducer2(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
+                              boolean flattenEdm) {
       this.namespace = namespace;
       this.containerName = containerName != null && !containerName.isEmpty() ? containerName : "Container";
       this.maxResults = maxResults;
@@ -669,6 +670,11 @@ public class InfinispanProducer implements ODataProducer {
       // Is put into IspnCache (or other cache - depends on entitySetName = cacheName)
       // cacheName can be defined by other was - decorator, EDM - later? If needed.
 
+      // IMPORTANT
+      // don't need to register -- just put into cache
+      // and get entity will discover new stated cache
+
+
       System.out.println("\n\nI am in the createEntity method.....\n\n");
 
 
@@ -756,30 +762,37 @@ public class InfinispanProducer implements ODataProducer {
       // normally call GET ENTITY here with returning RESPONSE
       // pass proper parameters
 
-      QueryInfo queryInfo = entityQueryInfoGlobal;
-      OEntityKey entityKey = OEntityKey.create(entry.getKey());
-      // and set entity set name as set into which is entry stored newcacheentries.
 
-      PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
 
-      RequestContext rc = RequestContext.newBuilder(RequestType.GetEntity)
-            .entitySetName(entitySetName)
-            .entitySet(getMetadata()
-                             .getEdmEntitySet(entitySetName))
-            .entityKey(entityKey)
-            .queryInfo(queryInfo)
-            .pathHelper(pathHelper).build();
+//      QueryInfo queryInfo = entityQueryInfoGlobal;
+//
+//      // and set entity set name as set into which is entry stored newcacheentries.
+//
+//      PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
+//
+//      RequestContext rc = RequestContext.newBuilder(RequestType.GetEntity)
+//            .entitySetName(entitySetName)
+//            .entitySet(getMetadata()
+//                             .getEdmEntitySet(entitySetName))
+//            .entityKey(entityKey)
+//            .queryInfo(queryInfo)
+//            .pathHelper(pathHelper).build();
+//
+//      final Object rt = getEntityPojo(rc);
+//      if (rt == null)
+//         throw new NotFoundException("No entity found in entityset " + entitySetName
+//                                           + " for key " + entityKey.toKeyStringWithoutParentheses()
+//                                           + " and query info " + queryInfo);
+//
+//      OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
+//      // it returned status CREATED succesfully  (status 201)
 
-      final Object rt = getEntityPojo(rc);
-      if (rt == null)
-         throw new NotFoundException("No entity found in entityset " + entitySetName
-                                           + " for key " + entityKey.toKeyStringWithoutParentheses()
-                                           + " and query info " + queryInfo);
 
-      OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
-      // it returned status CREATED succesfully  (status 201)
 
-      return Responses.entity(oe);
+
+
+      // queryInfo=null
+      return getEntity(entitySetName, entity.getEntityKey(), null);
 
 
 //      } catch (Exception e) {
@@ -892,7 +905,7 @@ public class InfinispanProducer implements ODataProducer {
    }
 
    @Override
-   public BaseResponse callFunction(EdmFunctionImport name, java.util.Map<String, OFunctionParameter> params, QueryInfo queryInfo) {
+   public BaseResponse callFunction(EdmFunctionImport name, Map<String, OFunctionParameter> params, QueryInfo queryInfo) {
       throw new NotImplementedException();
    }
 
@@ -1026,6 +1039,9 @@ public class InfinispanProducer implements ODataProducer {
 
       Iterable<Object> iter = ei.getWithContext == null ? ((Iterable<Object>) ei.get.apply())
             : ((Iterable<Object>) ei.getWithContext.apply(rc));
+
+
+      // TODO: get rt object directly from cache (CacheEntry - InternalCacheEntry)
 
       final Object rt = Enumerable.create(iter).firstOrNull(new Predicate1<Object>() {
          public boolean apply(Object input) {
@@ -1299,13 +1315,13 @@ public class InfinispanProducer implements ODataProducer {
       protected final boolean flatten;
 
       public InMemoryEdmGenerator(String namespace, String containerName, InMemoryTypeMapping typeMapping,
-                                  String idPropertyName, Map<String, InfinispanProducer.InMemoryEntityInfo<?>> eis,
+                                  String idPropertyName, Map<String, InfinispanProducer2.InMemoryEntityInfo<?>> eis,
                                   Map<String, InMemoryComplexTypeInfo<?>> complexTypes) {
          this(namespace, containerName, typeMapping, idPropertyName, eis, complexTypes, true);
       }
 
       public InMemoryEdmGenerator(String namespace, String containerName, InMemoryTypeMapping typeMapping,
-                                  String idPropertyName, Map<String, InfinispanProducer.InMemoryEntityInfo<?>> eis,
+                                  String idPropertyName, Map<String, InfinispanProducer2.InMemoryEntityInfo<?>> eis,
                                   Map<String, InMemoryComplexTypeInfo<?>> complexTypes, boolean flatten) {
          this.namespace = namespace;
          this.containerName = containerName;
@@ -1313,7 +1329,7 @@ public class InfinispanProducer implements ODataProducer {
          this.eis = eis;
          this.complexTypeInfo = complexTypes;
 
-         for (Map.Entry<String, InfinispanProducer.InMemoryEntityInfo<?>> e : eis.entrySet()) {
+         for (Map.Entry<String, InfinispanProducer2.InMemoryEntityInfo<?>> e : eis.entrySet()) {
             entitySetNameByClass.put(e.getValue().entityClass, e.getKey());
          }
          this.flatten = flatten;
@@ -1395,7 +1411,7 @@ public class InfinispanProducer implements ODataProducer {
 
          // eis contains all of the registered entity sets.
          for (String entitySetName : eis.keySet()) {
-            InfinispanProducer.InMemoryEntityInfo<?> entityInfo = eis.get(entitySetName);
+            InfinispanProducer2.InMemoryEntityInfo<?> entityInfo = eis.get(entitySetName);
 
             // do we have this type yet?
             EdmEntityType.Builder eet = entityTypesByName.get(entityInfo.entityTypeName);
@@ -1409,8 +1425,8 @@ public class InfinispanProducer implements ODataProducer {
          }
       }
 
-      protected InfinispanProducer.InMemoryEntityInfo<?> findEntityInfoForClass(Class<?> clazz) {
-         for (InfinispanProducer.InMemoryEntityInfo<?> typeInfo : this.eis.values()) {
+      protected InfinispanProducer2.InMemoryEntityInfo<?> findEntityInfoForClass(Class<?> clazz) {
+         for (InfinispanProducer2.InMemoryEntityInfo<?> typeInfo : this.eis.values()) {
             if (typeInfo.entityClass.equals(clazz)) {
                return typeInfo;
             }
@@ -1423,13 +1439,13 @@ public class InfinispanProducer implements ODataProducer {
       * contains all generated InMemoryEntityInfos that get created as we walk
       * up the inheritance hierarchy and find Java types that are not registered.
       */
-      private Map<Class<?>, InfinispanProducer.InMemoryEntityInfo<?>> unregisteredEntityInfo =
-            new HashMap<Class<?>, InfinispanProducer.InMemoryEntityInfo<?>>();
+      private Map<Class<?>, InfinispanProducer2.InMemoryEntityInfo<?>> unregisteredEntityInfo =
+            new HashMap<Class<?>, InfinispanProducer2.InMemoryEntityInfo<?>>();
 
-      protected InfinispanProducer.InMemoryEntityInfo<?> getUnregisteredEntityInfo(Class<?> clazz, InfinispanProducer.InMemoryEntityInfo<?> subclass) {
-         InfinispanProducer.InMemoryEntityInfo<?> ei = unregisteredEntityInfo.get(clazz);
+      protected InfinispanProducer2.InMemoryEntityInfo<?> getUnregisteredEntityInfo(Class<?> clazz, InfinispanProducer2.InMemoryEntityInfo<?> subclass) {
+         InfinispanProducer2.InMemoryEntityInfo<?> ei = unregisteredEntityInfo.get(clazz);
          if (ei == null) {
-            ei = new InfinispanProducer.InMemoryEntityInfo();
+            ei = new InfinispanProducer2.InMemoryEntityInfo();
             ei.entityTypeName = clazz.getSimpleName();
             ei.keys = subclass.keys;
             ei.entityClass = (Class) clazz;
@@ -1439,7 +1455,7 @@ public class InfinispanProducer implements ODataProducer {
          return ei;
       }
 
-      protected EdmEntityType.Builder createStructuralType(EdmDecorator decorator, InfinispanProducer.InMemoryEntityInfo<?> entityInfo) {
+      protected EdmEntityType.Builder createStructuralType(EdmDecorator decorator, InfinispanProducer2.InMemoryEntityInfo<?> entityInfo) {
          List<EdmProperty.Builder> properties = new ArrayList<EdmProperty.Builder>();
 
          Class<?> superClass = flatten ? null : entityInfo.getSuperClass();
@@ -1464,7 +1480,7 @@ public class InfinispanProducer implements ODataProducer {
 
          EdmEntityType.Builder superType = null;
          if (!this.flatten && entityInfo.entityClass.getSuperclass() != null && !entityInfo.entityClass.getSuperclass().equals(Object.class)) {
-            InfinispanProducer.InMemoryEntityInfo<?> entityInfoSuper = findEntityInfoForClass(entityInfo.entityClass.getSuperclass());
+            InfinispanProducer2.InMemoryEntityInfo<?> entityInfoSuper = findEntityInfoForClass(entityInfo.entityClass.getSuperclass());
             // may have created it along another branch in the hierarchy
             if (entityInfoSuper == null) {
                // synthesize...
@@ -1488,7 +1504,7 @@ public class InfinispanProducer implements ODataProducer {
                                                 Map<Class<?>, String> entityNameByClass) {
 
          for (String entitySetName : eis.keySet()) {
-            InfinispanProducer.InMemoryEntityInfo<?> ei = eis.get(entitySetName);
+            InfinispanProducer2.InMemoryEntityInfo<?> ei = eis.get(entitySetName);
             Class<?> clazz1 = ei.entityClass;
 
             generateToOneNavProperties(associations, associationSets,
@@ -1508,7 +1524,7 @@ public class InfinispanProducer implements ODataProducer {
             Map<String, EdmEntitySet.Builder> entitySetByName,
             Map<Class<?>, String> entityNameByClass,
             String entityTypeName,
-            InfinispanProducer.InMemoryEntityInfo<?> ei) {
+            InfinispanProducer2.InMemoryEntityInfo<?> ei) {
 
          Iterable<String> propertyNames = this.flatten ? ei.properties.getPropertyNames() : ei.properties.getDeclaredPropertyNames();
          for (String assocProp : propertyNames) {
@@ -1516,7 +1532,7 @@ public class InfinispanProducer implements ODataProducer {
             EdmEntityType.Builder eet1 = entityTypesByName.get(entityTypeName);
             Class<?> clazz2 = ei.properties.getPropertyType(assocProp);
             String entitySetName2 = entityNameByClass.get(clazz2);
-            InfinispanProducer.InMemoryEntityInfo<?> ei2 = entitySetName2 == null ? null : eis.get(entitySetName2);
+            InfinispanProducer2.InMemoryEntityInfo<?> ei2 = entitySetName2 == null ? null : eis.get(entitySetName2);
 
             if (log.isLoggable(Level.FINE)) {
                log.log(Level.FINE, "genToOnNavProp {0} - {1}({2}) eetName2: {3}", new Object[]{entityTypeName, assocProp, clazz2, entitySetName2});
@@ -1569,7 +1585,7 @@ public class InfinispanProducer implements ODataProducer {
 
       protected EdmEntitySet.Builder getEntitySetForEntityTypeName(String entityTypeName) {
 
-         for (InfinispanProducer.InMemoryEntityInfo<?> ti : eis.values()) {
+         for (InfinispanProducer2.InMemoryEntityInfo<?> ti : eis.values()) {
             if (ti.entityTypeName.equals(entityTypeName)) {
                return entitySetsByName.get(ti.entitySetName);
             }
@@ -1584,7 +1600,7 @@ public class InfinispanProducer implements ODataProducer {
                                                  Map<String, EdmEntitySet.Builder> entitySetByName,
                                                  Map<Class<?>, String> entityNameByClass,
                                                  String entityTypeName,
-                                                 InfinispanProducer.InMemoryEntityInfo<?> ei,
+                                                 InfinispanProducer2.InMemoryEntityInfo<?> ei,
                                                  Class<?> clazz1) {
 
          Iterable<String> collectionNames = this.flatten ? ei.properties.getCollectionNames() : ei.properties.getDeclaredCollectionNames();
@@ -1595,7 +1611,7 @@ public class InfinispanProducer implements ODataProducer {
 
             Class<?> clazz2 = ei.properties.getCollectionElementType(assocProp);
             String entitySetName2 = entityNameByClass.get(clazz2);
-            InfinispanProducer.InMemoryEntityInfo<?> class2eiInfo = entitySetName2 == null ? null : eis.get(entitySetName2);
+            InfinispanProducer2.InMemoryEntityInfo<?> class2eiInfo = entitySetName2 == null ? null : eis.get(entitySetName2);
 
             if (class2eiInfo == null)
                continue;
