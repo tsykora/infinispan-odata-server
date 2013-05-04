@@ -1,8 +1,11 @@
 package org.tsykora.odata.consumer;
 
+import org.odata4j.consumer.ConsumerCreateEntityRequest;
 import org.odata4j.consumer.ODataConsumer;
+import org.odata4j.core.OCreateRequest;
 import org.odata4j.core.OEntity;
 import org.odata4j.core.OProperties;
+import org.odata4j.edm.EdmDataServices;
 import org.tsykora.odata.producer.AbstractExample;
 
 /**
@@ -42,6 +45,12 @@ public class ExampleConsumer extends AbstractExample {
       OEntity cacheKey1 = consumer.getEntity("CacheEntries", "key8").execute();
       reportEntity("\n\nThis is key8 entity report (from ExampleConsumer): ", cacheKey1);
       
+           
+      // URI here is only for caption
+       System.out.println("\n\n\n *********** REPORT WHOLE ENTITY SET (CacheEntries) *********** \n\n\n");
+      reportEntities("******** " + endpointUri.concat("CacheEntries"), 
+              consumer.getEntities("CacheEntries").execute());
+      
       
       // TODO: some handler which will translate it into CacheEntry
       // Or I already have InternalCacheEntry... what to do with this?
@@ -59,11 +68,31 @@ public class ExampleConsumer extends AbstractExample {
 
       // NOTE/SKILL: to call it from here Producer need to implement findExtension (it can return null)
       // + it needs some successful response for ConsumerCreateEntityRequest
-      OEntity newCacheEntry = consumer.createEntity("CacheEntries")
-            .properties(OProperties.string("Key", "key6"))
-            .properties(OProperties.string("Value", "value6")).execute();
-
-      reportEntity(" new cache entry report: ", newCacheEntry);
+      
+      
+      // TODO!!
+      // create full OEntity here -- later this will make handler possible - get only user get for cache and everything handles
+      // entitytype a entity key is missing!
+      
+      // need client? need metadata! Do I need it? What else do I need?
+      
+      // respose.getType() is null
+      // and key is null
+      
+      
+      
+      
+      
+      // CREATE ENTRY FROM CONSUMER !!!!!!!!! //
+      // CREATE ENTRY FROM CONSUMER !!!!!!!!! //
+      // CREATE ENTRY FROM CONSUMER !!!!!!!!! //
+      
+      
+//      OEntity newCacheEntry = consumer.createEntity("CacheEntries")
+//            .properties(OProperties.string("Key", "key6"))
+//            .properties(OProperties.string("Value", "value6")).execute();
+//
+//      reportEntity(" new cache entry report: ", newCacheEntry);
 
 
 
