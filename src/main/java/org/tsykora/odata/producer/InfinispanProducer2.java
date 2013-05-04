@@ -452,13 +452,20 @@ public class InfinispanProducer2 implements ODataProducer {
         };
     }
 
+    /**
+     * Is returning all entries from local cache.
+     * 
+     * @param entitySetName - cache name
+     * @param queryInfo - other special restrictions??
+     * @return 
+     */
     @Override
     public EntitiesResponse getEntities(String entitySetName, final QueryInfo queryInfo) {
-        
+
         // go for entries directly into cache
-                
+
         List<Object> entriesObjects = new ArrayList<Object>();
-        
+
         for (String cacheEntryKey : ispnCache.keySet()) {
             // get all entries from cache and return it as objects
             RequestContext rc =
@@ -780,6 +787,8 @@ public class InfinispanProducer2 implements ODataProducer {
 
 
 
+
+
 //      QueryInfo queryInfo = entityQueryInfoGlobal;
 //
 //      // and set entity set name as set into which is entry stored newcacheentries.
@@ -790,36 +799,58 @@ public class InfinispanProducer2 implements ODataProducer {
 //            .entitySetName(entitySetName)
 //            .entitySet(getMetadata()
 //                             .getEdmEntitySet(entitySetName))
-//            .entityKey(entityKey)
+//            .entityKey(entity.getEntityKey())
 //            .queryInfo(queryInfo)
 //            .pathHelper(pathHelper).build();
 //
 //      final Object rt = getEntityPojo(rc);
 //      if (rt == null)
 //         throw new NotFoundException("No entity found in entityset " + entitySetName
-//                                           + " for key " + entityKey.toKeyStringWithoutParentheses()
+//                                           + " for key " + entity.getEntityKey().toKeyStringWithoutParentheses()
 //                                           + " and query info " + queryInfo);
 //
 //      OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
-//      // it returned status CREATED succesfully  (status 201)
+        // it returned status CREATED succesfully  (status 201)
 
 
 
 
         // TODO: properly handle abstract object into cache and cache keys
         // TODO: some handler? + <Object, Object> cache
-        ispnCache.put(entity.getProperty("key").getValue().toString(), entity.getProperty("value").getValue().toString());
 
+        try {
+            ispnCache.put(entity.getProperty("key").getValue().toString(), entity.getProperty("value").getValue().toString());
+            System.out.println(ispnCache.keySet());
+        } catch (Exception e) {
+            System.out.println("Exception in cache put..." + e.getMessage() + "  " + e.getCause());
 
+        }
 
         // queryInfo=null
         // entity.getEntityKey returns normal (String for example) "keyx"
-        return getEntity(entitySetName, entity.getEntityKey(), null);
+
+        // I have NOT good entity here. This incomming entity from consumer does not contain entityKey -- WHY?
+        // I have lost - or I more probably did NOT specified entityKey for incoming entity from consumer
+
+        // TODO: HOT TO SPECIFY entityKey for entity from consumer
+
+        OEntityKey oentityKey = entity.getEntityKey();
         
+        if (entity.getEntityKey() == null) {
+            // this is probably request from consumer and entityKey is not set        
+            // there are set only properties for creating new MyInternalCacheEntry instance
+
+            Map<String, Object> entityKeysValues = new HashMap<String, Object>();
+            entityKeysValues.put("key", entity.getProperty("key").getValue().toString());
+            oentityKey = OEntityKey.create(entityKeysValues.values());
+        }
+
+        return getEntity(entitySetName, oentityKey, null);
+
         // TODO - possible solution for call fro consumer
         // Returning EntityResponse -- fill it with proper metadata!!! 
         // 
-        
+
 
 
     }
@@ -1063,10 +1094,10 @@ public class InfinispanProducer2 implements ODataProducer {
     protected Object getEntityPojo(final RequestContext rc) {
         final InMemoryEntityInfo<?> ei = eis.get(rc.getEntitySetName());
 
-        final String[] keyList = ei.keys;
-
-        Iterable<Object> iter = ei.getWithContext == null ? ((Iterable<Object>) ei.get.apply())
-                : ((Iterable<Object>) ei.getWithContext.apply(rc));
+//        final String[] keyList = ei.keys;
+//
+//        Iterable<Object> iter = ei.getWithContext == null ? ((Iterable<Object>) ei.get.apply())
+//                : ((Iterable<Object>) ei.getWithContext.apply(rc));
 
 
         // TODO: get rt object directly from cache (CacheEntry - InternalCacheEntry)

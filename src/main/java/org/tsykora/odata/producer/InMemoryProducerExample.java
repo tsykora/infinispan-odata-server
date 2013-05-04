@@ -145,31 +145,36 @@ public class InMemoryProducerExample extends AbstractExample {
 //      }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
 
 
+        
+        
+        
+        
+        
         // NOTES:
         // calling put and through some visitor? transferer? I will build OEntity for request here
         // this will be sent to the server side as an OEntity and there put in remote cache (via OData)
 
-        Map<String, Object> entityKeysValues = new HashMap<String, Object>();
-        entityKeysValues.put("key", "key8");
-
-        // based on real entry -> transfer it into OEntity by this (via properties, entrySetName is cache name etc.)
-        List<OProperty<?>> p = new ArrayList<OProperty<?>>();
-        p.add(OProperties.string("key", "key8"));
-        p.add(OProperties.string("value", "value8"));
-
-
-        // why was value = null?
-
-        // entity KEY HAVE TO BE key8 !!!! Create new entity key with requested key! (Cache key)
-        // it needs to ask cache about get("key8"); and not "('key');
-        OEntity entityForPut = OEntities.create(producerBig.getMetadata().getEdmEntitySet("CacheEntries"),
-                OEntityKey.create(entityKeysValues.values()), p, null);
-
-        // CREATE
-        EntityResponse response = producerBig.createEntity("CacheEntries", entityForPut);
-
-        OEntity createdRightNow = response.getEntity();
-        reportEntity("\n\n\n This is response from producer (InMemoryProducerExample), recently created OEntity: \n ", createdRightNow);
+//        Map<String, Object> entityKeysValues = new HashMap<String, Object>();
+//        entityKeysValues.put("key", "key8");
+//
+//        // based on real entry -> transfer it into OEntity by this (via properties, entrySetName is cache name etc.)
+//        List<OProperty<?>> p = new ArrayList<OProperty<?>>();
+//        p.add(OProperties.string("key", "key8"));
+//        p.add(OProperties.string("value", "value8"));
+//
+//
+//        // why was value = null?
+//
+//        // entity KEY HAVE TO BE key8 !!!! Create new entity key with requested key! (Cache key)
+//        // it needs to ask cache about get("key8"); and not "('key');
+//        OEntity entityForPut = OEntities.create(producerBig.getMetadata().getEdmEntitySet("CacheEntries"),
+//                OEntityKey.create(entityKeysValues.values()), p, null);
+//
+//        // CREATE
+//        EntityResponse response = producerBig.createEntity("CacheEntries", entityForPut);
+//
+//        OEntity createdRightNow = response.getEntity();
+//        reportEntity("\n\n\n This is response from producer (InMemoryProducerExample), recently created OEntity: \n ", createdRightNow);
 
 
 
@@ -178,29 +183,29 @@ public class InMemoryProducerExample extends AbstractExample {
         
         
         
-
-        entityKeysValues = new HashMap<String, Object>();
-        entityKeysValues.put("key", "key55");
-
-        // based on real entry -> transfer it into OEntity by this (via properties, entrySetName is cache name etc.)
-        p = new ArrayList<OProperty<?>>();
-        p.add(OProperties.string("key", "key55"));
-        p.add(OProperties.string("value", "value55"));
-
-
-        // why was value = null?
-
-        // entity KEY HAVE TO BE key8 !!!! Create new entity key with requested key! (Cache key)
-        // it needs to ask cache about get("key8"); and not "('key');
-        entityForPut = OEntities.create(producerBig.getMetadata().getEdmEntitySet("CacheEntries"),
-                OEntityKey.create(entityKeysValues.values()), p, null);
-
-
-        // CREATE
-        response = producerBig.createEntity("CacheEntries", entityForPut);
-
-        createdRightNow = response.getEntity();
-        reportEntity("\n\n\n This is response from producer (InMemoryProducerExample), recently created OEntity: \n ", createdRightNow);
+//
+//        entityKeysValues = new HashMap<String, Object>();
+//        entityKeysValues.put("key", "key55");
+//
+//        // based on real entry -> transfer it into OEntity by this (via properties, entrySetName is cache name etc.)
+//        p = new ArrayList<OProperty<?>>();
+//        p.add(OProperties.string("key", "key55"));
+//        p.add(OProperties.string("value", "value55"));
+//
+//
+//        // why was value = null?
+//
+//        // entity KEY HAVE TO BE key8 !!!! Create new entity key with requested key! (Cache key)
+//        // it needs to ask cache about get("key8"); and not "('key');
+//        entityForPut = OEntities.create(producerBig.getMetadata().getEdmEntitySet("CacheEntries"),
+//                OEntityKey.create(entityKeysValues.values()), p, null);
+//
+//
+//        // CREATE
+//        response = producerBig.createEntity("CacheEntries", entityForPut);
+//
+//        createdRightNow = response.getEntity();
+//        reportEntity("\n\n\n This is response from producer (InMemoryProducerExample), recently created OEntity: \n ", createdRightNow);
         
         
         

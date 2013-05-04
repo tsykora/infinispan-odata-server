@@ -1,6 +1,7 @@
 package org.tsykora.odata.consumer;
 
 import org.odata4j.consumer.ConsumerCreateEntityRequest;
+import org.odata4j.consumer.ODataClientRequest;
 import org.odata4j.consumer.ODataConsumer;
 import org.odata4j.core.OCreateRequest;
 import org.odata4j.core.OEntity;
@@ -87,12 +88,16 @@ public class ExampleConsumer extends AbstractExample {
       // CREATE ENTRY FROM CONSUMER !!!!!!!!! //
       // CREATE ENTRY FROM CONSUMER !!!!!!!!! //
       
+//      ODataClientRequest r = new ODataClientRequest(endpointUri, endpointUri, null, null, args);
+//      ConsumerCreateEntityRequest ccer = new ConsumerCreateEntityRequest(null, endpointUri, EdmDataServices.EMPTY, endpointUri, null)
       
-//      OEntity newCacheEntry = consumer.createEntity("CacheEntries")
-//            .properties(OProperties.string("Key", "key6"))
-//            .properties(OProperties.string("Value", "value6")).execute();
-//
-//      reportEntity(" new cache entry report: ", newCacheEntry);
+  
+      
+      OEntity newCacheEntry = consumer.createEntity("CacheEntries")
+            .properties(OProperties.string("key", "key6"))
+            .properties(OProperties.string("value", "value6")).execute();
+
+      reportEntity(" new cache entry report: ", newCacheEntry);
 
 
 

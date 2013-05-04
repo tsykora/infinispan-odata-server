@@ -32,7 +32,7 @@ public class Runner {
 
       // wait for server starting
       System.out.println("\n\n\nWaiting some seconds before starting consumerThread.............\n\n\n");
-      Thread.sleep(5000);
+      Thread.sleep(10000);
       consumerThread.start();
 
    }
