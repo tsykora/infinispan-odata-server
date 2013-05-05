@@ -98,7 +98,13 @@ public class ExampleConsumer extends AbstractExample {
             .properties(OProperties.string("value", "value6")).execute();
 
       reportEntity(" new cache entry report: ", newCacheEntry);
+      
+      Integer count = consumer.getEntitiesCount("CacheEntries").execute();
+       System.out.println("\n\n\nCount of entries is CacheEntries set is: " + count);
+      
 
+       System.out.println("\n\n\n ***** reporting metadata reportMetadata(cosnumer.getMetadata): ******* ");
+      reportMetadata(consumer.getMetadata());
 
 
 

@@ -700,7 +700,7 @@ public class InfinispanProducer2 implements ODataProducer {
 
         System.out.println("\n\nI am in the createEntity method.....\n\n");
 
-
+// <editor-fold defaultstate="collapsed" desc="old code">
         // pass entity here
         // register it
         // and return it back as entity response
@@ -786,9 +786,6 @@ public class InfinispanProducer2 implements ODataProducer {
         // pass proper parameters
 
 
-
-
-
 //      QueryInfo queryInfo = entityQueryInfoGlobal;
 //
 //      // and set entity set name as set into which is entry stored newcacheentries.
@@ -812,7 +809,7 @@ public class InfinispanProducer2 implements ODataProducer {
 //      OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
         // it returned status CREATED succesfully  (status 201)
 
-
+// </editor-fold>
 
 
         // TODO: properly handle abstract object into cache and cache keys
@@ -823,7 +820,6 @@ public class InfinispanProducer2 implements ODataProducer {
             System.out.println(ispnCache.keySet());
         } catch (Exception e) {
             System.out.println("Exception in cache put..." + e.getMessage() + "  " + e.getCause());
-
         }
 
         // queryInfo=null
