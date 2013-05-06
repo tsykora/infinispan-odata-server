@@ -1391,6 +1391,8 @@ public class InfinispanProducer2 implements ODataProducer {
             this.complexTypeInfo = complexTypes;
 
             for (Map.Entry<String, InfinispanProducer2.InMemoryEntityInfo<?>> e : eis.entrySet()) {
+                // e.getValue().entityClass = MyInternalCacheEntry , e.getKey() = "CacheEntries"
+                // e.getValue() = InMemoryEntityInfo
                 entitySetNameByClass.put(e.getValue().entityClass, e.getKey());
             }
             this.flatten = flatten;
@@ -1419,11 +1421,15 @@ public class InfinispanProducer2 implements ODataProducer {
             createNavigationProperties(associations, associationSets,
                     entityTypesByName, entitySetsByName, entitySetNameByClass);
 
-            EdmEntityContainer.Builder container = EdmEntityContainer.newBuilder().setName(containerName).setIsDefault(true).addEntitySets(entitySetsByName.values()).addAssociationSets(associationSets);
+            EdmEntityContainer.Builder container = EdmEntityContainer.newBuilder().
+                    setName(containerName).setIsDefault(true).
+                    addEntitySets(entitySetsByName.values()).addAssociationSets(associationSets);
 
             containers.add(container);
 
-            EdmSchema.Builder schema = EdmSchema.newBuilder().setNamespace(namespace).addEntityTypes(entityTypesByName.values()).addAssociations(associations).addEntityContainers(containers).addComplexTypes(edmComplexTypes);
+            EdmSchema.Builder schema = EdmSchema.newBuilder().setNamespace(namespace).
+                    addEntityTypes(entityTypesByName.values()).addAssociations(associations).
+                    addEntityContainers(containers).addComplexTypes(edmComplexTypes);
 
             addFunctions(schema, container);
 
