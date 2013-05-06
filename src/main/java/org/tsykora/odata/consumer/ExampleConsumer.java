@@ -103,7 +103,7 @@ public class ExampleConsumer extends AbstractExample {
        System.out.println("\n\n\nCount of entries is CacheEntries set is: " + count);
       
 
-       System.out.println("\n\n\n ***** reporting metadata reportMetadata(cosnumer.getMetadata): ******* ");
+       System.out.println("\n\n\n **** reporting metadata reportMetadata(cosnumer.getMetadata): ******* ");
       reportMetadata(consumer.getMetadata());
 
 
