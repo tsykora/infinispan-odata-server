@@ -21,9 +21,7 @@ import java.util.Map;
  * @author tsykora
  */
 public class InMemoryProducerExample extends AbstractExample {
-
-    // Infinispan stuff
-//   private static Cache<String, String> c = new DefaultCacheManager().getCache();
+ 
     public static void main(String[] args) {
         InMemoryProducerExample example = new InMemoryProducerExample();
         example.run(args);
@@ -34,54 +32,33 @@ public class InMemoryProducerExample extends AbstractExample {
 
         String endpointUri = "http://localhost:8887/InMemoryProducerExample.svc/";
 
-        // feed it
-//      c.put("key1", "value1");
-//      c.put("key2", "value2");
-//      c.put("key3", "value3");
-//      c.put("key4", "value4");
-//      c.put("key5", "value5");
-
-        // InMemoryProducer is a readonly odata provider that serves up POJOs as entities using bean properties
+        // InMemoryProducer is a readonly (not now - using InfinispanProducer2)
+        // odata provider that serves up POJOs as entities using bean properties
+        
         // call InMemoryProducer.register to declare a new entity-set, providing a entity source function and a propertyname to serve as the key
-//      final InMemoryProducer producer = new InMemoryProducer("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
+        // final InMemoryProducer producer = new InMemoryProducer("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
 
-        // Call own infinispan producer which implements properly all methods
-        // There will be probably more producers?
-        // Is there need to do my own consumer? How it will be different from ODataJerseyConsumer for example.
+        // Call own infinispan producer which implements properly all methods, will there be probably more producers?
+        // Is there need to do my own consumer? How it will be different from ODataJerseyConsumer for example?
 
-        final InfinispanProducer2 producerBig = new InfinispanProducer2("InMemoryProducerExample", null, 100, null, null);
+        final InfinispanProducer2 producerBig = new InfinispanProducer2("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
 //        final LightweightInfinispanProducer producer = new LightweightInfinispanProducer("InMemoryProducerExample", null, 100, null, null);
 
 
-        // now - simulation (I need to find out how to generate metadata lightly):
-        // register CacheEntries entity set and it should be given by metadata then...
-//        // TODO: reveal magic here and REGISTER this entitySet lightweightly
-
+        // TODO: reveal magic here and REGISTER this entitySet lightweightly
 
         // TODO just for Producer2 -- NOW - only register my EDM entity set
+        // TODO - check class of KEY and the last Funcs.method (try to use simple strings for key or Object.getId()??
+
         producerBig.register(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "CacheEntries", new Func<Iterable<MyInternalCacheEntry>>() {
+            // TEMPORARY REGISTRATION of CACHE ENTRIES set name!!!
 
             public Iterable<MyInternalCacheEntry> apply() {
-
-                // IMPORTANT!!!
-                // TODO udelat funci apply() tak, aby pracovala, vracela to, co je aktualne v nejake cachi
-
-                // Do I need to properly register the first entry to provide some model for another creating from consumer?
                 List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
                 firstEntryForRegister.add(new MyInternalCacheEntry("key1", "value1"));
                 return firstEntryForRegister;
             }
         }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
-
-
-
-
-
-        // temporary usage of metadata given by Heavy InMemory Producer (all decorators etc. and LightEdmGenerator!!)
-//        final LightweightInfinispanProducer producer = new LightweightInfinispanProducer(producerBig.getMetadata());
-
-        // TODO:
-        // I want to LightProducer to create metadata itself (EDMGenerator, register EntitySet names - during creation? / entry creation?)
 
 
 // <editor-fold defaultstate="collapsed" desc="other producer's registrations">
@@ -124,8 +101,6 @@ public class InMemoryProducerExample extends AbstractExample {
 //        return getETFs();
 //      }
 //    }), "Symbol");
-// </editor-fold>
-
 
         // expose an large list of integers as an entity-set called "Integers"
 //      producer.register(Integer.class, Integer.class, "Integers", new Func<Iterable<Integer>>() {
@@ -143,13 +118,10 @@ public class InMemoryProducerExample extends AbstractExample {
 //            return returnInternalCacheEntrySet();
 //         }
 //      }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
+// </editor-fold>
 
+// <editor-fold defaultstate="collapsed" desc="2 entity creations from PRODUCER here">        
 
-        
-        
-        
-        
-        
         // NOTES:
         // calling put and through some visitor? transferer? I will build OEntity for request here
         // this will be sent to the server side as an OEntity and there put in remote cache (via OData)
@@ -178,11 +150,7 @@ public class InMemoryProducerExample extends AbstractExample {
 
 
 
-        
-        
-        
-        
-        
+
 //
 //        entityKeysValues = new HashMap<String, Object>();
 //        entityKeysValues.put("key", "key55");
@@ -206,23 +174,9 @@ public class InMemoryProducerExample extends AbstractExample {
 //
 //        createdRightNow = response.getEntity();
 //        reportEntity("\n\n\n This is response from producer (InMemoryProducerExample), recently created OEntity: \n ", createdRightNow);
-        
-        
-        
 
-        // for lightweight
-//        EntityResponse response = producer.createEntity("CacheEntries",
-//                OEntities.create(producer.getEntitySet("CacheEntries"), OEntityKey.create(entityKeysValues),
-//                p, null));
 
-        // IMPORTANT!!!
-
-        // IMPORTANT!!!
-
-        // IMPORTANT!!!
-
-        // ENTRIES (InternalCacheEntries - are stored in InMemoryEntityInfo class in get function!!!!)
-        // get.apply() -- how does it exactly work??
+        //      </editor-fold>
 
 
         // START ODATA SERVER
@@ -239,6 +193,8 @@ public class InMemoryProducerExample extends AbstractExample {
 //      }
 //      return setOfEntries;
 //   }
+    
+    
     public static class MyInternalCacheEntry {
 
         private final String key;
@@ -336,7 +292,7 @@ public class InMemoryProducerExample extends AbstractExample {
 
     public static class MyEdmDecorator implements EdmDecorator {
 
-        public static final String namespace = "http://tempuri.org";
+        public static final String namespace = "http://infinispan.org";
         public static final String prefix = "inmem";
         private final List<PrefixedNamespace> namespaces = new ArrayList<PrefixedNamespace>(1);
         private final EdmComplexType schemaInfoType;
@@ -353,7 +309,7 @@ public class InMemoryProducerExample extends AbstractExample {
 
         @Override
         public EdmDocumentation getDocumentationForSchema(String namespace) {
-            return new EdmDocumentation("InMemoryProducerExample", "This schema exposes a few example types to demonstrate the InMemoryProducer");
+            return new EdmDocumentation("InMemoryProducerExample", "This schema exposes cache entries stored in Infinispan cache.");
         }
 
         private EdmComplexType.Builder createSchemaInfoType() {
@@ -375,7 +331,7 @@ public class InMemoryProducerExample extends AbstractExample {
             annots.add(new EdmAnnotationAttribute(namespace, prefix, "Version", "1.0 early experience pre-alpha"));
 
             List<OProperty<?>> p = new ArrayList<OProperty<?>>();
-            p.add(OProperties.string("Author", "Xavier S. Dumont"));
+            p.add(OProperties.string("Author", "Tomas Sykora"));
             p.add(OProperties.string("SeeAlso", "InMemoryProducerExample.java"));
 
             annots.add(EdmAnnotation.element(namespace, prefix, "SchemaInfo", OComplexObject.class,

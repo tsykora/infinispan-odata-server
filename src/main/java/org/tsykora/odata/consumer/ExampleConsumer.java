@@ -12,102 +12,109 @@ import org.tsykora.odata.producer.AbstractExample;
 /**
  * @author tsykora
  */
-
 public class ExampleConsumer extends AbstractExample {
 
-   public static String endpointUri = "http://localhost:8887/InMemoryProducerExample.svc/";
+    public static String endpointUri = "http://localhost:8887/InMemoryProducerExample.svc/";
+
+    public static void main(String[] args) {
+        ExampleConsumer example = new ExampleConsumer();
+        example.run(args);
+    }
+
+    public void run(String[] args) {
 
 
-   public static void main(String[] args) {
-      ExampleConsumer example = new ExampleConsumer();
-      example.run(args);
-   }
+        // ********** HINT **********
+        // To dump all the HTTP trafic
+        // Sends http request and/or response information to standard out.  Useful for debugging.
+        ODataConsumer.dump.all(true);
+        // TODO: enable it for producer as well? Is it even possible?
+
+
+        // CONSUME IT
+        // format is null, method to tunnel is null (ok?)
+        System.out.println("Creating instance of ExampleConsumer, initializing oDataConsumer...");
+        ODataConsumer consumer = this.rtFacde.create(endpointUri, null, null);
+
+
+        System.out.println("Some simple debug outputs...");
+        
+        try {
+
+        OEntity cacheKey1 = consumer.getEntity("CacheEntries", "key8").execute();
+        reportEntity("\n\nThis is key8 entity report (from ExampleConsumer): ", cacheKey1);
+
+        } catch (Exception e) {
+            System.err.println("Error while issuing getEntity for key (entry) which is not exist in cache yet." + e.getMessage());
+        }
 
 
 
-   public void run(String[] args) {
-
-
-      // ********** HINT **********
-      // To dump all the HTTP trafic
-      // Sends http request and/or response information to standard out.  Useful for debugging.
-      ODataConsumer.dump.all(true);
-      // TODO: enable it for producer as well? Is it even possible?
-
-
-      // CONSUME IT
-      // format is null, method to tunnel is null (ok?)
-      System.out.println("Creating instance of ExampleConsumer, initializing oDataConsumer...");
-      ODataConsumer consumer = this.rtFacde.create(endpointUri, null, null);
-
-
-      System.out.println("Some simple debug outputs...");
-
-      OEntity cacheKey1 = consumer.getEntity("CacheEntries", "key8").execute();
-      reportEntity("\n\nThis is key8 entity report (from ExampleConsumer): ", cacheKey1);
-      
-           
-      // URI here is only for caption
-       System.out.println("\n\n\n *********** REPORT WHOLE ENTITY SET (CacheEntries) *********** \n\n\n");
-      reportEntities("******** " + endpointUri.concat("CacheEntries"), 
-              consumer.getEntities("CacheEntries").execute());
-      
-      
-      // TODO: some handler which will translate it into CacheEntry
-      // Or I already have InternalCacheEntry... what to do with this?
+        // TODO: some handler which will translate it into CacheEntry
+        // Or I already have InternalCacheEntry... what to do with this?
 
 
 //      cacheKey1.getProperty("Key").getValue();
 
 
-      System.out.println("\n\n************** issuing create entity.........\n\n ");
+        System.out.println("\n\n************** issuing create entity.........\n\n ");
 
-      // http://datajs.codeplex.com/discussions/391490  ??
+        // http://datajs.codeplex.com/discussions/391490  ??
 
-      // TODO: it returns key1 value1 -- this what I was consumer.getEntity ^ above (why?)
-      // creates new entity in given set
+        // TODO: it returns key1 value1 -- this what I was consumer.getEntity ^ above (why?)
+        // creates new entity in given set
 
-      // NOTE/SKILL: to call it from here Producer need to implement findExtension (it can return null)
-      // + it needs some successful response for ConsumerCreateEntityRequest
-      
-      
-      // TODO!!
-      // create full OEntity here -- later this will make handler possible - get only user get for cache and everything handles
-      // entitytype a entity key is missing!
-      
-      // need client? need metadata! Do I need it? What else do I need?
-      
-      // respose.getType() is null
-      // and key is null
-      
-      
-      
-      
-      
-      // CREATE ENTRY FROM CONSUMER !!!!!!!!! //
-      // CREATE ENTRY FROM CONSUMER !!!!!!!!! //
-      // CREATE ENTRY FROM CONSUMER !!!!!!!!! //
-      
+        // NOTE/SKILL: to call it from here Producer need to implement findExtension (it can return null)
+        // + it needs some successful response for ConsumerCreateEntityRequest
+
+
+        // TODO!!
+        // create full OEntity here -- later this will make handler possible - get only user get for cache and everything handles
+        // entitytype a entity key is missing!
+
+        // need client? need metadata! Do I need it? What else do I need?
+
+        // respose.getType() is null
+        // and key is null
+
+
+
+
+
+        // CREATE ENTRY FROM CONSUMER !!!!!!!!! //
+        // CREATE ENTRY FROM CONSUMER !!!!!!!!! //
+        // CREATE ENTRY FROM CONSUMER !!!!!!!!! //
+
 //      ODataClientRequest r = new ODataClientRequest(endpointUri, endpointUri, null, null, args);
 //      ConsumerCreateEntityRequest ccer = new ConsumerCreateEntityRequest(null, endpointUri, EdmDataServices.EMPTY, endpointUri, null)
-      
-  
-      
-      OEntity newCacheEntry = consumer.createEntity("CacheEntries")
-            .properties(OProperties.string("key", "key6"))
-            .properties(OProperties.string("value", "value6")).execute();
-
-      reportEntity(" new cache entry report: ", newCacheEntry);
-      
-      Integer count = consumer.getEntitiesCount("CacheEntries").execute();
-       System.out.println("\n\n\nCount of entries is CacheEntries set is: " + count);
-      
-
-       System.out.println("\n\n\n **** reporting metadata reportMetadata(cosnumer.getMetadata): ***** ");
-      reportMetadata(consumer.getMetadata());
 
 
 
+        
+        
+
+        reportEntity(" new cache entry report: ", consumer.createEntity("CacheEntries").
+                properties(OProperties.string("key", "key6")).properties(OProperties.string("value", "value6")).execute());
+        reportEntity(" new cache entry report: ", consumer.createEntity("CacheEntries").
+                properties(OProperties.string("key", "key7")).properties(OProperties.string("value", "value7")).execute());
+
+        // URI here is only for caption
+        System.out.println("\n\n\n *********** REPORT WHOLE ENTITY SET (CacheEntries) *********** \n\n\n");
+        reportEntities("******** " + endpointUri.concat("CacheEntries"),
+                consumer.getEntities("CacheEntries").execute());
+        
+        // TODO - FIX THIS
+        // this is for only one REGISTERED entry - this does not reflex cache content!! yet!!
+        Integer count = consumer.getEntitiesCount("CacheEntries").execute();
+        System.out.println("\n\n\nCount of entries is CacheEntries set is: " + count);
+
+
+        System.out.println("\n\n\n **** reporting metadata reportMetadata(cosnumer.getMetadata): ***** ");
+        reportMetadata(consumer.getMetadata());
+
+
+
+        
 
 
 
@@ -122,7 +129,7 @@ public class ExampleConsumer extends AbstractExample {
 
 
 
-      // new cache entry has the same EdmType as other entries
+        // new cache entry has the same EdmType as other entries
 //      final EdmType edmType = cacheKey1.getType();
 //      System.out.println(" \n ************** EdmType fullyQualName: " + edmType.getFullyQualifiedTypeName() +
 //                               " toString() is: " + edmType.toString());
@@ -148,7 +155,7 @@ public class ExampleConsumer extends AbstractExample {
 
 
 
-      // creates new entity in given set
+        // creates new entity in given set
 //      OEntity newCacheEntry = consumer.createEntity("CacheEntries")
 //            .properties(OProperties.string("Key", "key6"))
 //            .properties(OProperties.string("Value", "value6")).execute();
@@ -193,5 +200,5 @@ public class ExampleConsumer extends AbstractExample {
 //            System.out.println(key);
 //        }
 
-   }
+    }
 }

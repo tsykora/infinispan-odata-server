@@ -572,7 +572,9 @@ public class InfinispanProducer2 implements ODataProducer {
     @Override
     public CountResponse getEntitiesCount(String entitySetName, final QueryInfo queryInfo) {
 
-        final RequestContext rc = RequestContext.newBuilder(RequestType.GetEntitiesCount).entitySetName(entitySetName).entitySet(getMetadata().getEdmEntitySet(entitySetName)).queryInfo(queryInfo).build();
+        
+        final RequestContext rc = RequestContext.newBuilder(RequestType.GetEntitiesCount).
+                entitySetName(entitySetName).entitySet(getMetadata().getEdmEntitySet(entitySetName)).queryInfo(queryInfo).build();
 
         final InMemoryEntityInfo<?> ei = eis.get(entitySetName);
 
@@ -639,15 +641,13 @@ public class InfinispanProducer2 implements ODataProducer {
         }
         return iter;
     }
-//    OEntityKey oEntityKeyGlobal = null;
-//    EntityQueryInfo entityQueryInfoGlobal = null;
 
-    // If there is a getEntity() call on consumer then this getEntity() method on producer is called
+    
+    /**
+     * If there is a getEntity() call on consumer then this getEntity() method on producer is called
+     */
     @Override
     public EntityResponse getEntity(final String entitySetName, final OEntityKey entityKey, final EntityQueryInfo queryInfo) {
-
-//        oEntityKeyGlobal = entityKey;
-//        entityQueryInfoGlobal = queryInfo;
 
         PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
 
@@ -674,16 +674,19 @@ public class InfinispanProducer2 implements ODataProducer {
 
     @Override
     public void mergeEntity(String entitySetName, OEntity entity) {
+        // merge - what is equal to merge in ISPN?
         throw new NotImplementedException();
     }
 
     @Override
     public void updateEntity(String entitySetName, OEntity entity) {
+        // simple update entry and re-call
         throw new NotImplementedException();
     }
 
     @Override
     public void deleteEntity(String entitySetName, OEntityKey entityKey) {
+        // simple remove entry and re-call 
         throw new NotImplementedException();
     }
 
@@ -691,11 +694,12 @@ public class InfinispanProducer2 implements ODataProducer {
     public EntityResponse createEntity(String entitySetName, final OEntity entity) {
 
         // Is put into IspnCache (or other cache - depends on entitySetName = cacheName)
-        // cacheName can be defined by other was - decorator, EDM - later? If needed.
+        // cacheName can be defined by other was - EDM - later? If needed. Accept builders?
+        // creating caches on the server (Still Jersey?)
 
         // IMPORTANT
-        // don't need to register -- just put into cache
-        // and get entity will discover new stated cache
+        // don't need to register (registering is only for building proper EDM now) -- just put into cache
+        // and getEntity() will discover new state of cache (with that new put already inside)
 
 
         System.out.println("\n\nI am in the createEntity method.....\n\n");
@@ -811,44 +815,21 @@ public class InfinispanProducer2 implements ODataProducer {
 
 // </editor-fold>
 
-
         // TODO: properly handle abstract object into cache and cache keys
         // TODO: some handler? + <Object, Object> cache
-
-        try {
-            ispnCache.put(entity.getProperty("key").getValue().toString(), entity.getProperty("value").getValue().toString());
-            System.out.println(ispnCache.keySet());
-        } catch (Exception e) {
-            System.out.println("Exception in cache put..." + e.getMessage() + "  " + e.getCause());
-        }
-
-        // queryInfo=null
-        // entity.getEntityKey returns normal (String for example) "keyx"
-
-        // I have NOT good entity here. This incomming entity from consumer does not contain entityKey -- WHY?
-        // I have lost - or I more probably did NOT specified entityKey for incoming entity from consumer
-
-        // TODO: HOT TO SPECIFY entityKey for entity from consumer
+        ispnCache.put(entity.getProperty("key").getValue().toString(), entity.getProperty("value").getValue().toString());
 
         OEntityKey oentityKey = entity.getEntityKey();
-        
+
         if (entity.getEntityKey() == null) {
             // this is probably request from consumer and entityKey is not set        
-            // there are set only properties for creating new MyInternalCacheEntry instance
-
+            // there are set only necessary properties for creating new MyInternalCacheEntry instance there
             Map<String, Object> entityKeysValues = new HashMap<String, Object>();
             entityKeysValues.put("key", entity.getProperty("key").getValue().toString());
             oentityKey = OEntityKey.create(entityKeysValues.values());
         }
 
         return getEntity(entitySetName, oentityKey, null);
-
-        // TODO - possible solution for call fro consumer
-        // Returning EntityResponse -- fill it with proper metadata!!! 
-        // 
-
-
-
     }
 
     @Override
@@ -1080,6 +1061,8 @@ public class InfinispanProducer2 implements ODataProducer {
     }
 
     /**
+     * 
+     * // - TODO - document THIS PROPERLY? Change in the future?
      * Given an entity set and an entity key, returns the pojo that is that entity instance. The default implementation
      * iterates over the entire set of pojos to find the desired instance.
      *
@@ -1088,68 +1071,23 @@ public class InfinispanProducer2 implements ODataProducer {
      */
     @SuppressWarnings("unchecked")
     protected Object getEntityPojo(final RequestContext rc) {
-        final InMemoryEntityInfo<?> ei = eis.get(rc.getEntitySetName());
 
-//        final String[] keyList = ei.keys;
-//
-//        Iterable<Object> iter = ei.getWithContext == null ? ((Iterable<Object>) ei.get.apply())
-//                : ((Iterable<Object>) ei.getWithContext.apply(rc));
-
-
-        // TODO: get rt object directly from cache (CacheEntry - InternalCacheEntry)
-        // I need to transfer cache entry to InternalCacheEntry probably
+        // I need to transfer cache entry to MyInternalCacheEntry
         // because this is Entity and I have EntityInfo about this class
         // RequestContext is my internal class here and it has rc.getEntityKey()
 
         // Citation EntityKey DOC: "The string representation of an entity-key is wrapped with parentheses" ('foo')
-        // for cache I need cache-suited key
-//        String requestedCacheEntryKey = rc.getEntityKey().toKeyStringWithoutParentheses();
-        // this makes key like: "'keyx'" 
-//        requestedCacheEntryKey.replaceAll("'", "");
-
 
         // TODO - this operation with key will needs some general objects management (wildcards?)
-        InMemoryProducerExample.MyInternalCacheEntry ice =
-                new InMemoryProducerExample.MyInternalCacheEntry(rc.getIspnCacheKey().toString(), ispnCache.get(rc.getIspnCacheKey().toString()));
-
-        final Object rt = ice;
-
-
-        // TODO:
-        // IMPORTANT: CAN I HAVE ENTITY INFO ABOUT CACHE ENTRY DIRECTLY? is it even beneficial?
-
-
-
-//      final Object rt = Enumerable.create(iter).firstOrNull(new Predicate1<Object>() {
-//         public boolean apply(Object input) {
-//            HashMap<String, Object> idObjectMap = ei.id.apply(input);
-//
-//            if (keyList.length == 1) {
-//               Object idValue = rc.getEntityKey().asSingleValue();
-//               return idObjectMap.get(keyList[0]).equals(idValue);
-//            } else if (keyList.length > 1) {
-//               for (String key : keyList) {
-//                  Object curValue = null;
-//                  Iterator<OProperty<?>> keyProps = rc.getEntityKey().asComplexProperties().iterator();
-//                  while (keyProps.hasNext()) {
-//                     OProperty<?> keyProp = keyProps.next();
-//                     if (keyProp.getName().equalsIgnoreCase(key)) {
-//                        curValue = keyProp.getValue();
-//                     }
-//                  }
-//                  if (curValue == null) {
-//                     return false;
-//                  } else if (!idObjectMap.get(key).equals(curValue)) {
-//                     return false;
-//                  }
-//               }
-//               return true;
-//            } else {
-//               return false;
-//            }
-//         }
-//      });
-        return rt;
+        // TODO - cache should be general Object-Object too (or user specified and proper re-type here)
+                
+        InMemoryProducerExample.MyInternalCacheEntry mice = null;
+        // entry exists?
+        Object value = ispnCache.get(rc.getIspnCacheKey().toString()); 
+        if (value != null) {        
+            mice = new InMemoryProducerExample.MyInternalCacheEntry(rc.getIspnCacheKey().toString(), (String) value);
+        }
+        return mice;
     }
 
     private enum TriggerType {

@@ -15,12 +15,12 @@ public class Runner {
          public void run() {
             System.out.println("\nStarting producer...\n");
             InMemoryProducerExample producer = new InMemoryProducerExample();
-            producer.run(null);
+            producer.run(null);            
          }
       };
       producerThread.start();
-
-
+      
+     
       // start consumer in different thread and work with exposed data
       Thread consumerThread = new Thread() {
          public void run() {
@@ -32,7 +32,7 @@ public class Runner {
 
       // wait for server starting
       System.out.println("\n\n\nWaiting some seconds before starting consumerThread.............\n\n\n");
-      Thread.sleep(10000);
+      Thread.sleep(4000);
       consumerThread.start();
 
    }
