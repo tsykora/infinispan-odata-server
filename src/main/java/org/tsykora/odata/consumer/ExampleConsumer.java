@@ -38,15 +38,14 @@ public class ExampleConsumer extends AbstractExample {
 
 
         System.out.println("Some simple debug outputs...");
-        
-        try {
 
-        OEntity cacheKey1 = consumer.getEntity("CacheEntries", "key8").execute();
-        reportEntity("\n\nThis is key8 entity report (from ExampleConsumer): ", cacheKey1);
-
-        } catch (Exception e) {
-            System.err.println("Error while issuing getEntity for key (entry) which is not exist in cache yet." + e.getMessage());
-        }
+//        try {
+//            OEntity cacheKey1 = consumer.getEntity("CacheEntries", "key8").execute();
+//            reportEntity("\n\nThis is key8 entity report (from ExampleConsumer): ", cacheKey1);
+//
+//        } catch (Exception e) {
+//            System.err.println("Error while issuing getEntity for key (entry) which is not exist in cache yet." + e.getMessage());
+//        }
 
 
 
@@ -90,19 +89,20 @@ public class ExampleConsumer extends AbstractExample {
 
 
 
+
+
+
+//        reportEntity(" new cache entry report: ", consumer.createEntity("CacheEntries").
+//                properties(OProperties.string("Key", "key6")).properties(OProperties.string("Value", "value6")).execute());
+        reportEntity(" new cache entry report: ", consumer.createEntity("CacheEntries").
+                properties(OProperties.binary("Key", "key7".getBytes())).
+                properties(OProperties.binary("Value", "value7".getBytes())).execute());
         
         
 
-        reportEntity(" new cache entry report: ", consumer.createEntity("CacheEntries").
-                properties(OProperties.string("key", "key6")).properties(OProperties.string("value", "value6")).execute());
-        reportEntity(" new cache entry report: ", consumer.createEntity("CacheEntries").
-                properties(OProperties.string("key", "key7")).properties(OProperties.string("value", "value7")).execute());
 
-        // URI here is only for caption
-        System.out.println("\n\n\n *********** REPORT WHOLE ENTITY SET (CacheEntries) *********** \n\n\n");
-        reportEntities("******** " + endpointUri.concat("CacheEntries"),
-                consumer.getEntities("CacheEntries").execute());
         
+
         // TODO - FIX THIS
         // this is for only one REGISTERED entry - this does not reflex cache content!! yet!!
         Integer count = consumer.getEntitiesCount("CacheEntries").execute();
@@ -112,12 +112,37 @@ public class ExampleConsumer extends AbstractExample {
         System.out.println("\n\n\n **** reporting metadata reportMetadata(cosnumer.getMetadata): ***** ");
         reportMetadata(consumer.getMetadata());
 
+        System.out.println("\n\n\n **** **************************** ***** \n\n ");
 
-
+//        OEntity onlyGetEntity = consumer.createEntity("CacheEntries").
+//                properties(OProperties.string("Key", "key10")).properties(OProperties.string("Value", "value10")).get();
+//        System.out.println("Entity key here should be null (is not defined yet): " + onlyGetEntity.getEntityKey());
+//        
         
 
 
-
+        ODataCache<Object, Integer> myCache = new ODataCache<Object, Integer>(consumer, "CacheEntries");
+        
+        System.out.println("\n\n\n CALLING GET ON ODataCache ****************** \n");
+        Object value = myCache.get("key7");
+        System.out.println("class: " + value.getClass());
+        System.out.println("raw: " + value);
+        System.out.println("toString: " + value.toString());
+        
+        Object valueFromPut = myCache.put("key11", new Integer(11));
+        
+        System.out.println("VFP class: " + valueFromPut.getClass());
+        System.out.println("VFP raw: " + valueFromPut);
+        System.out.println("VFP toString: " + valueFromPut.toString());
+        
+        
+        // URI here is only for caption
+        System.out.println("\n\n\n *********** REPORT WHOLE ENTITY SET (CacheEntries) *********** \n\n\n");
+        reportEntities("******** " + endpointUri.concat("CacheEntries"),
+                consumer.getEntities("CacheEntries").execute());
+        
+        
+        
 
 
 //      OEntity cacheKey6 = consumer.getEntity("CacheEntriesNew", "key6").execute();

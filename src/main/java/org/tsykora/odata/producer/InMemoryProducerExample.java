@@ -1,5 +1,6 @@
 package org.tsykora.odata.producer;
 
+import org.odata4j.repack.org.apache.commons.codec.binary.Base64;
 import org.core4j.Enumerables;
 import org.core4j.Func;
 import org.core4j.Func1;
@@ -16,6 +17,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import org.core4j.Enumerable;
+import org.hibernate.type.descriptor.BinaryStream;
+import org.hibernate.type.descriptor.java.BinaryStreamImpl;
+
 
 /**
  * @author tsykora
@@ -55,10 +60,15 @@ public class InMemoryProducerExample extends AbstractExample {
 
             public Iterable<MyInternalCacheEntry> apply() {
                 List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
-                firstEntryForRegister.add(new MyInternalCacheEntry("key1", "value1"));
+                firstEntryForRegister.add(new MyInternalCacheEntry(new Base64(), new Base64()));
                 return firstEntryForRegister;
             }
         }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
+        
+        
+        producerBig.getMetadata();
+       
+        
 
 
 // <editor-fold defaultstate="collapsed" desc="other producer's registrations">
@@ -103,11 +113,12 @@ public class InMemoryProducerExample extends AbstractExample {
 //    }), "Symbol");
 
         // expose an large list of integers as an entity-set called "Integers"
-//      producer.register(Integer.class, Integer.class, "Integers", new Func<Iterable<Integer>>() {
+//      producerBig.register(Integer.class, Integer.class, "Integers", new Func<Iterable<Integer>>() {
 //         public Iterable<Integer> apply() {
 //            return Enumerable.range(0, 150);
-//         }
-//      }, Funcs.method(Integer.class, Integer.class, "intValue"));
+//         }        
+//      }, Funcs.method(Integer.class, Integer.class, "toString"));
+      
 //      producer.register(String.class, String.class, "CacheKeys", new Func<Iterable<String>>() {
 //         public Iterable<String> apply() {
 //            return c.keySet();
@@ -122,17 +133,17 @@ public class InMemoryProducerExample extends AbstractExample {
 
 // <editor-fold defaultstate="collapsed" desc="2 entity creations from PRODUCER here">        
 
-        // NOTES:
-        // calling put and through some visitor? transferer? I will build OEntity for request here
-        // this will be sent to the server side as an OEntity and there put in remote cache (via OData)
-
+//        // NOTES:
+//        // calling put and through some visitor? transferer? I will build OEntity for request here
+//        // this will be sent to the server side as an OEntity and there put in remote cache (via OData)
+//
 //        Map<String, Object> entityKeysValues = new HashMap<String, Object>();
-//        entityKeysValues.put("key", "key8");
+//        entityKeysValues.put("Key", "key8");
 //
 //        // based on real entry -> transfer it into OEntity by this (via properties, entrySetName is cache name etc.)
 //        List<OProperty<?>> p = new ArrayList<OProperty<?>>();
-//        p.add(OProperties.string("key", "key8"));
-//        p.add(OProperties.string("value", "value8"));
+//        p.add(OProperties.binary("Key", "key8".getBytes()));
+//        p.add(OProperties.binary("Value", "value8".getBytes()));
 //
 //
 //        // why was value = null?
@@ -151,7 +162,7 @@ public class InMemoryProducerExample extends AbstractExample {
 
 
 
-//
+
 //        entityKeysValues = new HashMap<String, Object>();
 //        entityKeysValues.put("key", "key55");
 //
@@ -196,26 +207,27 @@ public class InMemoryProducerExample extends AbstractExample {
     
     
     public static class MyInternalCacheEntry {
+        
+        // TODO: I need to use serialization
+        // Transform Object into ByteArray
+        
+        // Use Stream?
+            
+        private final Base64 key;
+        private final Base64 value;
 
-        private final String key;
-        private final String value;
-
-        public MyInternalCacheEntry(String key, String value) {
+        public MyInternalCacheEntry(Base64 key, Base64 value) {
             this.key = key;
             this.value = value;
         }
 
-        public String getKey() {
+        public Base64 getKey() {
             return key;
         }
 
-        public String getValue() {
+        public Base64 getValue() {
             return value;
-        }
-
-        public String toString() {
-            return getKey();
-        }
+        }        
 
         @Override
         public boolean equals(Object obj) {

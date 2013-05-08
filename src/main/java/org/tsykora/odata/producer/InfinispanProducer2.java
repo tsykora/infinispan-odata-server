@@ -29,6 +29,8 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.odata4j.producer.inmemory.PropertyModelDelegate;
+import org.odata4j.repack.org.apache.commons.codec.binary.Base64;
 
 //import org.odata4j.producer.inmemory.InMemoryProducer.RequestContext.RequestType;
 /**
@@ -60,7 +62,7 @@ public class InfinispanProducer2 implements ODataProducer {
     private final boolean flattenEdm;
     private static final int DEFAULT_MAX_RESULTS = 100;
     // not static - cache instance is running with producer instance
-    private Cache<String, String> ispnCache;
+    private Cache<Object, Object> ispnCache;
 
     /**
      * Creates a new instance of an in-memory POJO producer.
@@ -179,7 +181,8 @@ public class InfinispanProducer2 implements ODataProducer {
      * @param get            a function to iterate over the elements in the set
      * @param keys           one or more keys for the entity
      */
-    public <TEntity> void register(Class<TEntity> entityClass, String entitySetName, String entityTypeName, Func<Iterable<TEntity>> get, String... keys) {
+    public <TEntity> void register(Class<TEntity> entityClass, String entitySetName,
+            String entityTypeName, Func<Iterable<TEntity>> get, String... keys) {
         PropertyModel model = new BeanBasedPropertyModel(entityClass, this.flattenEdm);
         model = new EnumsAsStringsPropertyModelDelegate(model);
         register(entityClass, model, entitySetName, entityTypeName, get, keys);
@@ -188,8 +191,10 @@ public class InfinispanProducer2 implements ODataProducer {
     /**
      * Registers a new entity set based on a POJO type using the default property model.
      */
-    public <TEntity, TKey> void register(Class<TEntity> entityClass, Class<TKey> keyClass, String entitySetName, Func<Iterable<TEntity>> get, Func1<TEntity, TKey> id) {
+    public <TEntity, TKey> void register(Class<TEntity> entityClass, Class<TKey> keyClass,
+            String entitySetName, Func<Iterable<TEntity>> get, Func1<TEntity, TKey> id) {
         PropertyModel model = new BeanBasedPropertyModel(entityClass, this.flattenEdm);
+        
         model = new EnumsAsStringsPropertyModelDelegate(model);
         model = new EntityIdFunctionPropertyModelDelegate<TEntity, TKey>(model, ID_PROPNAME, keyClass, id);
         register(entityClass, model, entitySetName, get, ID_PROPNAME);
@@ -466,7 +471,7 @@ public class InfinispanProducer2 implements ODataProducer {
 
         List<Object> entriesObjects = new ArrayList<Object>();
 
-        for (String cacheEntryKey : ispnCache.keySet()) {
+        for (Object cacheEntryKey : ispnCache.keySet()) {
             // get all entries from cache and return it as objects
             RequestContext rc =
                     RequestContext.newBuilder(RequestType.GetEntity).entitySetName(entitySetName).
@@ -817,7 +822,20 @@ public class InfinispanProducer2 implements ODataProducer {
 
         // TODO: properly handle abstract object into cache and cache keys
         // TODO: some handler? + <Object, Object> cache
-        ispnCache.put(entity.getProperty("key").getValue().toString(), entity.getProperty("value").getValue().toString());
+        try {
+            ispnCache.put(entity.getProperty("Key").getValue(), entity.getProperty("Value").getValue());
+            
+        } catch (Exception e) {
+            // Maybe properties were registered as "key" "value" instead of "Key" "Value"
+            System.out.println("\n\n ******* WARNING ******* Properties names "
+                    + "Key and Value are invalid. Trying key and value! ******** \n\n"
+                    + "Maybe this is not enough and still failing -- DEBUG THIS --"
+                    + "InfinispanProducer2.createEntity()");
+            
+            // SERIALIZATION OR DESERIALIZATION
+            ispnCache.put(entity.getProperty("key").getValue(), entity.getProperty("value").getValue());            
+        }
+        
 
         OEntityKey oentityKey = entity.getEntityKey();
 
@@ -825,7 +843,7 @@ public class InfinispanProducer2 implements ODataProducer {
             // this is probably request from consumer and entityKey is not set        
             // there are set only necessary properties for creating new MyInternalCacheEntry instance there
             Map<String, Object> entityKeysValues = new HashMap<String, Object>();
-            entityKeysValues.put("key", entity.getProperty("key").getValue().toString());
+            entityKeysValues.put("Key", entity.getProperty("Key").getValue());
             oentityKey = OEntityKey.create(entityKeysValues.values());
         }
 
@@ -955,7 +973,7 @@ public class InfinispanProducer2 implements ODataProducer {
         private final PropertyPathHelper pathHelper;
         private final Object ispnCacheKey;
 
-        public Object getIspnCacheKey() {
+        public Object getIspnCacheKey() {            
             return ispnCacheKey;
         }
 
@@ -1083,9 +1101,11 @@ public class InfinispanProducer2 implements ODataProducer {
                 
         InMemoryProducerExample.MyInternalCacheEntry mice = null;
         // entry exists?
-        Object value = ispnCache.get(rc.getIspnCacheKey().toString()); 
+        Object value = ispnCache.get(rc.getIspnCacheKey()); 
         if (value != null) {        
-            mice = new InMemoryProducerExample.MyInternalCacheEntry(rc.getIspnCacheKey().toString(), (String) value);
+//            System.out.println("NEEEEEEEEED SERIALIZATION HEEEEEEEREEEEEEEEEEEEEEEE!!!!!!!!!! (or simply fix this after changes)");
+//            mice = new InMemoryProducerExample.MyInternalCacheEntry(rc.getIspnCacheKey(), value);
+            mice = new InMemoryProducerExample.MyInternalCacheEntry(new Base64(), new Base64());
         }
         return mice;
     }
