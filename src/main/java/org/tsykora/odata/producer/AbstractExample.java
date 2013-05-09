@@ -1,5 +1,9 @@
 package org.tsykora.odata.producer;
 
+import com.sun.crypto.provider.DESCipher;
+import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.core4j.Enumerable;
 import org.odata4j.consumer.ODataConsumer;
 import org.odata4j.core.OEntity;
@@ -18,6 +22,7 @@ import org.odata4j.edm.EdmProperty;
 import org.odata4j.edm.EdmSchema;
 import org.odata4j.edm.EdmSimpleType;
 //import org.odata4j.test.CxfRuntimeFacade;
+import org.tsykora.odata.common.Utils;
 import org.tsykora.odata.facades.JerseyRuntimeFacade;
 import org.tsykora.odata.facades.RuntimeFacade;
 
@@ -48,7 +53,14 @@ public abstract class AbstractExample {
         for (OProperty<?> p : entity.getProperties()) {
             Object v = p.getValue();
             if (p.getType().equals(EdmSimpleType.BINARY) && v != null) {
-                v = org.odata4j.repack.org.apache.commons.codec.binary.Base64.encodeBase64String((byte[]) v).trim();
+                try {
+                    //                v = org.odata4j.repack.org.apache.commons.codec.binary.Base64.encodeBase64String((byte[]) v).trim();
+                                    v = Utils.deserialize((byte[]) v);
+                } catch (IOException ex) {
+                    System.out.println("EXCEPTION while deserializing in reportEntity!!!");
+                } catch (ClassNotFoundException ex) {
+                    System.out.println("EXCEPTION while deserializing in reportEntity!!!");
+                }
             }
             report("  %s: %s", p.getName(), v);
         }

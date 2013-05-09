@@ -185,6 +185,8 @@ public class InMemoryProducerExample extends AbstractExample {
 
         OEntity createdRightNow = response.getEntity();
         reportEntity("\n\n\n This is response from producer (InMemoryProducerExample), recently created OEntity: \n ", createdRightNow);
+        
+        
 
 
 
