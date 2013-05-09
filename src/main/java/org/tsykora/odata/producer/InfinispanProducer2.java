@@ -1,5 +1,6 @@
 package org.tsykora.odata.producer;
 
+import java.io.IOException;
 import org.core4j.Enumerable;
 import org.core4j.Func;
 import org.core4j.Func1;
@@ -27,10 +28,13 @@ import org.tsykora.odata.producer.InfinispanProducer2.RequestContext.RequestType
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.odata4j.producer.inmemory.BeanModel;
 import org.odata4j.producer.inmemory.PropertyModelDelegate;
 import org.odata4j.repack.org.apache.commons.codec.binary.Base64;
+import org.tsykora.odata.common.Utils;
 
 //import org.odata4j.producer.inmemory.InMemoryProducer.RequestContext.RequestType;
 /**
@@ -40,7 +44,7 @@ import org.odata4j.repack.org.apache.commons.codec.binary.Base64;
  */
 public class InfinispanProducer2 implements ODataProducer {
 
-    private static final boolean DUMP = false;
+    private static final boolean DUMP = true;
 
     private static void dump(String msg) {
         if (DUMP) {
@@ -193,8 +197,11 @@ public class InfinispanProducer2 implements ODataProducer {
      */
     public <TEntity, TKey> void register(Class<TEntity> entityClass, Class<TKey> keyClass,
             String entitySetName, Func<Iterable<TEntity>> get, Func1<TEntity, TKey> id) {
+
+
         PropertyModel model = new BeanBasedPropertyModel(entityClass, this.flattenEdm);
-        
+
+
         model = new EnumsAsStringsPropertyModelDelegate(model);
         model = new EntityIdFunctionPropertyModelDelegate<TEntity, TKey>(model, ID_PROPNAME, keyClass, id);
         register(entityClass, model, entitySetName, get, ID_PROPNAME);
@@ -577,7 +584,7 @@ public class InfinispanProducer2 implements ODataProducer {
     @Override
     public CountResponse getEntitiesCount(String entitySetName, final QueryInfo queryInfo) {
 
-        
+
         final RequestContext rc = RequestContext.newBuilder(RequestType.GetEntitiesCount).
                 entitySetName(entitySetName).entitySet(getMetadata().getEdmEntitySet(entitySetName)).queryInfo(queryInfo).build();
 
@@ -647,7 +654,6 @@ public class InfinispanProducer2 implements ODataProducer {
         return iter;
     }
 
-    
     /**
      * If there is a getEntity() call on consumer then this getEntity() method on producer is called
      */
@@ -657,7 +663,23 @@ public class InfinispanProducer2 implements ODataProducer {
         PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
 
         // should be unchanged
-        String ispnCacheKey = (String) entityKey.asSingleValue();
+        // I need to properly set up ispnCacheKey here for RequestContext
+        
+        System.out.println("\n\n ********** HOW TO DEAL WITH KEY ************ \n\n");
+        System.out.println(entityKey);
+        System.out.println(entityKey.asSingleValue());
+        System.out.println(entityKey.getKeyType());
+        
+        Object ispnCacheKey = null;
+        try {
+            ispnCacheKey = Utils.deserialize((byte[]) entityKey.asSingleValue());
+        } catch (IOException ex) {
+            System.out.println("Exception while deserializing entityKey in getEntity method. "
+                    + "TODO: deal with exception handling properly. Warning ispnCacheKey is null!!!");
+        } catch (ClassNotFoundException ex) {
+            System.out.println("Exception while deserializing entityKey in getEntity method. "
+                    + "TODO: deal with exception handling properly. Warning ispnCacheKey is null!!!");
+        }
 
         // now build request context to include exact and right key for internal cache entry
         RequestContext rc =
@@ -707,7 +729,7 @@ public class InfinispanProducer2 implements ODataProducer {
         // and getEntity() will discover new state of cache (with that new put already inside)
 
 
-        System.out.println("\n\nI am in the createEntity method.....\n\n");
+        System.out.println("\n********************\n I am in the createEntity method.....\n********************\n");
 
 // <editor-fold defaultstate="collapsed" desc="old code">
         // pass entity here
@@ -823,27 +845,53 @@ public class InfinispanProducer2 implements ODataProducer {
         // TODO: properly handle abstract object into cache and cache keys
         // TODO: some handler? + <Object, Object> cache
         try {
-            ispnCache.put(entity.getProperty("Key").getValue(), entity.getProperty("Value").getValue());
             
+            
+            byte[] keyFromOdataTransfer = (byte[]) entity.getProperty("Key").getValue();
+            byte[] valueFromOdataTransfer = (byte[]) entity.getProperty("Value").getValue();
+                        
+            try {
+                ispnCache.put(Utils.deserialize(keyFromOdataTransfer), Utils.deserialize(valueFromOdataTransfer));
+            } catch (Exception e) {
+                System.out.println("************ EEXXCCEEPPTTIIOONN *********** while deserialization: " + e.getMessage());
+            }
+
+            
+            // better way
+//            ispnCache.put(Utils.deserialize((byte[]) entity.getProperty("Key").getValue()),
+//                    Utils.deserialize((byte[]) entity.getProperty("Value").getValue()));
+
         } catch (Exception e) {
+            
+            
             // Maybe properties were registered as "key" "value" instead of "Key" "Value"
             System.out.println("\n\n ******* WARNING ******* Properties names "
                     + "Key and Value are invalid. Trying key and value! ******** \n\n"
                     + "Maybe this is not enough and still failing -- DEBUG THIS --"
                     + "InfinispanProducer2.createEntity()");
-            
-            // SERIALIZATION OR DESERIALIZATION
-            ispnCache.put(entity.getProperty("key").getValue(), entity.getProperty("value").getValue());            
-        }
-        
 
+            // SERIALIZATION OR DESERIALIZATION
+            ispnCache.put(entity.getProperty("key").getValue(), entity.getProperty("value").getValue());
+        }
+
+        
         OEntityKey oentityKey = entity.getEntityKey();
 
         if (entity.getEntityKey() == null) {
             // this is probably request from consumer and entityKey is not set        
             // there are set only necessary properties for creating new MyInternalCacheEntry instance there
             Map<String, Object> entityKeysValues = new HashMap<String, Object>();
-            entityKeysValues.put("Key", entity.getProperty("Key").getValue());
+            
+            // TODO: take care of this better way!!
+            try {
+                byte[] key = (byte[]) entity.getProperty("Key").getValue();
+                dump("byte[] key = " + key + " deserialization to object: " + Utils.deserialize(key).toString());
+                entityKeysValues.put("Key", Utils.deserialize(key));                
+            } catch (Exception e) {
+                System.err.println("Exception while deserializing data. Location: InfinispanProducer, createEntity, entityKeysValues.put. "
+                        + e.getMessage());                
+            } 
+            
             oentityKey = OEntityKey.create(entityKeysValues.values());
         }
 
@@ -973,7 +1021,7 @@ public class InfinispanProducer2 implements ODataProducer {
         private final PropertyPathHelper pathHelper;
         private final Object ispnCacheKey;
 
-        public Object getIspnCacheKey() {            
+        public Object getIspnCacheKey() {
             return ispnCacheKey;
         }
 
@@ -1098,14 +1146,27 @@ public class InfinispanProducer2 implements ODataProducer {
 
         // TODO - this operation with key will needs some general objects management (wildcards?)
         // TODO - cache should be general Object-Object too (or user specified and proper re-type here)
-                
+
         InMemoryProducerExample.MyInternalCacheEntry mice = null;
         // entry exists?
-        Object value = ispnCache.get(rc.getIspnCacheKey()); 
-        if (value != null) {        
-//            System.out.println("NEEEEEEEEED SERIALIZATION HEEEEEEEREEEEEEEEEEEEEEEE!!!!!!!!!! (or simply fix this after changes)");
-//            mice = new InMemoryProducerExample.MyInternalCacheEntry(rc.getIspnCacheKey(), value);
-            mice = new InMemoryProducerExample.MyInternalCacheEntry(new Base64(), new Base64());
+        Object value = ispnCache.get(rc.getIspnCacheKey());
+        if (value != null) {
+      
+            System.out.println("NEEEEEEEEED SERIALIZATION HEEEEEEEREEEEEEEEEEEEEEEE!!!!!!!!!! (or simply fix this after changes)");
+            System.out.println("NEEEEEEEEED check if it is returning value HEEEEEEEREEEEEEEEEEEEEEEE!!!!!!!!!! ");
+            
+            System.out.println("VALUE FROM CACHE:" + value);
+            System.out.println("KEY which was issuing to GET: " + rc.getIspnCacheKey());
+            try {
+                // now I have OBJECTS here -- which are strings
+                // but they can't be cast to byte[]
+                // this mice is put into OEntity and I need to put there properties in byte[], edm.binary format
+                // so I need to serialize these objects here
+                mice = new InMemoryProducerExample.MyInternalCacheEntry(Utils.serialize(rc.getIspnCacheKey()), Utils.serialize(value));
+            } catch (IOException ex) {
+                System.out.println("EXCEPTION -- problem while serializing Objects Key and Value while creating new"
+                        + " MyInternalCacheEntry in getEntityPojo (in InfinispanProducer).");
+            }
         }
         return mice;
     }
@@ -1315,6 +1376,11 @@ public class InfinispanProducer2 implements ODataProducer {
         }
     }
 
+    /**
+     * There is a workaround in method toEdmProperties().
+     * Key and Value entity properties are directly considered as byte[].class.
+     * 
+     */
     public class InMemoryEdmGenerator implements EdmGenerator {
 
         private static final boolean DUMP = false;
@@ -1414,7 +1480,8 @@ public class InfinispanProducer2 implements ODataProducer {
                 // no keys
                 properties.addAll(toEdmProperties(decorator, typeInfo.getPropertyModel(), new String[]{}, complexTypeName));
 
-                EdmComplexType.Builder typeBuilder = EdmComplexType.newBuilder().setNamespace(namespace).setName(typeInfo.getTypeName()).addProperties(properties);
+                EdmComplexType.Builder typeBuilder = EdmComplexType.newBuilder().
+                        setNamespace(namespace).setName(typeInfo.getTypeName()).addProperties(properties);
 
                 if (decorator != null) {
                     typeBuilder.setDocumentation(decorator.getDocumentationForEntityType(namespace, complexTypeName));
@@ -1480,7 +1547,8 @@ public class InfinispanProducer2 implements ODataProducer {
 
             properties.addAll(toEdmProperties(decorator, entityInfo.properties, entityInfo.keys, entityInfo.entityTypeName));
 
-            EdmEntityType.Builder eet = EdmEntityType.newBuilder().setNamespace(namespace).setName(entityInfo.entityTypeName).setHasStream(entityInfo.hasStream).addProperties(properties);
+            EdmEntityType.Builder eet = EdmEntityType.newBuilder().setNamespace(namespace).
+                    setName(entityInfo.entityTypeName).setHasStream(entityInfo.hasStream).addProperties(properties);
 
             if (superClass == null) {
                 eet.addKeys(entityInfo.keys);
@@ -1723,6 +1791,17 @@ public class InfinispanProducer2 implements ODataProducer {
             return null;
         }
 
+        /**
+         * There is a workaround here.
+         * Key and Value entity properties are directly considered as byte[].class
+         * and model is ignored.
+         * 
+         * @param decorator
+         * @param model
+         * @param keys
+         * @param structuralTypename
+         * @return 
+         */
         private Collection<EdmProperty.Builder> toEdmProperties(
                 EdmDecorator decorator,
                 PropertyModel model,
@@ -1732,11 +1811,29 @@ public class InfinispanProducer2 implements ODataProducer {
             List<EdmProperty.Builder> rt = new ArrayList<EdmProperty.Builder>();
             Set<String> keySet = Enumerable.create(keys).toSet();
 
+
             Iterable<String> propertyNames = this.flatten ? model.getPropertyNames() : model.getDeclaredPropertyNames();
             for (String propName : propertyNames) {
                 dump("edm property: " + propName);
+
+                // TODO: is it possible to do it different way? I need change BeanModel.java to not consider
+                // byte[] array as a "isIterable" to make it possible transfer it into Edm.SimpleType (=Edm.Binary)
                 Class<?> propType = model.getPropertyType(propName);
+                if (propName.equalsIgnoreCase("Key") || propName.equalsIgnoreCase("Value")) {
+                    dump("INFO: propertyType for property: " + propName
+                            + " is EXPLICITLY set to byte[].class to workaround BeanModel.java problems with registering byte[]"
+                            + " as a collection instead of Edm.Binary SimpleType.");
+                    // don't do it according to BeanModel (WORKAROUND)
+                    // just register key as a Edm.BINARY property                    
+
+                    // in fact - Type is general Object but I need this type to pass it through OData
+                    propType = byte[].class;
+                    // now this is successfully registered as a Property Name=Key Type=EdmSimpleType[Edm.Binary] Nullable=true
+                }
+
+                dump("prop type: " + propType.getName());
                 EdmType type = typeMapping.findEdmType(propType);
+//                dump("EdmType: " + type.getFullyQualifiedTypeName());
                 EdmComplexType.Builder typeBuilder = null;
                 if (type == null) {
                     typeBuilder = findComplexTypeForClass(propType);
@@ -1784,7 +1881,8 @@ public class InfinispanProducer2 implements ODataProducer {
                 }
 
                 // either a simple or complex type.
-                EdmProperty.Builder ep = EdmProperty.newBuilder(collectionPropName).setNullable(true).setCollectionKind(EdmProperty.CollectionKind.Collection).setType(typeBuilder);
+                EdmProperty.Builder ep = EdmProperty.newBuilder(collectionPropName).setNullable(true).
+                        setCollectionKind(EdmProperty.CollectionKind.Collection).setType(typeBuilder);
 
                 if (decorator != null) {
                     ep.setDocumentation(decorator.getDocumentationForProperty(namespace, structuralTypename, collectionPropName));

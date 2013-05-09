@@ -1,5 +1,18 @@
 package org.tsykora.odata.producer;
 
+import com.sun.crypto.provider.DESedeCipher;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
+import java.io.ObjectInput;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutput;
+import java.io.ObjectOutputStream;
+import java.lang.Object;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.odata4j.repack.org.apache.commons.codec.binary.Base64;
 import org.core4j.Enumerables;
 import org.core4j.Func;
@@ -20,13 +33,13 @@ import java.util.Map;
 import org.core4j.Enumerable;
 import org.hibernate.type.descriptor.BinaryStream;
 import org.hibernate.type.descriptor.java.BinaryStreamImpl;
-
+import org.tsykora.odata.common.Utils;
 
 /**
  * @author tsykora
  */
 public class InMemoryProducerExample extends AbstractExample {
- 
+
     public static void main(String[] args) {
         InMemoryProducerExample example = new InMemoryProducerExample();
         example.run(args);
@@ -39,7 +52,7 @@ public class InMemoryProducerExample extends AbstractExample {
 
         // InMemoryProducer is a readonly (not now - using InfinispanProducer2)
         // odata provider that serves up POJOs as entities using bean properties
-        
+
         // call InMemoryProducer.register to declare a new entity-set, providing a entity source function and a propertyname to serve as the key
         // final InMemoryProducer producer = new InMemoryProducer("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
 
@@ -49,7 +62,7 @@ public class InMemoryProducerExample extends AbstractExample {
         final InfinispanProducer2 producerBig = new InfinispanProducer2("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
 //        final LightweightInfinispanProducer producer = new LightweightInfinispanProducer("InMemoryProducerExample", null, 100, null, null);
 
-
+        
         // TODO: reveal magic here and REGISTER this entitySet lightweightly
 
         // TODO just for Producer2 -- NOW - only register my EDM entity set
@@ -57,18 +70,20 @@ public class InMemoryProducerExample extends AbstractExample {
 
         producerBig.register(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "CacheEntries", new Func<Iterable<MyInternalCacheEntry>>() {
             // TEMPORARY REGISTRATION of CACHE ENTRIES set name!!!
+            // TODO - can I skip this registration? Can I do it inside of producer while starting new cache?
+            // TODO - while starting service? while creating new cache from builder? or according to xml?
+            // TODO - register entrySet fro new cache after it starts.
 
             public Iterable<MyInternalCacheEntry> apply() {
                 List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
-                firstEntryForRegister.add(new MyInternalCacheEntry(new Base64(), new Base64()));
+                firstEntryForRegister.add(new MyInternalCacheEntry("key8".getBytes(), "value8".getBytes()));
+//                firstEntryForRegister.add(new MyInternalCacheEntry(new Pair<Object, Object>("aa", "bb"), new Pair<Object, Object>("vv", "valval")));
                 return firstEntryForRegister;
             }
         }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
-        
-        
-        producerBig.getMetadata();
-       
-        
+
+
+
 
 
 // <editor-fold defaultstate="collapsed" desc="other producer's registrations">
@@ -118,7 +133,7 @@ public class InMemoryProducerExample extends AbstractExample {
 //            return Enumerable.range(0, 150);
 //         }        
 //      }, Funcs.method(Integer.class, Integer.class, "toString"));
-      
+
 //      producer.register(String.class, String.class, "CacheKeys", new Func<Iterable<String>>() {
 //         public Iterable<String> apply() {
 //            return c.keySet();
@@ -133,31 +148,43 @@ public class InMemoryProducerExample extends AbstractExample {
 
 // <editor-fold defaultstate="collapsed" desc="2 entity creations from PRODUCER here">        
 
-//        // NOTES:
-//        // calling put and through some visitor? transferer? I will build OEntity for request here
-//        // this will be sent to the server side as an OEntity and there put in remote cache (via OData)
-//
-//        Map<String, Object> entityKeysValues = new HashMap<String, Object>();
-//        entityKeysValues.put("Key", "key8");
-//
-//        // based on real entry -> transfer it into OEntity by this (via properties, entrySetName is cache name etc.)
-//        List<OProperty<?>> p = new ArrayList<OProperty<?>>();
-//        p.add(OProperties.binary("Key", "key8".getBytes()));
-//        p.add(OProperties.binary("Value", "value8".getBytes()));
-//
-//
-//        // why was value = null?
-//
-//        // entity KEY HAVE TO BE key8 !!!! Create new entity key with requested key! (Cache key)
-//        // it needs to ask cache about get("key8"); and not "('key');
-//        OEntity entityForPut = OEntities.create(producerBig.getMetadata().getEdmEntitySet("CacheEntries"),
-//                OEntityKey.create(entityKeysValues.values()), p, null);
-//
-//        // CREATE
-//        EntityResponse response = producerBig.createEntity("CacheEntries", entityForPut);
-//
-//        OEntity createdRightNow = response.getEntity();
-//        reportEntity("\n\n\n This is response from producer (InMemoryProducerExample), recently created OEntity: \n ", createdRightNow);
+        // NOTES:
+        // calling put and through some visitor? transferer? I will build OEntity for request here
+        // this will be sent to the server side as an OEntity and there put in remote cache (via OData)
+        
+        byte[] serializedKey = null;
+        try {
+            serializedKey = Utils.serialize("key8");
+        } catch (IOException ex) {
+            Logger.getLogger(InMemoryProducerExample.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        
+        byte[] serializedValue = null;
+        try {
+            serializedValue = Utils.serialize("value8");
+        } catch (IOException ex) {
+            Logger.getLogger(InMemoryProducerExample.class.getName()).log(Level.SEVERE, null, ex);
+        }
+
+        Map<String, Object> entityKeysValues = new HashMap<String, Object>();
+        entityKeysValues.put("Key", serializedKey);
+
+        // based on real entry -> transfer it into OEntity by this (via properties, entrySetName is cache name etc.)
+        List<OProperty<?>> p = new ArrayList<OProperty<?>>();
+        
+        p.add(OProperties.binary("Key", serializedKey));
+        p.add(OProperties.binary("Value", serializedValue));
+
+        // entity KEY HAVE TO BE key8 !!!! Create new entity key with requested key! (Cache key)
+        // it needs to ask cache about get("key8"); and not "('key');
+        OEntity entityForPut = OEntities.create(producerBig.getMetadata().getEdmEntitySet("CacheEntries"),
+                OEntityKey.create(entityKeysValues.values()), p, null);
+
+        // CREATE
+        EntityResponse response = producerBig.createEntity("CacheEntries", entityForPut);
+
+        OEntity createdRightNow = response.getEntity();
+        reportEntity("\n\n\n This is response from producer (InMemoryProducerExample), recently created OEntity: \n ", createdRightNow);
 
 
 
@@ -204,30 +231,75 @@ public class InMemoryProducerExample extends AbstractExample {
 //      }
 //      return setOfEntries;
 //   }
-    
-    
+    // TODO: rename this parameterized type to CacheEntry or CacheKey for example...
+    // so there are these types stored in EDM as a property model
+    // and according to this given pattern clients communicate with cache
+    public static class Pair<X, Y> {
+
+        private X first;
+        private Y second;
+
+        public Pair(X a1, Y a2) {
+            first = a1;
+            second = a2;
+        }
+
+        public X getFirst() {
+            return first;
+        }
+
+        public Y getSecond() {
+            return second;
+        }
+
+        public void setFirst(X arg) {
+            first = arg;
+        }
+
+        public void setSecond(Y arg) {
+            second = arg;
+        }
+    }
+
     public static class MyInternalCacheEntry {
-        
+
         // TODO: I need to use serialization
         // Transform Object into ByteArray
-        
         // Use Stream?
-            
-        private final Base64 key;
-        private final Base64 value;
+        // I can't register iterable types here
+        // Where can I register them?
+        // In complex types?? Where can I register collections?
+        // ?????????????????????
+        // Method - computeCollections
+        // IMPORTANT
+        // Setter has to be implemented too
+        // for more info see code in BeanModel.java computeCollections()
+        // parameterizedTypes 
+//        private Pair<Object,Object> key;
+//        private Pair<Object,Object> value;
+        private Object key;
+        private Object value;
 
-        public MyInternalCacheEntry(Base64 key, Base64 value) {
+        public MyInternalCacheEntry(Object key, Object value) {
             this.key = key;
             this.value = value;
         }
 
-        public Base64 getKey() {
+        public Object getKey() {
             return key;
         }
 
-        public Base64 getValue() {
+        public Object getValue() {
             return value;
-        }        
+        }
+
+        public void setKey(Object key) {
+            this.key = key;
+        }
+
+        public void setValue(Object value) {
+            this.value = value;
+        }
 
         @Override
         public boolean equals(Object obj) {
