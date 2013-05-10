@@ -1151,16 +1151,11 @@ public class InfinispanProducer2 implements ODataProducer {
         // entry exists?
         Object value = ispnCache.get(rc.getIspnCacheKey());
         if (value != null) {
-      
-            System.out.println("NEEEEEEEEED SERIALIZATION HEEEEEEEREEEEEEEEEEEEEEEE!!!!!!!!!! (or simply fix this after changes)");
-            System.out.println("NEEEEEEEEED check if it is returning value HEEEEEEEREEEEEEEEEEEEEEEE!!!!!!!!!! ");
-            
-            System.out.println("VALUE FROM CACHE:" + value);
-            System.out.println("KEY which was issuing to GET: " + rc.getIspnCacheKey());
             try {
-                // now I have OBJECTS here -- which are strings
+                // IMPORTANT
+                // now I have OBJECTS here -- (which are strings for example)
                 // but they can't be cast to byte[]
-                // this mice is put into OEntity and I need to put there properties in byte[], edm.binary format
+                // this mice is put into OEntity and I need to put there properties in byte[] => in edm.binary format
                 // so I need to serialize these objects here
                 mice = new InMemoryProducerExample.MyInternalCacheEntry(Utils.serialize(rc.getIspnCacheKey()), Utils.serialize(value));
             } catch (IOException ex) {

@@ -21,19 +21,19 @@ public class Runner {
       producerThread.start();
       
      
-//      // start consumer in different thread and work with exposed data
-//      Thread consumerThread = new Thread() {
-//         public void run() {
-//            System.out.println("\nStarting consumer...\n");
-//            ExampleConsumer consumer = new ExampleConsumer();
-//            consumer.run(null);
-//         }
-//      };
-//
-//      // wait for server starting
-//      System.out.println("\n\n\nWaiting some seconds before starting consumerThread.............\n\n\n");
-//      Thread.sleep(60000);
-//      consumerThread.start();
+      // start consumer in different thread and work with exposed data
+      Thread consumerThread = new Thread() {
+         public void run() {
+            System.out.println("\nStarting consumer...\n");
+            ExampleConsumer consumer = new ExampleConsumer();
+            consumer.run(null);
+         }
+      };
+
+      // wait for server starting
+      System.out.println("\n\n\nWaiting some seconds before starting consumerThread.............\n\n\n");
+      Thread.sleep(5000);
+      consumerThread.start();
 
    }
 

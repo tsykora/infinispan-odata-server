@@ -12,6 +12,7 @@ import org.odata4j.consumer.ODataConsumer;
 import org.odata4j.core.EntitySetInfo;
 import org.odata4j.core.OProperties;
 import org.odata4j.format.xml.AtomCollectionInfo;
+import org.tsykora.odata.common.Utils;
 
 /**
  * ODataCache implements BasicCache API. This provide access to Service endpoint
@@ -35,8 +36,7 @@ public class ODataCache<K, V> implements BasicCache<K, V> {
     }        
 
     @Override
-    public V get(Object key) {
-        // TODO: here has to be CAPITAL "V" in "Value" property name - why? Where is it register as a Capital V?
+    public V get(Object key) {        
         V value = (V) consumer.getEntity(cacheName, key).execute().getProperty("Value").getValue();        
         return value;
     }
@@ -50,13 +50,11 @@ public class ODataCache<K, V> implements BasicCache<K, V> {
      */    
     @Override
     public V put(Object key, Object value) {
-        // TODO: How to put Object into OProperties - like a byte array?
-        // Or do I need to define some ComplexType
-        // Or save it as a bytestream?
-        
+        // I need to play with serialization and deserialization here
+                       
         V v = (V) consumer.createEntity(cacheName).
-                properties(OProperties.string("Key", key.toString())).
-                properties(OProperties.string("Value", value.toString())).
+                properties(OProperties.binary("Key", key.toString())).
+                properties(OProperties.binary("Value", Utils.serialize(value))).
                 execute().getProperty("Value").getValue(); // OEntity.getProperty()           
         return v;
     }
