@@ -1,19 +1,5 @@
 package org.tsykora.odata.producer;
 
-import com.sun.crypto.provider.DESedeCipher;
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.io.ObjectInput;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutput;
-import java.io.ObjectOutputStream;
-import java.lang.Object;
-import java.lang.reflect.Method;
-import java.lang.reflect.ParameterizedType;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-import org.odata4j.repack.org.apache.commons.codec.binary.Base64;
 import org.core4j.Enumerables;
 import org.core4j.Func;
 import org.core4j.Func1;
@@ -23,17 +9,17 @@ import org.odata4j.edm.*;
 import org.odata4j.producer.EntityResponse;
 import org.odata4j.producer.PropertyPath;
 import org.odata4j.producer.resources.DefaultODataProducerProvider;
+import org.tsykora.odata.common.Utils;
 
+import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import org.core4j.Enumerable;
-import org.hibernate.type.descriptor.BinaryStream;
-import org.hibernate.type.descriptor.java.BinaryStreamImpl;
-import org.tsykora.odata.common.Utils;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * @author tsykora
@@ -48,7 +34,7 @@ public class InMemoryProducerExample extends AbstractExample {
     @SuppressWarnings({"unchecked", "rawtypes"})
     public void run(String[] args) {
 
-        String endpointUri = "http://localhost:8887/InMemoryProducerExample.svc/";
+        String endpointUri = "http://localhost:10887/InMemoryProducerExample.svc/";
 
         // InMemoryProducer is a readonly (not now - using InfinispanProducer2)
         // odata provider that serves up POJOs as entities using bean properties
@@ -265,20 +251,6 @@ public class InMemoryProducerExample extends AbstractExample {
 
     public static class MyInternalCacheEntry {
 
-        // TODO: I need to use serialization
-        // Transform Object into ByteArray
-        // Use Stream?
-        // I can't register iterable types here
-        // Where can I register them?
-        // In complex types?? Where can I register collections?
-        // ?????????????????????
-        // Method - computeCollections
-        // IMPORTANT
-        // Setter has to be implemented too
-        // for more info see code in BeanModel.java computeCollections()
-        // parameterizedTypes 
-//        private Pair<Object,Object> key;
-//        private Pair<Object,Object> value;
         private Object key;
         private Object value;
 
