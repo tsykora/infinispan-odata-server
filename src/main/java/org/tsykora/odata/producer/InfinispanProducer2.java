@@ -673,9 +673,9 @@ public class InfinispanProducer2 implements ODataProducer {
         System.out.println(entityKey.asSingleValue());
         System.out.println(entityKey.getKeyType());
 
-        
+
         Object ispnCacheKey = entityKey.asSingleValue();
-        
+
 //        Object ispnCacheKey = null;
 //        try {
 //            ispnCacheKey = Utils.deserialize((byte[]) entityKey.asSingleValue());
@@ -1160,17 +1160,14 @@ public class InfinispanProducer2 implements ODataProducer {
         // entry exists?
         Object value = ispnCache.get(rc.getIspnCacheKey());
         if (value != null) {
-            try {
-                // IMPORTANT
-                // now I have OBJECTS here -- (which are strings for example)
-                // but they can't be cast to byte[]
-                // this mice is put into OEntity and I need to put there properties in byte[] => in edm.binary format
-                // so I need to serialize these objects here
-                mice = new InMemoryProducerExample.MyInternalCacheEntry(Utils.serialize(rc.getIspnCacheKey()), Utils.serialize(value));
-            } catch (IOException ex) {
-                System.out.println("EXCEPTION -- problem while serializing Objects Key and Value while creating new"
-                        + " MyInternalCacheEntry in getEntityPojo (in InfinispanProducer).");
-            }
+
+            // IMPORTANT
+            // now I have OBJECTS here -- (which are strings for example)
+            // but they can't be cast to byte[]
+            // this mice is put into OEntity and I need to put there properties in byte[] => in edm.binary format
+            // so I need to serialize these objects here
+            mice = new InMemoryProducerExample.MyInternalCacheEntry(Utils.serialize(rc.getIspnCacheKey()), Utils.serialize(value));
+
         }
         return mice;
     }

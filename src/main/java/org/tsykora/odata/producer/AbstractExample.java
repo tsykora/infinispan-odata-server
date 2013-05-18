@@ -53,14 +53,8 @@ public abstract class AbstractExample {
         for (OProperty<?> p : entity.getProperties()) {
             Object v = p.getValue();
             if (p.getType().equals(EdmSimpleType.BINARY) && v != null) {
-                try {
-                    //                v = org.odata4j.repack.org.apache.commons.codec.binary.Base64.encodeBase64String((byte[]) v).trim();
-                                    v = Utils.deserialize((byte[]) v);
-                } catch (IOException ex) {
-                    System.out.println("EXCEPTION while deserializing in reportEntity!!!");
-                } catch (ClassNotFoundException ex) {
-                    System.out.println("EXCEPTION while deserializing in reportEntity!!!");
-                }
+                // v = org.odata4j.repack.org.apache.commons.codec.binary.Base64.encodeBase64String((byte[]) v).trim();
+                v = Utils.deserialize((byte[]) v);
             }
             report("  %s: %s", p.getName(), v);
         }

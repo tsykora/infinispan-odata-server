@@ -21,7 +21,7 @@ public class Utils {
      * @return
      * @throws IOException
      */
-    public static byte[] serialize(Object obj) throws IOException {
+    public static byte[] serialize(Object obj) {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
         ObjectOutput out = null;
         try {
@@ -29,21 +29,32 @@ public class Utils {
             out.writeObject(obj);
             byte[] yourBytes = bos.toByteArray();
             return yourBytes;
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.err.println(e.getMessage());
+            return null;            
         } finally {
-            out.close();
-            bos.close();
+            try {
+                bos.close();
+                out.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+                System.err.println(e.getMessage());
+            }
         }
     }
 
     /**
      * Deserialize byte[] into Object.
+     * 
+     * TODO: better exception handling desing!!!
      *
      * @param data for deserialization
      * @return
      * @throws IOException
      * @throws ClassNotFoundException
      */
-    public static Object deserialize(byte[] data) throws IOException, ClassNotFoundException {
+    public static Object deserialize(byte[] data) {
         ByteArrayInputStream bis = new ByteArrayInputStream(data);
         ObjectInput in = null;
         try {
@@ -51,14 +62,21 @@ public class Utils {
             Object o = in.readObject();
             return o;
         } catch (IOException e) {
+            e.printStackTrace();
             System.err.println(e.getMessage());
             return null;
         } catch (ClassNotFoundException c) {
+            c.printStackTrace();
             System.err.println(c.getMessage());
             return null;
         } finally {
-            bis.close();
-            in.close();
+            try {
+                bis.close();
+                in.close();
+            } catch (IOException e) {
+                e.printStackTrace();                
+                System.err.println(e.getMessage());
+            }
         }
     }
 }

@@ -1,5 +1,6 @@
 package org.tsykora.odata.consumer;
 
+import java.io.IOException;
 import org.odata4j.consumer.ConsumerCreateEntityRequest;
 import org.odata4j.consumer.ODataClientRequest;
 import org.odata4j.consumer.ODataConsumer;
@@ -7,6 +8,7 @@ import org.odata4j.core.OCreateRequest;
 import org.odata4j.core.OEntity;
 import org.odata4j.core.OProperties;
 import org.odata4j.edm.EdmDataServices;
+import org.tsykora.odata.common.Utils;
 import org.tsykora.odata.producer.AbstractExample;
 
 /**
@@ -88,19 +90,10 @@ public class ExampleConsumer extends AbstractExample {
 //      ConsumerCreateEntityRequest ccer = new ConsumerCreateEntityRequest(null, endpointUri, EdmDataServices.EMPTY, endpointUri, null)
 
 
-
-
-
-
-//        reportEntity(" new cache entry report: ", consumer.createEntity("CacheEntries").
-//                properties(OProperties.string("Key", "key6")).properties(OProperties.string("Value", "value6")).execute());
+        
         reportEntity(" new cache entry report: ", consumer.createEntity("CacheEntries").
-                properties(OProperties.binary("Key", "key7".getBytes())).
-                properties(OProperties.binary("Value", "value7".getBytes())).execute());
-        
-        
-
-
+                properties(OProperties.binary("Key", Utils.serialize("key7"))).
+                properties(OProperties.binary("Value", Utils.serialize("value7"))).execute());
         
 
         // TODO - FIX THIS
@@ -123,7 +116,10 @@ public class ExampleConsumer extends AbstractExample {
 
         ODataCache<Object, Integer> myCache = new ODataCache<Object, Integer>(consumer, "CacheEntries");
         
-        System.out.println("\n\n\n CALLING GET ON ODataCache ****************** \n");
+        System.out.println("\n\n\n CALLING PUT ON ODataCache ****************** \n");        
+//        myCache.put((Object) "key7",(Object) "value7");        
+        
+        System.out.println("\n\n\n CALLING GET ON ODataCache ****************** \n");        
         Object value = myCache.get("key7");
         System.out.println("class: " + value.getClass());
         System.out.println("raw: " + value);
