@@ -28,12 +28,8 @@ import org.tsykora.odata.producer.InfinispanProducer2.RequestContext.RequestType
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
-import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.odata4j.producer.inmemory.BeanModel;
-import org.odata4j.producer.inmemory.PropertyModelDelegate;
-import org.odata4j.repack.org.apache.commons.codec.binary.Base64;
 import org.tsykora.odata.common.Utils;
 
 //import org.odata4j.producer.inmemory.InMemoryProducer.RequestContext.RequestType;
@@ -80,8 +76,9 @@ public class InfinispanProducer2 implements ODataProducer {
     /**
      * Creates a new instance of an in-memory POJO producer.
      *
-     * @param namespace  the namespace of the schema registrations
-     * @param maxResults the maximum number of entities to return in a single call
+     * @param namespace the namespace of the schema registrations
+     * @param maxResults the maximum number of entities to return in a single
+     * call
      */
     public InfinispanProducer2(String namespace, int maxResults) {
         this(namespace, null, maxResults, null, null);
@@ -90,11 +87,13 @@ public class InfinispanProducer2 implements ODataProducer {
     /**
      * Creates a new instance of an in-memory POJO producer.
      *
-     * @param namespace     the namespace of the schema registrations
+     * @param namespace the namespace of the schema registrations
      * @param containerName the container name for generated metadata
-     * @param maxResults    the maximum number of entities to return in a single call
-     * @param decorator     a decorator to use for edm customizations
-     * @param typeMapping   optional mapping between java types and edm types, null for default
+     * @param maxResults the maximum number of entities to return in a single
+     * call
+     * @param decorator a decorator to use for edm customizations
+     * @param typeMapping optional mapping between java types and edm types,
+     * null for default
      */
     public InfinispanProducer2(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping) {
         this(namespace, containerName, maxResults, decorator, typeMapping,
@@ -148,8 +147,8 @@ public class InfinispanProducer2 implements ODataProducer {
     /**
      * Registers a POJO class as an EdmComplexType.
      *
-     * @param complexTypeClass    The POJO Class
-     * @param typeName            The name of the EdmComplexType
+     * @param complexTypeClass The POJO Class
+     * @param typeName The name of the EdmComplexType
      */
 //   public <TEntity> void registerComplexType(Class<TEntity> complexTypeClass, String typeName) {
 //      registerComplexType(complexTypeClass, typeName,
@@ -167,10 +166,12 @@ public class InfinispanProducer2 implements ODataProducer {
     /**
      * Registers a new entity based on a POJO, with support for composite keys.
      *
-     * @param entityClass   the class of the entities that are to be stored in the set
-     * @param entitySetName the alias the set will be known by; this is what is used in the OData url
-     * @param get           a function to iterate over the elements in the set
-     * @param keys          one or more keys for the entity
+     * @param entityClass the class of the entities that are to be stored in the
+     * set
+     * @param entitySetName the alias the set will be known by; this is what is
+     * used in the OData url
+     * @param get a function to iterate over the elements in the set
+     * @param keys one or more keys for the entity
      */
     public <TEntity> void register(Class<TEntity> entityClass, String entitySetName, Func<Iterable<TEntity>> get, String... keys) {
         register(entityClass, entitySetName, entitySetName, get, keys);
@@ -179,11 +180,13 @@ public class InfinispanProducer2 implements ODataProducer {
     /**
      * Registers a new entity based on a POJO, with support for composite keys.
      *
-     * @param entityClass    the class of the entities that are to be stored in the set
-     * @param entitySetName  the alias the set will be known by; this is what is used in the OData url
+     * @param entityClass the class of the entities that are to be stored in the
+     * set
+     * @param entitySetName the alias the set will be known by; this is what is
+     * used in the OData url
      * @param entityTypeName type name of the entity
-     * @param get            a function to iterate over the elements in the set
-     * @param keys           one or more keys for the entity
+     * @param get a function to iterate over the elements in the set
+     * @param keys one or more keys for the entity
      */
     public <TEntity> void register(Class<TEntity> entityClass, String entitySetName,
             String entityTypeName, Func<Iterable<TEntity>> get, String... keys) {
@@ -193,7 +196,8 @@ public class InfinispanProducer2 implements ODataProducer {
     }
 
     /**
-     * Registers a new entity set based on a POJO type using the default property model.
+     * Registers a new entity set based on a POJO type using the default
+     * property model.
      */
     public <TEntity, TKey> void register(Class<TEntity> entityClass, Class<TKey> keyClass,
             String entitySetName, Func<Iterable<TEntity>> get, Func1<TEntity, TKey> id) {
@@ -210,11 +214,13 @@ public class InfinispanProducer2 implements ODataProducer {
     /**
      * Registers a new entity set based on a POJO type and a property model.
      *
-     * @param entityClass   the class of the entities that are to be stored in the set
+     * @param entityClass the class of the entities that are to be stored in the
+     * set
      * @param propertyModel a way to get/set properties on the POJO
-     * @param entitySetName the alias the set will be known by; this is what is used in the ODATA URL
-     * @param get           a function to iterate over the elements in the set
-     * @param keys          one or more keys for the entity
+     * @param entitySetName the alias the set will be known by; this is what is
+     * used in the ODATA URL
+     * @param get a function to iterate over the elements in the set
+     * @param keys one or more keys for the entity
      */
     public <TEntity, TKey> void register(
             Class<TEntity> entityClass,
@@ -256,7 +262,6 @@ public class InfinispanProducer2 implements ODataProducer {
         ei.hasStream = OAtomStreamEntity.class.isAssignableFrom(entityClass);
 
         ei.id = new Func1<Object, HashMap<String, Object>>() {
-
             @Override
             public HashMap<String, Object> apply(Object input) {
                 HashMap<String, Object> values = new HashMap<String, Object>();
@@ -302,12 +307,14 @@ public class InfinispanProducer2 implements ODataProducer {
     }
 
     /**
-     * Transforms a POJO into a list of OProperties based on a given EdmStructuralType.
+     * Transforms a POJO into a list of OProperties based on a given
+     * EdmStructuralType.
      *
-     * @param obj            the POJO to transform
-     * @param propertyModel  the PropertyModel to use to access POJO class structure and values.
+     * @param obj the POJO to transform
+     * @param propertyModel the PropertyModel to use to access POJO class
+     * structure and values.
      * @param structuralType the EdmStructuralType
-     * @param properties     put properties into this list.
+     * @param properties put properties into this list.
      */
     protected void addPropertiesFromObject(Object obj, PropertyModel propertyModel, EdmStructuralType structuralType, List<OProperty<?>> properties, PropertyPathHelper pathHelper) {
         dump("addPropertiesFromObject: " + obj.getClass().getName());
@@ -457,7 +464,6 @@ public class InfinispanProducer2 implements ODataProducer {
 
     private static Predicate1<Object> filterToPredicate(final BoolCommonExpression filter, final PropertyModel properties) {
         return new Predicate1<Object>() {
-
             public boolean apply(Object input) {
                 return InMemoryEvaluation.evaluate(filter, input, properties);
             }
@@ -466,10 +472,10 @@ public class InfinispanProducer2 implements ODataProducer {
 
     /**
      * Is returning all entries from local cache.
-     * 
+     *
      * @param entitySetName - cache name
      * @param queryInfo - other special restrictions??
-     * @return 
+     * @return
      */
     @Override
     public EntitiesResponse getEntities(String entitySetName, final QueryInfo queryInfo) {
@@ -529,7 +535,6 @@ public class InfinispanProducer2 implements ODataProducer {
 
         // work with oentities
         Enumerable<OEntity> entities = objects.select(new Func1<Object, OEntity>() {
-
             @Override
             public OEntity apply(Object input) {
                 return toOEntity(targetEntitySet, input, rc.getPathHelper());
@@ -540,7 +545,6 @@ public class InfinispanProducer2 implements ODataProducer {
         if (queryInfo != null && queryInfo.skipToken != null) {
             final Boolean[] skipping = new Boolean[]{true};
             entities = entities.skipWhile(new Predicate1<OEntity>() {
-
                 @Override
                 public boolean apply(OEntity input) {
                     if (skipping[0]) {
@@ -610,7 +614,6 @@ public class InfinispanProducer2 implements ODataProducer {
 
         // work with oentities.
         Enumerable<OEntity> entities = objects.select(new Func1<Object, OEntity>() {
-
             @Override
             public OEntity apply(Object input) {
                 return toOEntity(rc.getEntitySet(), input, pathHelper);
@@ -642,7 +645,6 @@ public class InfinispanProducer2 implements ODataProducer {
     private Enumerable<Object> orderBy(Enumerable<Object> iter, List<OrderByExpression> orderBys, final PropertyModel properties) {
         for (final OrderByExpression orderBy : Enumerable.create(orderBys).reverse()) {
             iter = iter.orderBy(new Comparator<Object>() {
-
                 @SuppressWarnings({"unchecked", "rawtypes"})
                 public int compare(Object o1, Object o2) {
                     Comparable lhs = (Comparable) InMemoryEvaluation.evaluate(orderBy.getExpression(), o1, properties);
@@ -655,7 +657,8 @@ public class InfinispanProducer2 implements ODataProducer {
     }
 
     /**
-     * If there is a getEntity() call on consumer then this getEntity() method on producer is called
+     * If there is a getEntity() call on consumer then this getEntity() method
+     * on producer is called
      */
     @Override
     public EntityResponse getEntity(final String entitySetName, final OEntityKey entityKey, final EntityQueryInfo queryInfo) {
@@ -664,22 +667,25 @@ public class InfinispanProducer2 implements ODataProducer {
 
         // should be unchanged
         // I need to properly set up ispnCacheKey here for RequestContext
-        
+
         System.out.println("\n\n ********** HOW TO DEAL WITH KEY ************ \n\n");
         System.out.println(entityKey);
         System.out.println(entityKey.asSingleValue());
         System.out.println(entityKey.getKeyType());
+
         
-        Object ispnCacheKey = null;
-        try {
-            ispnCacheKey = Utils.deserialize((byte[]) entityKey.asSingleValue());
-        } catch (IOException ex) {
-            System.out.println("Exception while deserializing entityKey in getEntity method. "
-                    + "TODO: deal with exception handling properly. Warning ispnCacheKey is null!!!");
-        } catch (ClassNotFoundException ex) {
-            System.out.println("Exception while deserializing entityKey in getEntity method. "
-                    + "TODO: deal with exception handling properly. Warning ispnCacheKey is null!!!");
-        }
+        Object ispnCacheKey = entityKey.asSingleValue();
+        
+//        Object ispnCacheKey = null;
+//        try {
+//            ispnCacheKey = Utils.deserialize((byte[]) entityKey.asSingleValue());
+//        } catch (IOException ex) {
+//            System.out.println("Exception while deserializing entityKey in getEntity method. "
+//                    + "TODO: deal with exception handling properly. Warning ispnCacheKey is null!!!");
+//        } catch (ClassNotFoundException ex) {
+//            System.out.println("Exception while deserializing entityKey in getEntity method. "
+//                    + "TODO: deal with exception handling properly. Warning ispnCacheKey is null!!!");
+//        }
 
         // now build request context to include exact and right key for internal cache entry
         RequestContext rc =
@@ -845,25 +851,25 @@ public class InfinispanProducer2 implements ODataProducer {
         // TODO: properly handle abstract object into cache and cache keys
         // TODO: some handler? + <Object, Object> cache
         try {
-            
-            
+
+
             byte[] keyFromOdataTransfer = (byte[]) entity.getProperty("Key").getValue();
             byte[] valueFromOdataTransfer = (byte[]) entity.getProperty("Value").getValue();
-                        
+
             try {
                 ispnCache.put(Utils.deserialize(keyFromOdataTransfer), Utils.deserialize(valueFromOdataTransfer));
             } catch (Exception e) {
                 System.out.println("************ EEXXCCEEPPTTIIOONN *********** while deserialization: " + e.getMessage());
             }
 
-            
+
             // better way
 //            ispnCache.put(Utils.deserialize((byte[]) entity.getProperty("Key").getValue()),
 //                    Utils.deserialize((byte[]) entity.getProperty("Value").getValue()));
 
         } catch (Exception e) {
-            
-            
+
+
             // Maybe properties were registered as "key" "value" instead of "Key" "Value"
             System.out.println("\n\n ******* WARNING ******* Properties names "
                     + "Key and Value are invalid. Trying key and value! ******** \n\n"
@@ -874,24 +880,24 @@ public class InfinispanProducer2 implements ODataProducer {
             ispnCache.put(entity.getProperty("key").getValue(), entity.getProperty("value").getValue());
         }
 
-        
+
         OEntityKey oentityKey = entity.getEntityKey();
 
         if (entity.getEntityKey() == null) {
             // this is probably request from consumer and entityKey is not set        
             // there are set only necessary properties for creating new MyInternalCacheEntry instance there
             Map<String, Object> entityKeysValues = new HashMap<String, Object>();
-            
+
             // TODO: take care of this better way!!
             try {
                 byte[] key = (byte[]) entity.getProperty("Key").getValue();
                 dump("byte[] key = " + key + " deserialization to object: " + Utils.deserialize(key).toString());
-                entityKeysValues.put("Key", Utils.deserialize(key));                
+                entityKeysValues.put("Key", Utils.deserialize(key));
             } catch (Exception e) {
                 System.err.println("Exception while deserializing data. Location: InfinispanProducer, createEntity, entityKeysValues.put. "
-                        + e.getMessage());                
-            } 
-            
+                        + e.getMessage());
+            }
+
             oentityKey = OEntityKey.create(entityKeysValues.values());
         }
 
@@ -952,8 +958,9 @@ public class InfinispanProducer2 implements ODataProducer {
      * Gets the entity(s) on the target end of a NavigationProperty.
      *
      * @param navProp the navigation property
-     * @param rc      the request context
-     * @return a BaseResponse with either a single Entity (can be null) or a set of entities.
+     * @param rc the request context
+     * @return a BaseResponse with either a single Entity (can be null) or a set
+     * of entities.
      */
     protected BaseResponse getNavProperty(EdmNavigationProperty navProp, RequestContext rc) {
 
@@ -1127,12 +1134,14 @@ public class InfinispanProducer2 implements ODataProducer {
     }
 
     /**
-     * 
-     * // - TODO - document THIS PROPERLY? Change in the future?
-     * Given an entity set and an entity key, returns the pojo that is that entity instance. The default implementation
-     * iterates over the entire set of pojos to find the desired instance.
      *
-     * @param rc the current ReqeustContext, may be valuable to the ei.getWithContext impl
+     * // - TODO - document THIS PROPERLY? Change in the future? Given an
+     * entity set and an entity key, returns the pojo that is that entity
+     * instance. The default implementation iterates over the entire set of
+     * pojos to find the desired instance.
+     *
+     * @param rc the current ReqeustContext, may be valuable to the
+     * ei.getWithContext impl
      * @return the pojo
      */
     @SuppressWarnings("unchecked")
@@ -1197,7 +1206,8 @@ public class InfinispanProducer2 implements ODataProducer {
     }
 
     /**
-     * Populates a new POJO instance of type pojoClass using data from the given structural object.
+     * Populates a new POJO instance of type pojoClass using data from the given
+     * structural object.
      */
     protected <T> T fillInPojo(OStructuralObject sobj, EdmStructuralType stype, PropertyModel propertyModel,
             Class<T> pojoClass) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
@@ -1372,9 +1382,9 @@ public class InfinispanProducer2 implements ODataProducer {
     }
 
     /**
-     * There is a workaround in method toEdmProperties().
-     * Key and Value entity properties are directly considered as byte[].class.
-     * 
+     * There is a workaround in method toEdmProperties(). Key and Value entity
+     * properties are directly considered as byte[].class.
+     *
      */
     public class InMemoryEdmGenerator implements EdmGenerator {
 
@@ -1696,7 +1706,6 @@ public class InfinispanProducer2 implements ODataProducer {
 
                 try {
                     EdmAssociation.Builder assoc = Enumerable.create(associations).firstOrNull(new Predicate1<EdmAssociation.Builder>() {
-
                         public boolean apply(EdmAssociation.Builder input) {
                             return input.getEnd1().getType().equals(eet2) && input.getEnd2().getType().equals(eet1);
                         }
@@ -1787,15 +1796,14 @@ public class InfinispanProducer2 implements ODataProducer {
         }
 
         /**
-         * There is a workaround here.
-         * Key and Value entity properties are directly considered as byte[].class
-         * and model is ignored.
-         * 
+         * There is a workaround here. Key and Value entity properties are
+         * directly considered as byte[].class and model is ignored.
+         *
          * @param decorator
          * @param model
          * @param keys
          * @param structuralTypename
-         * @return 
+         * @return
          */
         private Collection<EdmProperty.Builder> toEdmProperties(
                 EdmDecorator decorator,
@@ -1899,9 +1907,10 @@ public class InfinispanProducer2 implements ODataProducer {
         }
 
         /**
-         * provides an override point for applications to add application specific EdmFunctions to their producer.
+         * provides an override point for applications to add application
+         * specific EdmFunctions to their producer.
          *
-         * @param schema    the EdmSchema.Builder
+         * @param schema the EdmSchema.Builder
          * @param container the EdmEntityContainer.Builder
          */
         protected void addFunctions(EdmSchema.Builder schema, EdmEntityContainer.Builder container) {

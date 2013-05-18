@@ -13,13 +13,13 @@ import java.io.ObjectOutputStream;
  * @author tsykora
  */
 public class Utils {
-    
+
     /**
      * Serialize Object into byte[].
-     * 
+     *
      * @param obj for serialization
      * @return
-     * @throws IOException 
+     * @throws IOException
      */
     public static byte[] serialize(Object obj) throws IOException {
         ByteArrayOutputStream bos = new ByteArrayOutputStream();
@@ -37,11 +37,11 @@ public class Utils {
 
     /**
      * Deserialize byte[] into Object.
-     * 
+     *
      * @param data for deserialization
      * @return
      * @throws IOException
-     * @throws ClassNotFoundException 
+     * @throws ClassNotFoundException
      */
     public static Object deserialize(byte[] data) throws IOException, ClassNotFoundException {
         ByteArrayInputStream bis = new ByteArrayInputStream(data);
@@ -53,7 +53,7 @@ public class Utils {
         } catch (IOException e) {
             System.err.println(e.getMessage());
             return null;
-        } catch (ClassNotFoundException c) {    
+        } catch (ClassNotFoundException c) {
             System.err.println(c.getMessage());
             return null;
         } finally {
@@ -61,5 +61,4 @@ public class Utils {
             in.close();
         }
     }
-    
 }

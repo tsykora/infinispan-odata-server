@@ -11,6 +11,7 @@ import org.odata4j.producer.PropertyPath;
 import org.odata4j.producer.resources.DefaultODataProducerProvider;
 import org.tsykora.odata.common.Utils;
 
+
 import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
@@ -34,7 +35,7 @@ public class InMemoryProducerExample extends AbstractExample {
     @SuppressWarnings({"unchecked", "rawtypes"})
     public void run(String[] args) {
 
-        String endpointUri = "http://localhost:10887/InMemoryProducerExample.svc/";
+        String endpointUri = "http://localhost:8887/InMemoryProducerExample.svc/";
 
         // InMemoryProducer is a readonly (not now - using InfinispanProducer2)
         // odata provider that serves up POJOs as entities using bean properties
@@ -138,39 +139,39 @@ public class InMemoryProducerExample extends AbstractExample {
         // calling put and through some visitor? transferer? I will build OEntity for request here
         // this will be sent to the server side as an OEntity and there put in remote cache (via OData)
         
-        byte[] serializedKey = null;
-        try {
-            serializedKey = Utils.serialize("key8");
-        } catch (IOException ex) {
-            Logger.getLogger(InMemoryProducerExample.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        
-        byte[] serializedValue = null;
-        try {
-            serializedValue = Utils.serialize("value8");
-        } catch (IOException ex) {
-            Logger.getLogger(InMemoryProducerExample.class.getName()).log(Level.SEVERE, null, ex);
-        }
-
-        Map<String, Object> entityKeysValues = new HashMap<String, Object>();
-        entityKeysValues.put("Key", serializedKey);
-
-        // based on real entry -> transfer it into OEntity by this (via properties, entrySetName is cache name etc.)
-        List<OProperty<?>> p = new ArrayList<OProperty<?>>();
-        
-        p.add(OProperties.binary("Key", serializedKey));
-        p.add(OProperties.binary("Value", serializedValue));
-
-        // entity KEY HAVE TO BE key8 !!!! Create new entity key with requested key! (Cache key)
-        // it needs to ask cache about get("key8"); and not "('key');
-        OEntity entityForPut = OEntities.create(producerBig.getMetadata().getEdmEntitySet("CacheEntries"),
-                OEntityKey.create(entityKeysValues.values()), p, null);
-
-        // CREATE
-        EntityResponse response = producerBig.createEntity("CacheEntries", entityForPut);
-
-        OEntity createdRightNow = response.getEntity();
-        reportEntity("\n\n\n This is response from producer (InMemoryProducerExample), recently created OEntity: \n ", createdRightNow);
+//        byte[] serializedKey = null;
+//        try {
+//            serializedKey = Utils.serialize("key8");
+//        } catch (IOException ex) {
+//            Logger.getLogger(InMemoryProducerExample.class.getName()).log(Level.SEVERE, null, ex);
+//        }
+//        
+//        byte[] serializedValue = null;
+//        try {
+//            serializedValue = Utils.serialize("value8");
+//        } catch (IOException ex) {
+//            Logger.getLogger(InMemoryProducerExample.class.getName()).log(Level.SEVERE, null, ex);
+//        }
+//
+//        Map<String, Object> entityKeysValues = new HashMap<String, Object>();
+//        entityKeysValues.put("Key", serializedKey);
+//
+//        // based on real entry -> transfer it into OEntity by this (via properties, entrySetName is cache name etc.)
+//        List<OProperty<?>> p = new ArrayList<OProperty<?>>();
+//        
+//        p.add(OProperties.binary("Key", serializedKey));
+//        p.add(OProperties.binary("Value", serializedValue));
+//
+//        // entity KEY HAVE TO BE key8 !!!! Create new entity key with requested key! (Cache key)
+//        // it needs to ask cache about get("key8"); and not "('key');
+//        OEntity entityForPut = OEntities.create(producerBig.getMetadata().getEdmEntitySet("CacheEntries"),
+//                OEntityKey.create(entityKeysValues.values()), p, null);
+//
+//        // CREATE
+//        EntityResponse response = producerBig.createEntity("CacheEntries", entityForPut);
+//
+//        OEntity createdRightNow = response.getEntity();
+//        reportEntity("\n\n\n This is response from producer (InMemoryProducerExample), recently created OEntity: \n ", createdRightNow);
         
         
 
@@ -209,6 +210,8 @@ public class InMemoryProducerExample extends AbstractExample {
         // register the producer as the static instance, then launch the http server
         DefaultODataProducerProvider.setInstance(producerBig);
         this.rtFacde.hostODataServer(endpointUri);
+        
+        
 
     }
 
