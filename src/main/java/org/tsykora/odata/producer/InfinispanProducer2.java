@@ -1,14 +1,11 @@
 package org.tsykora.odata.producer;
 
-import java.io.IOException;
 import org.core4j.Enumerable;
 import org.core4j.Func;
 import org.core4j.Func1;
 import org.core4j.Predicate1;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
-import org.infinispan.manager.EmbeddedCacheManager;
-import org.infinispan.manager.CacheManager;
 import org.odata4j.core.*;
 import org.odata4j.edm.*;
 import org.odata4j.exceptions.NotFoundException;
@@ -25,6 +22,7 @@ import org.odata4j.producer.inmemory.InMemoryComplexTypeInfo;
 import org.odata4j.producer.inmemory.InMemoryEvaluation;
 import org.odata4j.producer.inmemory.InMemoryTypeMapping;
 import org.odata4j.producer.inmemory.PropertyModel;
+import org.tsykora.odata.common.Utils;
 import org.tsykora.odata.producer.InfinispanProducer2.RequestContext.RequestType;
 
 import java.lang.reflect.InvocationTargetException;
@@ -32,7 +30,6 @@ import java.lang.reflect.Method;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-import org.tsykora.odata.common.Utils;
 
 //import org.odata4j.producer.inmemory.InMemoryProducer.RequestContext.RequestType;
 /**
@@ -663,6 +660,9 @@ public class InfinispanProducer2 implements ODataProducer {
     }
 
     /**
+     *
+     * This will probably need performance tunning!!
+     *
      * If there is a getEntity() call on consumer then this getEntity() method
      * on producer is called
      *
@@ -1442,6 +1442,8 @@ public class InfinispanProducer2 implements ODataProducer {
                 InfinispanProducer2.InMemoryEntityInfo<?> ei = eis.get(entitySetName);
                 Class<?> clazz1 = ei.entityClass;
 
+               // This maps entities to itself -- I think I don't need it now
+
                 generateToOneNavProperties(associations, associationSets,
                         entityTypesByName, entitySetByName, entityNameByClass,
                         ei.entityTypeName, ei);
@@ -1472,6 +1474,13 @@ public class InfinispanProducer2 implements ODataProducer {
                 if (log.isLoggable(Level.FINE)) {
                     log.log(Level.FINE, "genToOnNavProp {0} - {1}({2}) eetName2: {3}", new Object[]{entityTypeName, assocProp, clazz2, entitySetName2});
                 }
+
+               System.out.println("\n\n\n OUTPUT FROM toOneNavProperties ****************** \n\n\n");
+               System.out.println(entityTypeName);
+               System.out.println(assocProp);
+               System.out.println(clazz2);
+               System.out.println(entitySetName2);
+               System.out.println("\n\n\n ------------------------------------------------- ");
 
                 if (eet1.findProperty(assocProp) != null || ei2 == null) {
                     continue;
@@ -1550,6 +1559,14 @@ public class InfinispanProducer2 implements ODataProducer {
                     continue;
                 }
 
+               System.out.println("\n\n\n OUTPUT FROM toManyNavProperties ****************** \n\n\n");
+               System.out.println(entityTypeName);
+               System.out.println("assoc prop from collectionNames: " + assocProp);
+               System.out.println("clazz1: " + clazz1);
+               System.out.println("clazz2: " + clazz2);
+               System.out.println("entitySetName2: " + entitySetName2);
+               System.out.println("\n\n\n ------------------------------------------------- ");
+
                 final EdmEntityType.Builder eet2 = entityTypesByName.get(class2eiInfo.entityTypeName);
 
                 try {
@@ -1611,7 +1628,10 @@ public class InfinispanProducer2 implements ODataProducer {
                         toRole = assoc.getEnd1();
                     }
 
-                    EdmNavigationProperty.Builder np = EdmNavigationProperty.newBuilder(assocProp).setRelationship(assoc).setFromTo(fromRole, toRole);
+
+
+                    EdmNavigationProperty.Builder np =
+                          EdmNavigationProperty.newBuilder(assocProp).setRelationship(assoc).setFromTo(fromRole, toRole);
 
                     eet1.addNavigationProperties(np);
                 } catch (Exception e) {

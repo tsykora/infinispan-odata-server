@@ -4,26 +4,24 @@ import org.core4j.Enumerables;
 import org.core4j.Func;
 import org.core4j.Func1;
 import org.core4j.Funcs;
-import org.odata4j.core.*;
+import org.odata4j.core.NamespacedAnnotation;
+import org.odata4j.core.OCollection;
+import org.odata4j.core.OCollections;
+import org.odata4j.core.OComplexObject;
+import org.odata4j.core.OComplexObjects;
+import org.odata4j.core.OProperties;
+import org.odata4j.core.OProperty;
+import org.odata4j.core.OSimpleObjects;
+import org.odata4j.core.PrefixedNamespace;
 import org.odata4j.edm.*;
-import org.odata4j.producer.EntityResponse;
 import org.odata4j.producer.PropertyPath;
 import org.odata4j.producer.resources.DefaultODataProducerProvider;
-import org.tsykora.odata.common.Utils;
 
-
-import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Set;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * @author tsykora
@@ -55,27 +53,6 @@ public class InMemoryProducerExample extends AbstractExample {
         
         // TODO: reveal magic here and REGISTER this entitySet lightweightly
 
-        
-        // TODO -- how to connect this, how to associate, link this to caches (entries)
-        producerBig.register(MyCacheManager.class, MyCacheManager.class, "CacheManagers", new Func<Iterable<MyCacheManager>>() {
-            public Iterable<MyCacheManager> apply() {
-                List<MyCacheManager> firstManagerForRegister = new ArrayList<MyCacheManager>();
-                firstManagerForRegister.add(new MyCacheManager("SomeSpecialCacheManagerName"));
-                return firstManagerForRegister;
-            }
-        }, Funcs.method(MyCacheManager.class, MyCacheManager.class, "toString"));
-
-
-        producerBig.register(MyCache.class, MyCache.class, "Caches", new Func<Iterable<MyCache>>() {
-            public Iterable<MyCache> apply() {
-                List<MyCache> firstForRegister = new ArrayList<MyCache>();
-                firstForRegister.add(new MyCache("SomeSpecialCacheName"));
-                return firstForRegister;
-            }
-        }, Funcs.method(MyCache.class, MyCache.class, "toString"));
-
-
-        
         // TODO just for Producer2 -- NOW - only register my EDM entity set
         // TODO - check class of KEY and the last Funcs.method (try to use simple strings for key or Object.getId()??
 
@@ -87,7 +64,6 @@ public class InMemoryProducerExample extends AbstractExample {
             public Iterable<MyInternalCacheEntry> apply() {
                 List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
                 firstEntryForRegister.add(new MyInternalCacheEntry("key8".getBytes(), "value8".getBytes()));
-//                firstEntryForRegister.add(new MyInternalCacheEntry(new Pair<Object, Object>("aa", "bb"), new Pair<Object, Object>("vv", "valval")));
                 return firstEntryForRegister;
             }
         }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
@@ -230,11 +206,10 @@ public class InMemoryProducerExample extends AbstractExample {
 
         // START ODATA SERVER
         // register the producer as the static instance, then launch the http server
+
+
         DefaultODataProducerProvider.setInstance(producerBig);
         this.rtFacde.hostODataServer(endpointUri);
-        
-        
-
     }
 
 //   public static Set<MyInternalCacheEntry> returnInternalCacheEntrySet() {
@@ -245,67 +220,12 @@ public class InMemoryProducerExample extends AbstractExample {
 //      return setOfEntries;
 //   }
     
-    public static class MyCacheManager {
-
-        private String name;
-        private List<MyCache> caches = new LinkedList<MyCache>();
-
-        public MyCacheManager(String name) {
-            this.name = name;
-        }
-
-        public List<MyCache> getCaches() {
-            return caches;
-        }
-
-        public void setCaches(List<MyCache> caches) {
-            this.caches = caches;
-        }
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-    }
-    
-    public static class MyCache {
-
-        private String cacheName;
-        private List<MyInternalCacheEntry> entries = new LinkedList<MyInternalCacheEntry>();
-
-        public MyCache(String cacheName) {
-            this.cacheName = cacheName;
-        }
-
-        public String getCacheName() {
-            return cacheName;
-        }
-
-        public void setCacheName(String cacheName) {
-            this.cacheName = cacheName;
-        }        
-
-        public List<MyInternalCacheEntry> getEntries() {
-            return entries;
-        }
-
-        public void setEntries(List<MyInternalCacheEntry> entries) {
-            this.entries = entries;
-        }       
-        
-    }
-    
-  
-        
 
     public static class MyInternalCacheEntry {
 
         private Object key;
-        private Object value;        
-        
+        private Object value;
+
         public MyInternalCacheEntry(Object key, Object value) {
             this.key = key;
             this.value = value;
