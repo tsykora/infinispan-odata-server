@@ -1,13 +1,7 @@
 package org.tsykora.odata.consumer;
 
-import java.io.IOException;
-import org.odata4j.consumer.ConsumerCreateEntityRequest;
-import org.odata4j.consumer.ODataClientRequest;
 import org.odata4j.consumer.ODataConsumer;
-import org.odata4j.core.OCreateRequest;
-import org.odata4j.core.OEntity;
 import org.odata4j.core.OProperties;
-import org.odata4j.edm.EdmDataServices;
 import org.tsykora.odata.common.Utils;
 import org.tsykora.odata.producer.AbstractExample;
 
@@ -91,15 +85,15 @@ public class ExampleConsumer extends AbstractExample {
 
 
         
-        reportEntity(" new cache entry report: ", consumer.createEntity("CacheEntries").
+        reportEntity(" new cache entry report: ", consumer.createEntity("defaultCache").
                 properties(OProperties.binary("Key", Utils.serialize("key7"))).
                 properties(OProperties.binary("Value", Utils.serialize("value7"))).execute());
         
 
         // TODO - FIX THIS
         // this is for only one REGISTERED entry - this does not reflex cache content!! yet!!
-        Integer count = consumer.getEntitiesCount("CacheEntries").execute();
-        System.out.println("\n\n\nCount of entries is CacheEntries set is: " + count);
+        Integer count = consumer.getEntitiesCount("defaultCache").execute();
+        System.out.println("\n\n\nCount of entries is defaultCache set is: " + count);
 
 
         System.out.println("\n\n\n **** reporting metadata reportMetadata(cosnumer.getMetadata): ***** ");
@@ -107,41 +101,57 @@ public class ExampleConsumer extends AbstractExample {
 
         System.out.println("\n\n\n **** **************************** ***** \n\n ");
 
-//        OEntity onlyGetEntity = consumer.createEntity("CacheEntries").
+//        OEntity onlyGetEntity = consumer.createEntity("defaultCache").
 //                properties(OProperties.string("Key", "key10")).properties(OProperties.string("Value", "value10")).get();
 //        System.out.println("Entity key here should be null (is not defined yet): " + onlyGetEntity.getEntityKey());
 //        
         
 
 
-        ODataCache<Object, Integer> myCache = new ODataCache<Object, Integer>(consumer, "CacheEntries");
+        ODataCache<Object, Integer> defaultCache = new ODataCache<Object, Integer>(consumer, "defaultCache");
         
         System.out.println("\n\n\n CALLING PUT ON ODataCache ****************** \n");        
-//        myCache.put((Object) "key7",(Object) "value7");        
+//        defaultCache.put((Object) "key7",(Object) "value7");
         
         System.out.println("\n\n\n CALLING GET ON ODataCache ****************** \n");        
-        Object value = myCache.get("key7");
+        Object value = defaultCache.get("key7");
         System.out.println("class: " + value.getClass());
         System.out.println("raw: " + value);
         System.out.println("toString: " + value.toString());
         
-        Object valueFromPut = myCache.put("key11", new Integer(11));
+        Object valueFromPut = defaultCache.put("key11", new Integer(11));
         
         System.out.println("VFP class: " + valueFromPut.getClass());
         System.out.println("VFP raw: " + valueFromPut);
         System.out.println("VFP toString: " + valueFromPut.toString());
-        
+
+
+       // URI here is only for caption
+       System.out.println("\n\n\n *********** REPORT WHOLE ENTITY SET (defaultCache) *********** \n\n\n");
+       reportEntities("******** " + endpointUri.concat("defaultCache"),
+                      consumer.getEntities("defaultCache").execute());
+
+
+       // ***************************************************************
+       // ***************************************************************
+       // ***************************************************************
+
+       ODataCache<Integer, String> mySpecialNamedCache = new ODataCache<Integer, String>(consumer, "mySpecialNamedCache");
+
+       mySpecialNamedCache.put(new Integer(1),"specCache_value1");
+       mySpecialNamedCache.put(new Integer(2),"specCache_value2");
+
         
         // URI here is only for caption
-        System.out.println("\n\n\n *********** REPORT WHOLE ENTITY SET (CacheEntries) *********** \n\n\n");
-        reportEntities("******** " + endpointUri.concat("CacheEntries"),
-                consumer.getEntities("CacheEntries").execute());
+        System.out.println("\n\n\n *********** REPORT WHOLE ENTITY SET (mySpecialNamedCache) *********** \n\n\n");
+        reportEntities("******** " + endpointUri.concat("mySpecialNamedCache"),
+                consumer.getEntities("mySpecialNamedCache").execute());
         
         
         
 
 
-//      OEntity cacheKey6 = consumer.getEntity("CacheEntriesNew", "key6").execute();
+//      OEntity cacheKey6 = consumer.getEntity("defaultCacheNew", "key6").execute();
 //      reportEntity("This is key1 entity report: ", cacheKey6);
 
 
@@ -177,13 +187,13 @@ public class ExampleConsumer extends AbstractExample {
 
 
         // creates new entity in given set
-//      OEntity newCacheEntry = consumer.createEntity("CacheEntries")
+//      OEntity newCacheEntry = consumer.createEntity("defaultCache")
 //            .properties(OProperties.string("Key", "key6"))
 //            .properties(OProperties.string("Value", "value6")).execute();
 //
 //      reportEntity(" new cache entry report: ", newCacheEntry);
 //
-//      OEntity cacheKey6 = consumer.getEntity("CacheEntriesNew", "key6").execute();
+//      OEntity cacheKey6 = consumer.getEntity("defaultCacheNew", "key6").execute();
 //      reportEntity("This is key1 entity report: ", cacheKey6);
 
 

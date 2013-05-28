@@ -1,9 +1,7 @@
 package org.tsykora.odata.producer;
 
 import org.core4j.Enumerables;
-import org.core4j.Func;
 import org.core4j.Func1;
-import org.core4j.Funcs;
 import org.odata4j.core.NamespacedAnnotation;
 import org.odata4j.core.OCollection;
 import org.odata4j.core.OCollections;
@@ -19,6 +17,7 @@ import org.odata4j.producer.resources.DefaultODataProducerProvider;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -38,39 +37,17 @@ public class InMemoryProducerExample extends AbstractExample {
 
         String endpointUri = "http://localhost:8887/InMemoryProducerExample.svc/";
 
-        // InMemoryProducer is a readonly (not now - using InfinispanProducer2)
-        // odata provider that serves up POJOs as entities using bean properties
-
-        // call InMemoryProducer.register to declare a new entity-set, providing a entity source function and a propertyname to serve as the key
         // final InMemoryProducer producer = new InMemoryProducer("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
 
-        // Call own infinispan producer which implements properly all methods, will there be probably more producers?
-        // Is there need to do my own consumer? How it will be different from ODataJerseyConsumer for example?
+       List<String> cacheNames = new LinkedList<String>();
+       cacheNames.add("defaultCache");
+       cacheNames.add("mySpecialNamedCache");
 
-        final InfinispanProducer2 producerBig = new InfinispanProducer2("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
+        final InfinispanProducer2 producerBig =
+              new InfinispanProducer2("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null, cacheNames);
 //        final LightweightInfinispanProducer producer = new LightweightInfinispanProducer("InMemoryProducerExample", null, 100, null, null);
 
-        
-        // TODO: reveal magic here and REGISTER this entitySet lightweightly
 
-        // TODO just for Producer2 -- NOW - only register my EDM entity set
-        // TODO - check class of KEY and the last Funcs.method (try to use simple strings for key or Object.getId()??
-
-        producerBig.register(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "CacheEntries", new Func<Iterable<MyInternalCacheEntry>>() {
-            // TEMPORARY REGISTRATION of CACHE ENTRIES set name!!!
-            // TODO - can I skip this registration? Can I do it inside of producer while starting new cache?
-            // TODO - while starting service? while creating new cache from builder? or according to xml?
-            // TODO - register entrySet fro new cache after it starts.
-            public Iterable<MyInternalCacheEntry> apply() {
-                List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
-                firstEntryForRegister.add(new MyInternalCacheEntry("key8".getBytes(), "value8".getBytes()));
-                return firstEntryForRegister;
-            }
-        }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
-
-
-        
-        
 // <editor-fold defaultstate="collapsed" desc="other producer's registrations">
 //    // expose this jvm's thread information (Thread instances) as an entity-set called "Threads"
 //    producer.register(Thread.class, "Threads", new Func<Iterable<Thread>>() {
@@ -206,7 +183,6 @@ public class InMemoryProducerExample extends AbstractExample {
 
         // START ODATA SERVER
         // register the producer as the static instance, then launch the http server
-
 
         DefaultODataProducerProvider.setInstance(producerBig);
         this.rtFacde.hostODataServer(endpointUri);

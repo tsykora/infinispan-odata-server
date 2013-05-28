@@ -3,6 +3,7 @@ package org.tsykora.odata.producer;
 import org.core4j.Enumerable;
 import org.core4j.Func;
 import org.core4j.Func1;
+import org.core4j.Funcs;
 import org.core4j.Predicate1;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
@@ -24,12 +25,15 @@ import org.odata4j.producer.inmemory.InMemoryTypeMapping;
 import org.odata4j.producer.inmemory.PropertyModel;
 import org.tsykora.odata.common.Utils;
 import org.tsykora.odata.producer.InfinispanProducer2.RequestContext.RequestType;
+import org.tsykora.odata.producer.InMemoryProducerExample.MyInternalCacheEntry;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import static org.tsykora.odata.common.Utils.deserialize;
 
 //import org.odata4j.producer.inmemory.InMemoryProducer.RequestContext.RequestType;
 /**
@@ -61,15 +65,15 @@ public class InfinispanProducer2 implements ODataProducer {
     private final boolean flattenEdm;
     private static final int DEFAULT_MAX_RESULTS = 100;
     // not static - cache instance is running with producer instance
-    private Cache<Object, Object> ispnCache;
+    private static DefaultCacheManager defaultCacheManager;
 
     /**
      * Creates a new instance of an in-memory POJO producer.
      *
      * @param namespace the namespace of the schema registrations
      */
-    public InfinispanProducer2(String namespace) {
-        this(namespace, DEFAULT_MAX_RESULTS);
+    public InfinispanProducer2(String namespace, List<String> cacheNames) {
+        this(namespace, DEFAULT_MAX_RESULTS, cacheNames);
     }
 
     /**
@@ -79,8 +83,8 @@ public class InfinispanProducer2 implements ODataProducer {
      * @param maxResults the maximum number of entities to return in a single
      * call
      */
-    public InfinispanProducer2(String namespace, int maxResults) {
-        this(namespace, null, maxResults, null, null);
+    public InfinispanProducer2(String namespace, int maxResults, List<String> cacheNames) {
+        this(namespace, null, maxResults, null, null, cacheNames);
     }
 
     /**
@@ -94,13 +98,18 @@ public class InfinispanProducer2 implements ODataProducer {
      * @param typeMapping optional mapping between java types and edm types,
      * null for default
      */
-    public InfinispanProducer2(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping) {
+    public InfinispanProducer2(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
+            List<String> cacheNames) {
         this(namespace, containerName, maxResults, decorator, typeMapping,
-                true); // legacy: flatten edm
+                true, cacheNames); // legacy: flatten edm
     }
 
+   /**
+    * Do everything important here while creating new producer instance.
+    *
+    */
     public InfinispanProducer2(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
-            boolean flattenEdm) {
+            boolean flattenEdm, List<String> cacheNames) {
         this.namespace = namespace;
         this.containerName = containerName != null && !containerName.isEmpty() ? containerName : "Container";
         this.maxResults = maxResults;
@@ -109,13 +118,44 @@ public class InfinispanProducer2 implements ODataProducer {
         this.typeMapping = typeMapping == null ? InMemoryTypeMapping.DEFAULT : typeMapping;
         this.flattenEdm = flattenEdm;
 
-        // Creating ISPN layer in producer constructor
-        ispnCache = new DefaultCacheManager().getCache();       
-        
-        
-        
-        
+
+       // TODO add possibility for passing configurations (global, local)
+       defaultCacheManager = new DefaultCacheManager();
+       defaultCacheManager.start();
+       System.out.println("Default cache manager started.");
+
+       for(String cacheName : cacheNames) {
+
+          defaultCacheManager.startCache(cacheName);
+          System.out.println("Cache with name " + cacheName + " started.");
+
+          System.out.println("About to register cache as a EntitySet.....");
+
+
+          // TODO: reveal magic here and REGISTER this entitySet lightweightly
+          // TODO just for Producer2 -- NOW - only register my EDM entity set
+          // TODO - check class of KEY and the last Funcs.method (try to use simple strings for key or Object.getId()??
+          // TODO -- move this registration into PRODUCER and find how to register it properly and easily
+
+          // register entity set with name of cache
+          register(MyInternalCacheEntry.class, MyInternalCacheEntry.class, cacheName, new Func<Iterable<MyInternalCacheEntry>>() {
+
+             // TODO - can I skip this registration? Can I do it inside of producer while starting new cache?
+             // TODO - while starting service? while creating new cache from builder? or according to xml?
+             // TODO - register entrySet for new cache after it starts.
+             public Iterable<MyInternalCacheEntry> apply() {
+                List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
+                firstEntryForRegister.add(new MyInternalCacheEntry("tempKey1".getBytes(), "tempValue1".getBytes()));
+                return firstEntryForRegister;
+             }
+          }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
+
+       }
     }
+
+   private static Cache getCache(String cacheName) {
+      return defaultCacheManager.getCache(cacheName);
+   }
 
     @Override
     public EdmDataServices getMetadata() {
@@ -473,6 +513,8 @@ public class InfinispanProducer2 implements ODataProducer {
         };
     }
 
+
+
     /**
      * Is returning all entries from local cache.
      *
@@ -487,7 +529,7 @@ public class InfinispanProducer2 implements ODataProducer {
 
         List<Object> entriesObjects = new ArrayList<Object>();
 
-        for (Object cacheEntryKey : ispnCache.keySet()) {
+        for (Object cacheEntryKey : getCache(entitySetName).keySet()) {
             // get all entries from cache and return it as objects
             RequestContext rc =
                     RequestContext.newBuilder(RequestType.GetEntity).entitySetName(entitySetName).
@@ -739,8 +781,11 @@ public class InfinispanProducer2 implements ODataProducer {
 
         System.out.println("\n********************\n I am in the createEntity method.....\n********************\n");
 
+//       TODO - choose cache which depends on entitySetName (which is cache name)
+
+
         // put into cache and getEntity() will discover new state of cache (with that new put already inside)
-        ispnCache.put(Utils.deserialize((byte[]) entity.getProperty("Key").getValue()),
+        getCache(entitySetName).put(Utils.deserialize((byte[]) entity.getProperty("Key").getValue()),
                 Utils.deserialize((byte[]) entity.getProperty("Value").getValue()));
 
 
@@ -753,8 +798,8 @@ public class InfinispanProducer2 implements ODataProducer {
             Map<String, Object> entityKeysValues = new HashMap<String, Object>();
 
             byte[] key = (byte[]) entity.getProperty("Key").getValue();
-            dump("byte[] key = " + key + " deserialization to object: " + Utils.deserialize(key).toString());
-            entityKeysValues.put("Key", Utils.deserialize(key));
+            dump("byte[] key = " + key + " deserialization to object: " + deserialize(key).toString());
+            entityKeysValues.put("Key", deserialize(key));
 
             oentityKey = OEntityKey.create(entityKeysValues.values());
         }
@@ -1016,7 +1061,7 @@ public class InfinispanProducer2 implements ODataProducer {
 
         InMemoryProducerExample.MyInternalCacheEntry mice = null;
         // entry exists?
-        Object value = ispnCache.get(rc.getIspnCacheKey());
+        Object value = getCache(rc.getEntitySetName()).get(rc.getIspnCacheKey());
         if (value != null) {
 
             // IMPORTANT
