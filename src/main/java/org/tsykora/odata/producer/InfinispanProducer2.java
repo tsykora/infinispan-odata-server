@@ -7,6 +7,8 @@ import org.core4j.Func1;
 import org.core4j.Predicate1;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
+import org.infinispan.manager.EmbeddedCacheManager;
+import org.infinispan.manager.CacheManager;
 import org.odata4j.core.*;
 import org.odata4j.edm.*;
 import org.odata4j.exceptions.NotFoundException;
@@ -111,7 +113,11 @@ public class InfinispanProducer2 implements ODataProducer {
         this.flattenEdm = flattenEdm;
 
         // Creating ISPN layer in producer constructor
-        ispnCache = new DefaultCacheManager().getCache();
+        ispnCache = new DefaultCacheManager().getCache();       
+        
+        
+        
+        
     }
 
     @Override
@@ -659,6 +665,9 @@ public class InfinispanProducer2 implements ODataProducer {
     /**
      * If there is a getEntity() call on consumer then this getEntity() method
      * on producer is called
+     *
+     * entityKey coresponds with Key of entry in the cache. entityKey expects
+     * deserialized object (so it can directly access ispn cache)
      */
     @Override
     public EntityResponse getEntity(final String entitySetName, final OEntityKey entityKey, final EntityQueryInfo queryInfo) {
@@ -673,19 +682,7 @@ public class InfinispanProducer2 implements ODataProducer {
         System.out.println(entityKey.asSingleValue());
         System.out.println(entityKey.getKeyType());
 
-
         Object ispnCacheKey = entityKey.asSingleValue();
-
-//        Object ispnCacheKey = null;
-//        try {
-//            ispnCacheKey = Utils.deserialize((byte[]) entityKey.asSingleValue());
-//        } catch (IOException ex) {
-//            System.out.println("Exception while deserializing entityKey in getEntity method. "
-//                    + "TODO: deal with exception handling properly. Warning ispnCacheKey is null!!!");
-//        } catch (ClassNotFoundException ex) {
-//            System.out.println("Exception while deserializing entityKey in getEntity method. "
-//                    + "TODO: deal with exception handling properly. Warning ispnCacheKey is null!!!");
-//        }
 
         // now build request context to include exact and right key for internal cache entry
         RequestContext rc =
@@ -695,9 +692,9 @@ public class InfinispanProducer2 implements ODataProducer {
 
         final Object rt = getEntityPojo(rc);
         if (rt == null) {
-            throw new NotFoundException("No entity found in entityset " + entitySetName
-                    + " for key " + entityKey.toKeyStringWithoutParentheses()
-                    + " and query info " + queryInfo);
+            throw new NotFoundException("No entry found in entitySet (cacheName): " + entitySetName
+                    + " for key: " + ispnCacheKey
+                    + " and query info: " + queryInfo);
         }
 
         OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
@@ -723,6 +720,15 @@ public class InfinispanProducer2 implements ODataProducer {
         throw new NotImplementedException();
     }
 
+    /**
+     * Puts entry given in entity into the Infinispan (in-memory) cache
+     * specified by entitySetName
+     *
+     *
+     * @param entitySetName
+     * @param entity
+     * @return
+     */
     @Override
     public EntityResponse createEntity(String entitySetName, final OEntity entity) {
 
@@ -730,157 +736,15 @@ public class InfinispanProducer2 implements ODataProducer {
         // cacheName can be defined by other was - EDM - later? If needed. Accept builders?
         // creating caches on the server (Still Jersey?)
 
-        // IMPORTANT
-        // don't need to register (registering is only for building proper EDM now) -- just put into cache
-        // and getEntity() will discover new state of cache (with that new put already inside)
-
 
         System.out.println("\n********************\n I am in the createEntity method.....\n********************\n");
 
-// <editor-fold defaultstate="collapsed" desc="old code">
-        // pass entity here
-        // register it
-        // and return it back as entity response
-
-        // need proper entity key and entitySetName
-        // first pass via OData from consumer, register into memory and then get it via OData with proper http responses etc.
-
-//      try {
+        // put into cache and getEntity() will discover new state of cache (with that new put already inside)
+        ispnCache.put(Utils.deserialize((byte[]) entity.getProperty("Key").getValue()),
+                Utils.deserialize((byte[]) entity.getProperty("Value").getValue()));
 
 
-//      // TODO do this transformation in some aggregate method (using some EDM model for it?) To transfer OEntity to Pojos?
-//      InMemoryProducerExample.MyInternalCacheEntry entry = new
-//            InMemoryProducerExample.MyInternalCacheEntry((String) entity.getProperty("Key").getValue(),
-//                                                         (String) entity.getProperty("Value").getValue());
-//
-//      // TODO: why I am deleting all entries which were in that entity set?
-//
-//
-//      final Set<InMemoryProducerExample.MyInternalCacheEntry> setOfEntries = new HashSet<InMemoryProducerExample.MyInternalCacheEntry>();
-//
-//      for (OEntity oe : getEntities(entitySetName, entityQueryInfoGlobal).getEntities()) {
-//
-//         InMemoryProducerExample.MyInternalCacheEntry oldEntry = new
-//               InMemoryProducerExample.MyInternalCacheEntry((String) oe.getProperty("Key").getValue(),
-//                                                            (String) oe.getProperty("Value").getValue());
-//
-//         setOfEntries.add(oldEntry);
-//      }
-//
-//
-////         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key66", "value66"));
-////         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key77", "value77"));
-////         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key88", "value88"));
-//
-//      // And ADD NEW ENTRY HERE INTO SET and register all
-//      setOfEntries.add(entry);
-//
-//
-//      System.out.println("About to register new entry into entitySetName: " + entitySetName);
-//      System.out.println("Entry was transfered to pojo: key:" + entry.getKey() + " value: " + entry.getValue());
-//      // TODO: REGISTER entity immediately from OEntity -- do some processing in register method
-//      // TODO: rename register to sume put? I don't know
-//
-//
-//      // Store into memory (will be instance cache, which will be configured by configuration sent via OData too in init phase)
-//      // new entries are registered here: http://localhost:8887/InMemoryProducerExample.svc/CacheEntriesNew
-//      // TODO: implement register function for one entry and this use for some kind of batching
-//      register(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, entitySetName,
-//               new Func<Iterable<InMemoryProducerExample.MyInternalCacheEntry>>() {
-//                  public Iterable<InMemoryProducerExample.MyInternalCacheEntry> apply() {
-//                     return setOfEntries;
-//                  }
-//               }, Funcs.method(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, "toString"));
-//
-//      System.out.println("New entry was successfully registered!!!");
-
-
-//
-//      // Some more logic
-//      // connect it to the cache / cache store etc., this cache (or cache manager needs to be in some ('general') context then
-//
-//      // TODO: do I need to set some status, some response, correctly? !!!
-//
-//      return new EntityResponse() {
-//         @Override
-//         public OEntity getEntity() {
-//            return entity;
-//         }
-//      };
-//
-////      throw new NotImplementedException();
-        // TODO: what to return, for which object to set status response to 200 OK, to not throw exception?
-
-
-        // TODO
-        // pass entity here
-        // register it
-        // and return it back as entity response
-
-        // need proper entity key and entitySetName
-
-        // normally call GET ENTITY here with returning RESPONSE
-        // pass proper parameters
-
-
-//      QueryInfo queryInfo = entityQueryInfoGlobal;
-//
-//      // and set entity set name as set into which is entry stored newcacheentries.
-//
-//      PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
-//
-//      RequestContext rc = RequestContext.newBuilder(RequestType.GetEntity)
-//            .entitySetName(entitySetName)
-//            .entitySet(getMetadata()
-//                             .getEdmEntitySet(entitySetName))
-//            .entityKey(entity.getEntityKey())
-//            .queryInfo(queryInfo)
-//            .pathHelper(pathHelper).build();
-//
-//      final Object rt = getEntityPojo(rc);
-//      if (rt == null)
-//         throw new NotFoundException("No entity found in entityset " + entitySetName
-//                                           + " for key " + entity.getEntityKey().toKeyStringWithoutParentheses()
-//                                           + " and query info " + queryInfo);
-//
-//      OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
-        // it returned status CREATED succesfully  (status 201)
-
-// </editor-fold>
-
-        // TODO: properly handle abstract object into cache and cache keys
-        // TODO: some handler? + <Object, Object> cache
-        try {
-
-
-            byte[] keyFromOdataTransfer = (byte[]) entity.getProperty("Key").getValue();
-            byte[] valueFromOdataTransfer = (byte[]) entity.getProperty("Value").getValue();
-
-            try {
-                ispnCache.put(Utils.deserialize(keyFromOdataTransfer), Utils.deserialize(valueFromOdataTransfer));
-            } catch (Exception e) {
-                System.out.println("************ EEXXCCEEPPTTIIOONN *********** while deserialization: " + e.getMessage());
-            }
-
-
-            // better way
-//            ispnCache.put(Utils.deserialize((byte[]) entity.getProperty("Key").getValue()),
-//                    Utils.deserialize((byte[]) entity.getProperty("Value").getValue()));
-
-        } catch (Exception e) {
-
-
-            // Maybe properties were registered as "key" "value" instead of "Key" "Value"
-            System.out.println("\n\n ******* WARNING ******* Properties names "
-                    + "Key and Value are invalid. Trying key and value! ******** \n\n"
-                    + "Maybe this is not enough and still failing -- DEBUG THIS --"
-                    + "InfinispanProducer2.createEntity()");
-
-            // SERIALIZATION OR DESERIALIZATION
-            ispnCache.put(entity.getProperty("key").getValue(), entity.getProperty("value").getValue());
-        }
-
-
+        // setup oentityKey properly for getEntity() method
         OEntityKey oentityKey = entity.getEntityKey();
 
         if (entity.getEntityKey() == null) {
@@ -888,15 +752,9 @@ public class InfinispanProducer2 implements ODataProducer {
             // there are set only necessary properties for creating new MyInternalCacheEntry instance there
             Map<String, Object> entityKeysValues = new HashMap<String, Object>();
 
-            // TODO: take care of this better way!!
-            try {
-                byte[] key = (byte[]) entity.getProperty("Key").getValue();
-                dump("byte[] key = " + key + " deserialization to object: " + Utils.deserialize(key).toString());
-                entityKeysValues.put("Key", Utils.deserialize(key));
-            } catch (Exception e) {
-                System.err.println("Exception while deserializing data. Location: InfinispanProducer, createEntity, entityKeysValues.put. "
-                        + e.getMessage());
-            }
+            byte[] key = (byte[]) entity.getProperty("Key").getValue();
+            dump("byte[] key = " + key + " deserialization to object: " + Utils.deserialize(key).toString());
+            entityKeysValues.put("Key", Utils.deserialize(key));
 
             oentityKey = OEntityKey.create(entityKeysValues.values());
         }
@@ -1167,7 +1025,6 @@ public class InfinispanProducer2 implements ODataProducer {
             // this mice is put into OEntity and I need to put there properties in byte[] => in edm.binary format
             // so I need to serialize these objects here
             mice = new InMemoryProducerExample.MyInternalCacheEntry(Utils.serialize(rc.getIspnCacheKey()), Utils.serialize(value));
-
         }
         return mice;
     }
@@ -1317,15 +1174,9 @@ public class InfinispanProducer2 implements ODataProducer {
         return pojo;
     }
 
-    // TODO: reuse this - everything is implemented and working
-    // TODO: just use it and map it to the cache
-    // TODO: re-implement this as some HANDLER for cache
-    // TODO: this class will provide something like provider for accessing ISPN cache!
     public class InMemoryEntityInfo<TEntity> {
 
         // we are maintaining collection of these entities - they are mapped to EntitySetName in [eis] hash map
-        // TODO: how about maintaining cache inside of instance of this class??
-        // TODO: and directly access cache here
         String entitySetName;
         String entityTypeName;
         String[] keys;
@@ -1793,7 +1644,7 @@ public class InfinispanProducer2 implements ODataProducer {
         }
 
         /**
-         * There is a workaround here. Key and Value entity properties are
+         * There is a workaround here!! Key and Value entity properties are
          * directly considered as byte[].class and model is ignored.
          *
          * @param decorator

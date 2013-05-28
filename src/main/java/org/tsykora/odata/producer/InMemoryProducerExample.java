@@ -16,9 +16,12 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -52,6 +55,27 @@ public class InMemoryProducerExample extends AbstractExample {
         
         // TODO: reveal magic here and REGISTER this entitySet lightweightly
 
+        
+        // TODO -- how to connect this, how to associate, link this to caches (entries)
+        producerBig.register(MyCacheManager.class, MyCacheManager.class, "CacheManagers", new Func<Iterable<MyCacheManager>>() {
+            public Iterable<MyCacheManager> apply() {
+                List<MyCacheManager> firstManagerForRegister = new ArrayList<MyCacheManager>();
+                firstManagerForRegister.add(new MyCacheManager("SomeSpecialCacheManagerName"));
+                return firstManagerForRegister;
+            }
+        }, Funcs.method(MyCacheManager.class, MyCacheManager.class, "toString"));
+
+
+        producerBig.register(MyCache.class, MyCache.class, "Caches", new Func<Iterable<MyCache>>() {
+            public Iterable<MyCache> apply() {
+                List<MyCache> firstForRegister = new ArrayList<MyCache>();
+                firstForRegister.add(new MyCache("SomeSpecialCacheName"));
+                return firstForRegister;
+            }
+        }, Funcs.method(MyCache.class, MyCache.class, "toString"));
+
+
+        
         // TODO just for Producer2 -- NOW - only register my EDM entity set
         // TODO - check class of KEY and the last Funcs.method (try to use simple strings for key or Object.getId()??
 
@@ -60,7 +84,6 @@ public class InMemoryProducerExample extends AbstractExample {
             // TODO - can I skip this registration? Can I do it inside of producer while starting new cache?
             // TODO - while starting service? while creating new cache from builder? or according to xml?
             // TODO - register entrySet fro new cache after it starts.
-
             public Iterable<MyInternalCacheEntry> apply() {
                 List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
                 firstEntryForRegister.add(new MyInternalCacheEntry("key8".getBytes(), "value8".getBytes()));
@@ -70,9 +93,8 @@ public class InMemoryProducerExample extends AbstractExample {
         }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
 
 
-
-
-
+        
+        
 // <editor-fold defaultstate="collapsed" desc="other producer's registrations">
 //    // expose this jvm's thread information (Thread instances) as an entity-set called "Threads"
 //    producer.register(Thread.class, "Threads", new Func<Iterable<Thread>>() {
@@ -222,41 +244,68 @@ public class InMemoryProducerExample extends AbstractExample {
 //      }
 //      return setOfEntries;
 //   }
-    // TODO: rename this parameterized type to CacheEntry or CacheKey for example...
-    // so there are these types stored in EDM as a property model
-    // and according to this given pattern clients communicate with cache
-    public static class Pair<X, Y> {
+    
+    public static class MyCacheManager {
 
-        private X first;
-        private Y second;
+        private String name;
+        private List<MyCache> caches = new LinkedList<MyCache>();
 
-        public Pair(X a1, Y a2) {
-            first = a1;
-            second = a2;
+        public MyCacheManager(String name) {
+            this.name = name;
         }
 
-        public X getFirst() {
-            return first;
+        public List<MyCache> getCaches() {
+            return caches;
         }
 
-        public Y getSecond() {
-            return second;
+        public void setCaches(List<MyCache> caches) {
+            this.caches = caches;
         }
 
-        public void setFirst(X arg) {
-            first = arg;
+        public String getName() {
+            return name;
         }
 
-        public void setSecond(Y arg) {
-            second = arg;
+        public void setName(String name) {
+            this.name = name;
         }
     }
+    
+    public static class MyCache {
+
+        private String cacheName;
+        private List<MyInternalCacheEntry> entries = new LinkedList<MyInternalCacheEntry>();
+
+        public MyCache(String cacheName) {
+            this.cacheName = cacheName;
+        }
+
+        public String getCacheName() {
+            return cacheName;
+        }
+
+        public void setCacheName(String cacheName) {
+            this.cacheName = cacheName;
+        }        
+
+        public List<MyInternalCacheEntry> getEntries() {
+            return entries;
+        }
+
+        public void setEntries(List<MyInternalCacheEntry> entries) {
+            this.entries = entries;
+        }       
+        
+    }
+    
+  
+        
 
     public static class MyInternalCacheEntry {
 
         private Object key;
-        private Object value;
-
+        private Object value;        
+        
         public MyInternalCacheEntry(Object key, Object value) {
             this.key = key;
             this.value = value;
