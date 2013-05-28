@@ -10,7 +10,7 @@ import org.tsykora.odata.producer.AbstractExample;
  */
 public class ExampleConsumer extends AbstractExample {
 
-    public static String endpointUri = "http://localhost:8887/InMemoryProducerExample.svc/";
+    public static String endpointUri = "http://localhost:8887/ODataInfinispanEndpoint.svc/";
 
     public static void main(String[] args) {
         ExampleConsumer example = new ExampleConsumer();

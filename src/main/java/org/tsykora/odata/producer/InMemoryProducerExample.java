@@ -35,10 +35,11 @@ public class InMemoryProducerExample extends AbstractExample {
     @SuppressWarnings({"unchecked", "rawtypes"})
     public void run(String[] args) {
 
-        String endpointUri = "http://localhost:8887/InMemoryProducerExample.svc/";
+        String endpointUri = "http://localhost:8887/ODataInfinispanEndpoint.svc/";
 
         // final InMemoryProducer producer = new InMemoryProducer("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
 
+       // later do it based on infinispan.xml file
        List<String> cacheNames = new LinkedList<String>();
        cacheNames.add("defaultCache");
        cacheNames.add("mySpecialNamedCache");

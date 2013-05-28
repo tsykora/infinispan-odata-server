@@ -3,7 +3,6 @@ package org.tsykora.odata.producer;
 import org.core4j.Enumerable;
 import org.core4j.Func;
 import org.core4j.Func1;
-import org.core4j.Funcs;
 import org.core4j.Predicate1;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
@@ -24,8 +23,8 @@ import org.odata4j.producer.inmemory.InMemoryEvaluation;
 import org.odata4j.producer.inmemory.InMemoryTypeMapping;
 import org.odata4j.producer.inmemory.PropertyModel;
 import org.tsykora.odata.common.Utils;
-import org.tsykora.odata.producer.InfinispanProducer2.RequestContext.RequestType;
 import org.tsykora.odata.producer.InMemoryProducerExample.MyInternalCacheEntry;
+import org.tsykora.odata.producer.InfinispanProducer2.RequestContext.RequestType;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -108,7 +107,7 @@ public class InfinispanProducer2 implements ODataProducer {
     * Do everything important here while creating new producer instance.
     *
     */
-    public InfinispanProducer2(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
+    public <TEntity, TKey> InfinispanProducer2(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
             boolean flattenEdm, List<String> cacheNames) {
         this.namespace = namespace;
         this.containerName = containerName != null && !containerName.isEmpty() ? containerName : "Container";
@@ -132,23 +131,82 @@ public class InfinispanProducer2 implements ODataProducer {
           System.out.println("About to register cache as a EntitySet.....");
 
 
+          // TODO: IDEA -- if not registered yet -- register it during first put
+
           // TODO: reveal magic here and REGISTER this entitySet lightweightly
           // TODO just for Producer2 -- NOW - only register my EDM entity set
           // TODO - check class of KEY and the last Funcs.method (try to use simple strings for key or Object.getId()??
           // TODO -- move this registration into PRODUCER and find how to register it properly and easily
 
           // register entity set with name of cache
-          register(MyInternalCacheEntry.class, MyInternalCacheEntry.class, cacheName, new Func<Iterable<MyInternalCacheEntry>>() {
+//          register(MyInternalCacheEntry.class, MyInternalCacheEntry.class, cacheName, new Func<Iterable<MyInternalCacheEntry>>() {
+//
+//             // TODO - can I skip this registration? Can I do it inside of producer while starting new cache?
+//             // TODO - while starting service? while creating new cache from builder? or according to xml?
+//             // TODO - register entrySet for new cache after it starts.
+//             public Iterable<MyInternalCacheEntry> apply() {
+//                List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
+////                firstEntryForRegister.add(new MyInternalCacheEntry("tempKey1".getBytes(), "tempValue1".getBytes()));
+//                return firstEntryForRegister;
+//             }
+//          }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
 
-             // TODO - can I skip this registration? Can I do it inside of producer while starting new cache?
-             // TODO - while starting service? while creating new cache from builder? or according to xml?
-             // TODO - register entrySet for new cache after it starts.
-             public Iterable<MyInternalCacheEntry> apply() {
-                List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
-                firstEntryForRegister.add(new MyInternalCacheEntry("tempKey1".getBytes(), "tempValue1".getBytes()));
-                return firstEntryForRegister;
+
+
+
+
+          // is it enough for register now?
+          // how about model???
+
+          // FOR NOW -- registering this
+          final String entitySetName = cacheName;
+
+
+
+//          new Func<Iterable<MyInternalCacheEntry>>() {
+//             public Iterable<MyInternalCacheEntry> apply() {
+//                List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
+////                firstEntryForRegister.add(new MyInternalCacheEntry("tempKey1".getBytes(), "tempValue1".getBytes()));
+//                return firstEntryForRegister;
+//             }
+//
+//
+
+
+          InMemoryEntityInfo<MyInternalCacheEntry> ei = new InMemoryEntityInfo<MyInternalCacheEntry>();
+
+          ei.entityClass = MyInternalCacheEntry.class;
+          ei.entitySetName = entitySetName;
+          ei.entityTypeName = entitySetName;
+
+
+          final String[] keys = {"ExperimentalEntityKey"};
+          ei.keys = keys;
+
+          ei.id = new Func1<Object, HashMap<String, Object>>() {
+             @Override
+             public HashMap<String, Object> apply(Object input) {
+                HashMap<String, Object> values = new HashMap<String, Object>();
+                for (String key : keys) {
+                   values.put(key, eis.get(entitySetName).properties.getPropertyValue(input, key));
+                }
+                return values;
              }
-          }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
+          };
+
+          PropertyModel model = new BeanBasedPropertyModel(MyInternalCacheEntry.class, this.flattenEdm);
+          model = new EnumsAsStringsPropertyModelDelegate(model);
+          model = new EntityIdFunctionPropertyModelDelegate<TEntity, TKey>(
+                model, ID_PROPNAME, (Class) MyInternalCacheEntry.class,
+                (Func1<TEntity,TKey>) ei.id);
+
+          ei.properties = model;
+
+
+          eis.put(entitySetName, ei);
+          // I need to generate proper metadata (passing eis to newEdmGenerator)
+          // setting type mapping to Default explicitly here
+          metadata = newEdmGenerator(namespace, InMemoryTypeMapping.DEFAULT, ID_PROPNAME, eis, complexTypes).generateEdm(decorator).build();
 
        }
     }
