@@ -964,19 +964,35 @@ public class InfinispanProducer2 implements ODataProducer {
     }
 
     @Override
-    public BaseResponse callFunction(ODataContext context, EdmFunctionImport name, Map<String, OFunctionParameter> params, QueryInfo queryInfo) {
+    public BaseResponse callFunction(ODataContext context, EdmFunctionImport function, Map<String, OFunctionParameter> params, QueryInfo queryInfo) {
 
        System.out.println( "\n\n\n *******////////*********/////////*********////////********////////*******/////// ");
        System.out.println( "\n\n\n I AM IN CALL FUNCTION NOW, do what you gonna do :)) ");
-       System.out.println( "\n\n\n *******////////*********/////////*********////////********////////*******/////// ");
+       System.out.println( "\n\n\n *******////////*********/////////*********////////********////////*******/////// \n\n\n ");
+
+       System.out.println("Params:");
+       for(String paramKey : params.keySet()) {
+          System.out.println(paramKey + "=" + params.get(paramKey).getValue() + " of type: " + params.get(paramKey).getType());
+       }
 
 
        // name is put params value key
        // or accept complex types later
+      // TODO? need to implement this?
+       OEntityKey oentityKey = OEntityKey.create("key7");
 
-       // TODO? need to implement this?
-       BaseResponse response = getEntity(context, name.getEntitySet().toString(), OEntityKey.create(params.values()) ,null);
+//       String setNameWhichIsCacheName = params.get("cacheName").getValue().toString();
+//       String cacheOperation = params.get("cacheOperation").getValue().toString();
 
+//       if(cacheOperation.equals("PUT")) {
+//         getCache(setNameWhichIsCacheName).put(params.get("cacheEntryKey").getValue().toString(), params.get("cacheEntryKey").getValue().toString());
+//       }
+//
+//       // returning just right putted entity in this case
+       BaseResponse response = getEntity(context, "defaultCache",
+                                         oentityKey ,null);
+
+//       BaseResponse response = null;
 
        return response;
 
@@ -1925,10 +1941,35 @@ public class InfinispanProducer2 implements ODataProducer {
            List<EdmFunctionParameter.Builder> funcParameters = new LinkedList<EdmFunctionParameter.Builder>();
 
            EdmFunctionParameter.Builder pb = new EdmFunctionParameter.Builder();
+           EdmFunctionParameter.Builder pb2 = new EdmFunctionParameter.Builder();
+           EdmFunctionParameter.Builder pb3 = new EdmFunctionParameter.Builder();
+           EdmFunctionParameter.Builder pb4 = new EdmFunctionParameter.Builder();
+
+           // TODO: do it as some complex type
+           EdmCollectionType collectionType = new EdmCollectionType(EdmProperty.CollectionKind.Collection,
+                    schema.getEntityTypes().get(0).build());
+//           EdmCollectionType collectionType2 = new EdmCollectionType(EdmProperty.CollectionKind.Collection,
+//                                                                    schema.getEntityTypes().get(1).build());
+
+           System.out.println(" \n\n /////////// predefined entity types ............. /////// \n\n ");
+           EdmEntityType entityType = schema.getEntityTypes().get(0).build();
+           System.out.println(entityType);
+           if (schema.getEntityTypes().get(1) != null) {
+            EdmEntityType entityType2 = schema.getEntityTypes().get(1).build();
+            System.out.println(entityType2);
+           }
+           System.out.println(" \n\n ^^^ /////////// predefined entity types ............. /////// ^^^ \n\n ");
 
            // setMode(IN)
-           pb.setName("cacheEntryKey").setType(EdmType.getSimple("String")).setNullable(false).build();
+           pb.setName("cacheName").setType(collectionType).setNullable(false).setBound(true).build();
+//           pb.setName("cacheName").setType(EdmType.getSimple("String")).setNullable(false).build();
            funcParameters.add(pb);
+           pb2.setName("cacheOperation").setType(EdmType.getSimple("String")).setNullable(false).build();
+           funcParameters.add(pb2);
+           pb3.setName("cacheEntryKey").setType(EdmType.getSimple("String")).setNullable(false).build();
+           funcParameters.add(pb3);
+           pb4.setName("cacheEntryValue").setType(EdmType.getSimple("String")).setNullable(false).build();
+           funcParameters.add(pb4);
 
            EdmFunctionImport.Builder fb = new EdmFunctionImport.Builder();
            // why is that service operation and not a Function
@@ -1938,15 +1979,20 @@ public class InfinispanProducer2 implements ODataProducer {
            fb.setName("MyFunction")
                  .setEntitySet(container.getEntitySets().get(0))
                  .setEntitySetName(container.getEntitySets().get(0).getName())
-//                 .setReturnType(EdmType.getSimple("String"))
-                 .setHttpMethod("GET")
+//                 .setReturnType(collectionType)
+//                 .setHttpMethod("GET")
                  .setBindable(true)
-                 .setSideEffecting(false)
-                 .setAlwaysBindable(true)
+                 .setSideEffecting(false)  // true for Action (POST)
+                 .setAlwaysBindable(false)
                  .addParameters(funcParameters).build();
 
+//           IsBindable - 'true' indicates that the first parameter is the binding parameter
+//           IsSideEffecting - 'true' defines an action rather than a function
+//           m:IsAlwaysBindable - 'false' defines that the binding can be conditioned to the entity state.
 
-           funcImports.add(fb);
+
+
+                 funcImports.add(fb);
 
            container.addFunctionImports(funcImports);
         }
