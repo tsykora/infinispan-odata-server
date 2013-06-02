@@ -1,9 +1,20 @@
 package org.tsykora.odata.consumer;
 
 import org.odata4j.consumer.ODataConsumer;
+import org.odata4j.core.OBindableEntities;
+import org.odata4j.core.OBindableEntity;
+import org.odata4j.core.OEntity;
 import org.odata4j.core.OProperties;
+import org.odata4j.edm.EdmEntityContainer;
+import org.odata4j.edm.EdmFunctionImport;
+import org.odata4j.edm.EdmSchema;
 import org.tsykora.odata.common.Utils;
 import org.tsykora.odata.producer.AbstractExample;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * @author tsykora
@@ -31,6 +42,7 @@ public class ExampleConsumer extends AbstractExample {
         // format is null, method to tunnel is null (ok?)
         System.out.println("Creating instance of ExampleConsumer, initializing oDataConsumer...");
         ODataConsumer consumer = this.rtFacde.create(endpointUri, null, null);
+
 
 
         System.out.println("Some simple debug outputs...");
@@ -92,12 +104,14 @@ public class ExampleConsumer extends AbstractExample {
 
         // TODO - FIX THIS
         // this is for only one REGISTERED entry - this does not reflex cache content!! yet!!
-        Integer count = consumer.getEntitiesCount("defaultCache").execute();
-        System.out.println("\n\n\nCount of entries is defaultCache set is: " + count);
+//        Integer count = consumer.getEntitiesCount("defaultCache").execute();
+//        System.out.println("\n\n\nCount of entries is defaultCache set is: " + count);
 
 
-        System.out.println("\n\n\n **** reporting metadata reportMetadata(cosnumer.getMetadata): ***** ");
-        reportMetadata(consumer.getMetadata());
+        System.out.println("\n\n\n **** reporting metadata reportMetadata(consumer.getMetadata): ***** ");
+//        reportMetadata(consumer.getMetadata());
+
+//       System.out.println("METADATA SCHEMAS SIZE: " + consumer.getMetadata().getSchemas().size());
 
         System.out.println("\n\n\n **** **************************** ***** \n\n ");
 
@@ -105,7 +119,64 @@ public class ExampleConsumer extends AbstractExample {
 //                properties(OProperties.string("Key", "key10")).properties(OProperties.string("Value", "value10")).get();
 //        System.out.println("Entity key here should be null (is not defined yet): " + onlyGetEntity.getEntityKey());
 //        
-        
+
+
+//       newProduct = c.getEntity("Products", 10).execute();
+       OEntity createdEntity = consumer.createEntity("defaultCache").
+             properties(OProperties.binary("Key", Utils.serialize("key77"))).
+             properties(OProperties.binary("Value", Utils.serialize("value77"))).execute();
+
+
+//       Map<String, EdmFunctionImport> bindableFunctions = new HashMap<String, EdmFunctionImport>();
+//       for(EdmFunctionImport efi : consumer.getMetadata().getFunctions(EdmFunctionImport.FunctionKind.Function)) {
+//         bindableFunctions.put("MyFunction", efi);
+//       }
+
+
+       //TODO? how is it possible that I don't have a EntityContainer defined in the schema?
+       List<EdmFunctionImport> functionList = new ArrayList<EdmFunctionImport>();
+       for (EdmSchema schema : consumer.getMetadata().getSchemas()) {
+          for (EdmEntityContainer eec : schema.getEntityContainers()) {
+             for (EdmFunctionImport efi : eec.getFunctionImports()) {
+                System.out.println("////////////////////////////////////////////");
+                System.out.println("Function kind of function " + efi.getName() + " is: ");
+                System.out.println(efi.getFunctionKind());
+                if (efi.getFunctionKind() == EdmFunctionImport.FunctionKind.ServiceOperation) {
+                   functionList.add(efi);
+                }
+             }
+          }
+       }
+
+       Map<String, EdmFunctionImport> bindableFunctions = new HashMap<String, EdmFunctionImport>();
+       for(EdmFunctionImport efi : functionList) {
+          bindableFunctions.put(efi.getName(), efi);
+       }
+
+
+
+       OEntity bindableEntity = OBindableEntities.createBindableEntity(createdEntity, bindableFunctions);
+
+       OBindableEntity bindableEntity2 = bindableEntity.findExtension(OBindableEntity.class);
+
+       EdmFunctionImport myFunction = bindableEntity2.getBindableFunctions().get("MyFunction");
+
+       System.out.println("\n\n\n /////*****************///////// ");
+       System.out.println("Still in consumer --- trying to call function without any getting");
+       // call function here
+
+
+
+       // looks like to be only for bindable functions (== Function not service operation)
+//       consumer.callFunction(myFunction.getName()).bind("mySpecialNamedCache").pString("cacheEntryKey", "key77").execute();
+
+       // if its service operation I have no myFunction here, it is not bindable at all
+       // for caches I will probably need to bind it to particular EntrySet(name) which is cacheName
+       consumer.callFunction("MyFunction").pString("cacheEntryKey", "key77").execute();
+
+
+
+
 
 
         ODataCache<Object, Integer> defaultCache = new ODataCache<Object, Integer>(consumer, "defaultCache");

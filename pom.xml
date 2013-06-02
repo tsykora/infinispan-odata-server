@@ -22,7 +22,7 @@
         <dependency>
             <groupId>org.odata4j</groupId>
             <artifactId>odata4j-core</artifactId>
-            <version>0.7.0</version>
+            <version>0.8.0-SNAPSHOT</version>
             <type>pom</type>
             <exclusions>
                 <exclusion>
@@ -38,7 +38,7 @@
         <dependency>
             <groupId>org.odata4j</groupId>
             <artifactId>odata4j-jersey</artifactId>
-            <version>0.7.0</version>
+            <version>0.8.0-SNAPSHOT</version>
         </dependency>
 
 		<!-- Hibernate JPA framework -->

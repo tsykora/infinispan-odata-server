@@ -1,30 +1,15 @@
 package org.tsykora.odata.producer;
 
-import com.sun.crypto.provider.DESCipher;
-import java.io.IOException;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.core4j.Enumerable;
 import org.odata4j.consumer.ODataConsumer;
 import org.odata4j.core.OEntity;
 import org.odata4j.core.OProperty;
-import org.odata4j.edm.EdmAssociation;
-import org.odata4j.edm.EdmAssociationSet;
-import org.odata4j.edm.EdmComplexType;
-import org.odata4j.edm.EdmDataServices;
-import org.odata4j.edm.EdmEntityContainer;
-import org.odata4j.edm.EdmEntitySet;
-import org.odata4j.edm.EdmEntityType;
-import org.odata4j.edm.EdmFunctionImport;
-import org.odata4j.edm.EdmFunctionParameter;
-import org.odata4j.edm.EdmNavigationProperty;
-import org.odata4j.edm.EdmProperty;
-import org.odata4j.edm.EdmSchema;
-import org.odata4j.edm.EdmSimpleType;
-//import org.odata4j.test.CxfRuntimeFacade;
+import org.odata4j.edm.*;
 import org.tsykora.odata.common.Utils;
 import org.tsykora.odata.facades.JerseyRuntimeFacade;
 import org.tsykora.odata.facades.RuntimeFacade;
+
+//import org.odata4j.test.CxfRuntimeFacade;
 
 @SuppressWarnings("unused")
 public abstract class AbstractExample {

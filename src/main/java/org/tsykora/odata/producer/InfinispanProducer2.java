@@ -3,6 +3,7 @@ package org.tsykora.odata.producer;
 import org.core4j.Enumerable;
 import org.core4j.Func;
 import org.core4j.Func1;
+import org.core4j.Funcs;
 import org.core4j.Predicate1;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
@@ -139,20 +140,17 @@ public class InfinispanProducer2 implements ODataProducer {
           // TODO -- move this registration into PRODUCER and find how to register it properly and easily
 
           // register entity set with name of cache
-//          register(MyInternalCacheEntry.class, MyInternalCacheEntry.class, cacheName, new Func<Iterable<MyInternalCacheEntry>>() {
-//
-//             // TODO - can I skip this registration? Can I do it inside of producer while starting new cache?
-//             // TODO - while starting service? while creating new cache from builder? or according to xml?
-//             // TODO - register entrySet for new cache after it starts.
-//             public Iterable<MyInternalCacheEntry> apply() {
-//                List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
-////                firstEntryForRegister.add(new MyInternalCacheEntry("tempKey1".getBytes(), "tempValue1".getBytes()));
-//                return firstEntryForRegister;
-//             }
-//          }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
+          register(MyInternalCacheEntry.class, MyInternalCacheEntry.class, cacheName, new Func<Iterable<MyInternalCacheEntry>>() {
 
-
-
+             // TODO - can I skip this registration? Can I do it inside of producer while starting new cache?
+             // TODO - while starting service? while creating new cache from builder? or according to xml?
+             // TODO - register entrySet for new cache after it starts.
+             public Iterable<MyInternalCacheEntry> apply() {
+                List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
+//                firstEntryForRegister.add(new MyInternalCacheEntry("tempKey1".getBytes(), "tempValue1".getBytes()));
+                return firstEntryForRegister;
+             }
+          }, Funcs.method(MyInternalCacheEntry.class, MyInternalCacheEntry.class, "toString"));
 
 
           // is it enough for register now?
@@ -160,7 +158,6 @@ public class InfinispanProducer2 implements ODataProducer {
 
           // FOR NOW -- registering this
           final String entitySetName = cacheName;
-
 
 
 //          new Func<Iterable<MyInternalCacheEntry>>() {
@@ -173,40 +170,40 @@ public class InfinispanProducer2 implements ODataProducer {
 //
 
 
-          InMemoryEntityInfo<MyInternalCacheEntry> ei = new InMemoryEntityInfo<MyInternalCacheEntry>();
-
-          ei.entityClass = MyInternalCacheEntry.class;
-          ei.entitySetName = entitySetName;
-          ei.entityTypeName = entitySetName;
-
-
-          final String[] keys = {"ExperimentalEntityKey"};
-          ei.keys = keys;
-
-          ei.id = new Func1<Object, HashMap<String, Object>>() {
-             @Override
-             public HashMap<String, Object> apply(Object input) {
-                HashMap<String, Object> values = new HashMap<String, Object>();
-                for (String key : keys) {
-                   values.put(key, eis.get(entitySetName).properties.getPropertyValue(input, key));
-                }
-                return values;
-             }
-          };
-
-          PropertyModel model = new BeanBasedPropertyModel(MyInternalCacheEntry.class, this.flattenEdm);
-          model = new EnumsAsStringsPropertyModelDelegate(model);
-          model = new EntityIdFunctionPropertyModelDelegate<TEntity, TKey>(
-                model, ID_PROPNAME, (Class) MyInternalCacheEntry.class,
-                (Func1<TEntity,TKey>) ei.id);
-
-          ei.properties = model;
-
-
-          eis.put(entitySetName, ei);
-          // I need to generate proper metadata (passing eis to newEdmGenerator)
-          // setting type mapping to Default explicitly here
-          metadata = newEdmGenerator(namespace, InMemoryTypeMapping.DEFAULT, ID_PROPNAME, eis, complexTypes).generateEdm(decorator).build();
+//          InMemoryEntityInfo<MyInternalCacheEntry> ei = new InMemoryEntityInfo<MyInternalCacheEntry>();
+//
+//          ei.entityClass = MyInternalCacheEntry.class;
+//          ei.entitySetName = entitySetName;
+//          ei.entityTypeName = entitySetName;
+//
+//
+//          final String[] keys = {"ExperimentalEntityKey"};
+//          ei.keys = keys;
+//
+//          ei.id = new Func1<Object, HashMap<String, Object>>() {
+//             @Override
+//             public HashMap<String, Object> apply(Object input) {
+//                HashMap<String, Object> values = new HashMap<String, Object>();
+//                for (String key : keys) {
+//                   values.put(key, eis.get(entitySetName).properties.getPropertyValue(input, key));
+//                }
+//                return values;
+//             }
+//          };
+//
+//          PropertyModel model = new BeanBasedPropertyModel(MyInternalCacheEntry.class, this.flattenEdm);
+//          model = new EnumsAsStringsPropertyModelDelegate(model);
+//          model = new EntityIdFunctionPropertyModelDelegate<TEntity, TKey>(
+//                model, ID_PROPNAME, (Class) MyInternalCacheEntry.class,
+//                (Func1<TEntity,TKey>) ei.id);
+//
+//          ei.properties = model;
+//
+//
+//          eis.put(entitySetName, ei);
+//          // I need to generate proper metadata (passing eis to newEdmGenerator)
+//          // setting type mapping to Default explicitly here
+//          metadata = newEdmGenerator(namespace, InMemoryTypeMapping.DEFAULT, ID_PROPNAME, eis, complexTypes).generateEdm(decorator).build();
 
        }
     }
@@ -581,7 +578,7 @@ public class InfinispanProducer2 implements ODataProducer {
      * @return
      */
     @Override
-    public EntitiesResponse getEntities(String entitySetName, final QueryInfo queryInfo) {
+    public EntitiesResponse getEntities(ODataContext context, String entitySetName, final QueryInfo queryInfo) {
 
         // go for entries directly into cache
 
@@ -689,7 +686,7 @@ public class InfinispanProducer2 implements ODataProducer {
     }
 
     @Override
-    public CountResponse getEntitiesCount(String entitySetName, final QueryInfo queryInfo) {
+    public CountResponse getEntitiesCount(ODataContext context, String entitySetName, final QueryInfo queryInfo) {
 
 
         final RequestContext rc = RequestContext.newBuilder(RequestType.GetEntitiesCount).
@@ -770,7 +767,7 @@ public class InfinispanProducer2 implements ODataProducer {
      * deserialized object (so it can directly access ispn cache)
      */
     @Override
-    public EntityResponse getEntity(final String entitySetName, final OEntityKey entityKey, final EntityQueryInfo queryInfo) {
+    public EntityResponse getEntity(ODataContext context, final String entitySetName, final OEntityKey entityKey, final EntityQueryInfo queryInfo) {
 
         PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
 
@@ -799,23 +796,25 @@ public class InfinispanProducer2 implements ODataProducer {
 
         OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
 
+
+
         return Responses.entity(oe);
     }
 
     @Override
-    public void mergeEntity(String entitySetName, OEntity entity) {
+    public void mergeEntity(ODataContext context, String entitySetName, OEntity entity) {
         // merge - what is equal to merge in ISPN?
         throw new NotImplementedException();
     }
 
     @Override
-    public void updateEntity(String entitySetName, OEntity entity) {
+    public void updateEntity(ODataContext context, String entitySetName, OEntity entity) {
         // simple update entry and re-call
         throw new NotImplementedException();
     }
 
     @Override
-    public void deleteEntity(String entitySetName, OEntityKey entityKey) {
+    public void deleteEntity(ODataContext context, String entitySetName, OEntityKey entityKey) {
         // simple remove entry and re-call 
         throw new NotImplementedException();
     }
@@ -830,7 +829,7 @@ public class InfinispanProducer2 implements ODataProducer {
      * @return
      */
     @Override
-    public EntityResponse createEntity(String entitySetName, final OEntity entity) {
+    public EntityResponse createEntity(ODataContext context, String entitySetName, final OEntity entity) {
 
         // Is put into IspnCache (or other cache - depends on entitySetName = cacheName)
         // cacheName can be defined by other was - EDM - later? If needed. Accept builders?
@@ -862,17 +861,17 @@ public class InfinispanProducer2 implements ODataProducer {
             oentityKey = OEntityKey.create(entityKeysValues.values());
         }
 
-        return getEntity(entitySetName, oentityKey, null);
+        return getEntity(context, entitySetName, oentityKey, null);
     }
 
     @Override
-    public EntityResponse createEntity(String entitySetName, OEntityKey entityKey, String navProp, OEntity entity) {
+    public EntityResponse createEntity(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, OEntity entity) {
         System.out.println("THIS IS SECOND createEntity CALL and this is NOT IMPLEMENTED YET!!!");
         throw new NotImplementedException();
     }
 
     @Override
-    public BaseResponse getNavProperty(String entitySetName, OEntityKey entityKey, String navProp, QueryInfo queryInfo) {
+    public BaseResponse getNavProperty(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, QueryInfo queryInfo) {
 
         RequestContext rc = RequestContext.newBuilder(RequestType.GetNavProperty).entitySetName(entitySetName).entitySet(getMetadata().getEdmEntitySet(entitySetName)).entityKey(entityKey).navPropName(navProp).queryInfo(queryInfo).pathHelper(new PropertyPathHelper(queryInfo)).build();
 
@@ -940,33 +939,62 @@ public class InfinispanProducer2 implements ODataProducer {
     }
 
     @Override
-    public CountResponse getNavPropertyCount(String entitySetName, OEntityKey entityKey, String navProp, QueryInfo queryInfo) {
+    public CountResponse getNavPropertyCount(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, QueryInfo queryInfo) {
         throw new NotImplementedException();
     }
 
     @Override
-    public EntityIdResponse getLinks(OEntityId sourceEntity, String targetNavProp) {
+    public EntityIdResponse getLinks(ODataContext context, OEntityId sourceEntity, String targetNavProp) {
         throw new NotImplementedException();
     }
 
     @Override
-    public void createLink(OEntityId sourceEntity, String targetNavProp, OEntityId targetEntity) {
+    public void createLink(ODataContext context, OEntityId sourceEntity, String targetNavProp, OEntityId targetEntity) {
         throw new NotImplementedException();
     }
 
     @Override
-    public void updateLink(OEntityId sourceEntity, String targetNavProp, OEntityKey oldTargetEntityKey, OEntityId newTargetEntity) {
+    public void updateLink(ODataContext context, OEntityId sourceEntity, String targetNavProp, OEntityKey oldTargetEntityKey, OEntityId newTargetEntity) {
         throw new NotImplementedException();
     }
 
     @Override
-    public void deleteLink(OEntityId sourceEntity, String targetNavProp, OEntityKey targetEntityKey) {
+    public void deleteLink(ODataContext context, OEntityId sourceEntity, String targetNavProp, OEntityKey targetEntityKey) {
         throw new NotImplementedException();
     }
 
     @Override
-    public BaseResponse callFunction(EdmFunctionImport name, Map<String, OFunctionParameter> params, QueryInfo queryInfo) {
-        throw new NotImplementedException();
+    public BaseResponse callFunction(ODataContext context, EdmFunctionImport name, Map<String, OFunctionParameter> params, QueryInfo queryInfo) {
+
+       System.out.println( "\n\n\n *******////////*********/////////*********////////********////////*******/////// ");
+       System.out.println( "\n\n\n I AM IN CALL FUNCTION NOW, do what you gonna do :)) ");
+       System.out.println( "\n\n\n *******////////*********/////////*********////////********////////*******/////// ");
+
+
+       // name is put params value key
+       // or accept complex types later
+
+       // TODO? need to implement this?
+       BaseResponse response = getEntity(context, name.getEntitySet().toString(), OEntityKey.create(params.values()) ,null);
+
+
+       return response;
+
+
+
+//       + InMemoryFunctionInfo<?> fun = eif.get(name.getName());
+//       + if (fun == null) {
+//          + throw new NotImplementedException();
+//          + }
+//       +
+//             + InMemoryEntityInfo<?> ei = eis.get(fun.entitySetName);
+//       + if (ei == null) {
+//          + throw new NotImplementedException();
+//          + }
+//       +
+//             + Iterable result = fun.model.execute((Func)ei.get, params);
+//       + return getEntities(ei, result, queryInfo);
+
     }
 
     @Override
@@ -1405,19 +1433,24 @@ public class InfinispanProducer2 implements ODataProducer {
                     setName(containerName).setIsDefault(true).
                     addEntitySets(entitySetsByName.values()).addAssociationSets(associationSets);
 
-            containers.add(container);
-
             EdmSchema.Builder schema = EdmSchema.newBuilder().setNamespace(namespace).
                     addEntityTypes(entityTypesByName.values()).addAssociations(associations).
                     addEntityContainers(containers).addComplexTypes(edmComplexTypes);
 
             addFunctions(schema, container);
 
+           // FIX ********************************
+           // FIX add container after function registration
+            containers.add(container);
+
             if (decorator != null) {
                 schema.setDocumentation(decorator.getDocumentationForSchema(namespace));
                 schema.setAnnotations(decorator.getAnnotationsForSchema(namespace));
             }
 
+           // FIX ********************************
+           // FIX add containers into schema so I can get it in Metadata and properly find function imports in EdmDataServices
+            schema.addEntityContainers(containers);
             schemas.add(schema);
             EdmDataServices.Builder rt = EdmDataServices.newBuilder().addSchemas(schemas);
             if (decorator != null) {
@@ -1885,7 +1918,37 @@ public class InfinispanProducer2 implements ODataProducer {
          * @param container the EdmEntityContainer.Builder
          */
         protected void addFunctions(EdmSchema.Builder schema, EdmEntityContainer.Builder container) {
-            // overridable :)
+
+           System.out.println("\n\n\n **************** in addFunctions method *************** \n\n\n");
+
+           List<EdmFunctionImport.Builder> funcImports = new LinkedList<EdmFunctionImport.Builder>();
+           List<EdmFunctionParameter.Builder> funcParameters = new LinkedList<EdmFunctionParameter.Builder>();
+
+           EdmFunctionParameter.Builder pb = new EdmFunctionParameter.Builder();
+
+           // setMode(IN)
+           pb.setName("cacheEntryKey").setType(EdmType.getSimple("String")).setNullable(false).build();
+           funcParameters.add(pb);
+
+           EdmFunctionImport.Builder fb = new EdmFunctionImport.Builder();
+           // why is that service operation and not a Function
+//           fb.setName("MyFunction").setEntitySet(container.getEntitySets().get(0)).setReturnType(EdmType.getSimple("String")).setBindable(true)
+//                 .setSideEffecting(false).addParameters(funcParameters).setAlwaysBindable(true).setHttpMethod("GET").build();
+
+           fb.setName("MyFunction")
+                 .setEntitySet(container.getEntitySets().get(0))
+                 .setEntitySetName(container.getEntitySets().get(0).getName())
+//                 .setReturnType(EdmType.getSimple("String"))
+                 .setHttpMethod("GET")
+                 .setBindable(true)
+                 .setSideEffecting(false)
+                 .setAlwaysBindable(true)
+                 .addParameters(funcParameters).build();
+
+
+           funcImports.add(fb);
+
+           container.addFunctionImports(funcImports);
         }
     }
 }
