@@ -35,12 +35,20 @@ public class ExampleConsumer extends AbstractExample {
       System.out.println("Creating instance of ExampleConsumer, initializing oDataConsumer...");
       ODataConsumer consumer = this.rtFacde.create(endpointUri, null, null);
 
+      System.out.println("\n\n\n\n");
+      reportMetadata(consumer.getMetadata());
+      System.out.println("\n\n\n\n");
 
       // http://datajs.codeplex.com/discussions/391490  ??
       // NOTE/SKILL: to call it from here Producer need to implement findExtension (it can return null)
       // + it needs some successful response for ConsumerCreateEntityRequest
 
 
+      // default cache is complex, not simple cache entry (String, String)
+
+      // TODO !!!!!!!!!! FIX THIS
+      // do decision in getEntity for this case + is it needed? think...
+      // automatically serialize response -- but what if I call simple getEntity from browser on simple cache based entity?
       reportEntity(" new cache entry report: ", consumer.createEntity("defaultCache").
             properties(OProperties.binary("Key", Utils.serialize("key7"))).
             properties(OProperties.binary("Value", Utils.serialize("value7"))).execute());
@@ -75,25 +83,77 @@ public class ExampleConsumer extends AbstractExample {
       String encodedString = encoder.encode(serializedObject);
       System.out.println("encodedObject for transfer: " + encodedString);
 
-      // calling function MyFunction on particular entity in entitySet
-      Enumerable<OObject> result = consumer.callFunction("MyFunction")
-            .bind("mySpecialNamedCache")
-            .pString("cacheOperation", "PUT")
-            .pString("cacheEntryKey", "key77")
-            .pString("cacheEntryValue", "value77")
-            .pString("encodedSerializedObject", encodedString)
+      String entitySetNameCacheName = "defaultCache";
+
+      Enumerable<OObject> results_put_empty = consumer.callFunction(entitySetNameCacheName + "_put")
+            .bind(entitySetNameCacheName)
+                  // Note: when there is no definition of parameter, parameter is simply null
+            .pString("keyEncodedSerializedObject", encodedString)
+            .pString("valueEncodedSerializedObject", encodedString)
             .execute();
 
 
-      ODataCache<String, String> mySpecialNamedCache = new ODataCache<String, String>(consumer, "mySpecialNamedCache");
 
+
+
+      // mySpecialNamedCache - SIMPLE BASED
+
+      entitySetNameCacheName = "mySpecialNamedCache";
+
+      // working with cache entry simple class (String, String)
+      OEntity createdEntity = consumer.createEntity("mySpecialNamedCache").
+            properties(OProperties.string("simpleStringKey", "key77simple")).
+            properties(OProperties.string("simpleStringValue", "value77simple")).execute();
+
+      String simpleKey = "simpleKey1";
+      String simpleValue = "simpleValue1";
+
+      // ispn_put is defined (in addFunctions) to have NO return type so results are null here
+      Enumerable<OObject> results_put_empty2 = consumer.callFunction(entitySetNameCacheName + "_put")
+            .bind(entitySetNameCacheName)
+            // Note: when there is no definition of parameter, parameter is simply null
+            .pString("keySimpleString", simpleKey)
+            .pString("valueSimpleString", simpleValue)
+            .execute();
+
+
+
+      // ispn_get is defined (in addFunctions) to have return type EdmSimpleType.STRING so results should be here
+      // TODO: Q: do I have string results here? or can I get entity?
+      // TODO: It would be ideal to return serialized decoded string which I can encode and deserialize then
+
+      try {
+         Thread.sleep(2000);
+      } catch (InterruptedException e) {
+         e.printStackTrace();  // TODO: Customise this generated block
+      }
+
+      Enumerable<OObject> results_get = consumer.callFunction(entitySetNameCacheName + "_get")
+            .bind("mySpecialNamedCache")
+            .pString("keySimpleString", "simpleKey1")
+//            .pString("valueSimpleString", simpleValue)
+            .execute();
+
+      for(OObject o : results_get) {
+         System.out.println("\n\n\n\n");
+
+         System.out.println("Some results here: ");
+         System.out.println(o.toString());
+         System.out.println("result type: " + o.getType());
+
+      }
+
+
+//      ODataCache<String, String> mySpecialNamedCache = new ODataCache<String, String>(consumer, "mySpecialNamedCache");
 //      mySpecialNamedCache.put();
 
-      OEntity createdEntity = consumer.createEntity("mySpecialNamedCache").
-            properties(OProperties.binary("Key", Utils.serialize("key77"))).
-            properties(OProperties.binary("Value", Utils.serialize("value77"))).execute();
+
 
       // URI here is only for caption
+      System.out.println("REPORT WHOLE ENTITY SET (defaultCache)");
+      reportEntities("******** " + endpointUri.concat("defaultCache"),
+                     consumer.getEntities("defaultCache").execute());
+
       System.out.println("REPORT WHOLE ENTITY SET (mySpecialNamedCache)");
       reportEntities("******** " + endpointUri.concat("mySpecialNamedCache"),
                      consumer.getEntities("mySpecialNamedCache").execute());

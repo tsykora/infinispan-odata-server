@@ -17,7 +17,7 @@ import org.odata4j.producer.resources.DefaultODataProducerProvider;
 
 import java.net.URL;
 import java.util.ArrayList;
-import java.util.LinkedList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -40,9 +40,9 @@ public class InMemoryProducerExample extends AbstractExample {
         // final InMemoryProducer producer = new InMemoryProducer("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
 
        // later do it based on infinispan.xml file
-       List<String> cacheNames = new LinkedList<String>();
-       cacheNames.add("defaultCache");
-       cacheNames.add("mySpecialNamedCache");
+       Map<String, Class> cacheNames = new HashMap<String, Class>();
+       cacheNames.put("defaultCache", MyInternalCacheEntry.class);
+       cacheNames.put("mySpecialNamedCache", MyInternalCacheEntrySimple.class);
 
         final InfinispanProducer2 producerBig =
               new InfinispanProducer2("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null, cacheNames);
@@ -245,6 +245,33 @@ public class InMemoryProducerExample extends AbstractExample {
             return hash;
         }
     }
+
+   public static class MyInternalCacheEntrySimple {
+
+      private String simpleStringKey;
+      private String simpleStringValue;
+
+      public MyInternalCacheEntrySimple(String simpleStringKey, String simpleStringValue) {
+         this.simpleStringKey = simpleStringKey;
+         this.simpleStringValue = simpleStringValue;
+      }
+
+      public String getSimpleStringKey() {
+         return simpleStringKey;
+      }
+
+      public void setSimpleStringKey(String simpleStringKey) {
+         this.simpleStringKey = simpleStringKey;
+      }
+
+      public String getSimpleStringValue() {
+         return simpleStringValue;
+      }
+
+      public void setSimpleStringValue(String simpleStringValue) {
+         this.simpleStringValue = simpleStringValue;
+      }
+   }
 
     private static Iterable<EtfInfo> getETFs() throws Exception {
         return Enumerables.lines(new URL("http://www.masterdata.com/HelpFiles/ETF_List_Downloads/AllETFs.csv")).select(new Func1<String, EtfInfo>() {
