@@ -29,6 +29,7 @@ import org.tsykora.odata.producer.InMemoryProducerExample.MyInternalCacheEntry;
 import org.tsykora.odata.producer.InMemoryProducerExample.MyInternalCacheEntrySimple;
 import org.tsykora.odata.producer.InfinispanProducer2.RequestContext.RequestType;
 import sun.misc.BASE64Decoder;
+import sun.misc.BASE64Encoder;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -67,6 +68,8 @@ public class InfinispanProducer2 implements ODataProducer {
    private boolean includeNullPropertyValues = true;
    private final boolean flattenEdm;
    private static final int DEFAULT_MAX_RESULTS = 100;
+   private final BASE64Decoder decoder = new BASE64Decoder();
+   private final BASE64Encoder encoder = new BASE64Encoder();
    // not static - cache instance is running with producer instance
    private static DefaultCacheManager defaultCacheManager;
    private Map<String, Class> cacheNames = null;
@@ -774,7 +777,7 @@ public class InfinispanProducer2 implements ODataProducer {
          } else {
             // simple String String objects
             // TODO: check -- can this entityKeyValues be 'Key' mapped, or should I used something else?
-            entityKeysValues.put("Key", entity.getProperty("simpleStringKey").getValue());
+            entityKeysValues.put("simpleStringKey", entity.getProperty("simpleStringKey").getValue());
          }
          oentityKey = OEntityKey.create(entityKeysValues.values());
       }
@@ -902,29 +905,26 @@ public class InfinispanProducer2 implements ODataProducer {
          }
       }
 
-      if (params.get("keyEncodedSerializedObject") != null && params.get("valueEncodedSerializedObject") != null) {
+      if (params.get("keyEncodedSerializedObject") != null || params.get("valueEncodedSerializedObject") != null) {
          System.out.println("Working with SERIALIZED and ENCODED OBJECT KEY and VALUE");
 
-         BASE64Decoder decoder = new BASE64Decoder();
-         String keyEncodedString = params.get("keyEncodedSerializedObject").getValue().toString();
-         String valueEncodedString = params.get("valueEncodedSerializedObject").getValue().toString();
          try {
+            String keyEncodedString = params.get("keyEncodedSerializedObject").getValue().toString();
             byte[] keyDecodedBytes = decoder.decodeBuffer(keyEncodedString);
-            byte[] valueDecodedBytes = decoder.decodeBuffer(valueEncodedString);
             System.out.println("PRODUCER, key decoded bytes for deserialization: " + keyDecodedBytes);
-            System.out.println("PRODUCER, value decoded bytes for deserialization: " + valueDecodedBytes);
             Object keyDeserializedObject = Utils.deserialize(keyDecodedBytes);
-            Object valueDeserializedObject = Utils.deserialize(valueDecodedBytes);
             System.out.println("PRODUCER, key deserialized object: " + keyDeserializedObject.toString());
-            System.out.println("PRODUCER, value deserialized object: " + valueDeserializedObject.toString());
-
             keyObject = (CacheObjectSerializationAble) keyDeserializedObject;
-            valueObject = (CacheObjectSerializationAble) valueDeserializedObject;
 
-            // TODO: FIX THIS!! -- why I can't pass whole object?
-            // TODO: CREATE COMPLEX KEYVALUE object here? see constructor and getters of OEntityKey
-            oentityKey = OEntityKey.create(keyObject.getKeyx());
-
+            // when calling _get value is not defined of course
+            if (function.getName().endsWith("_put")) {
+               String valueEncodedString = params.get("valueEncodedSerializedObject").getValue().toString();
+               byte[] valueDecodedBytes = decoder.decodeBuffer(valueEncodedString);
+               System.out.println("PRODUCER, value decoded bytes for deserialization: " + valueDecodedBytes);
+               Object valueDeserializedObject = Utils.deserialize(valueDecodedBytes);
+               System.out.println("PRODUCER, value deserialized object: " + valueDeserializedObject.toString());
+               valueObject = (CacheObjectSerializationAble) valueDeserializedObject;
+            }
          } catch (Exception e) {
             System.out.println("EXCEPTION: " + e.getMessage() + " " + e.getCause().getMessage());
             e.printStackTrace();
@@ -960,29 +960,33 @@ public class InfinispanProducer2 implements ODataProducer {
             getCache(setNameWhichIsCacheName).put(simpleKey, simpleValue);
          }
 
-         // TODO: when put return nothing
+
          // TODO: this will depend on the function name (for PUT no return type, for GET yes)
-         response = getEntity(context, setNameWhichIsCacheName,
-                              oentityKey, null);
+         // TODO: WHEN USER WANTS SOMETHING RETURNED WHEN PUTTING, YOU CAN RETURN WHOLE ENTITY LIKE THIS:
+//         response = getEntity(context, setNameWhichIsCacheName,
+//                              oentityKey, null);
+         // **** !!! ****
+         // set return type for put as EDM.STRING and cal only put here and encode + serialize value -> return
+
+         // otherwise when put return nothing
+         // dealing with this as a Status.NO_CONTENT (it is successful for functions)
+         response = null;
       }
 
 
       if (function.getName().endsWith("_get")) {
-         // TODO: NOT DONE YET
-         System.out.println("Getting from " + setNameWhichIsCacheName + " cache....... ");
 
          if (complex) {
-//            getCache(setNameWhichIsCacheName).get(keyObject); // what to do with this now?
-            response = getEntity(context, setNameWhichIsCacheName,
-                                 oentityKey, null);
+            // TODO change this to keyObject only!!
+            System.out.println("_get call from callFunction, FIX cache.get(keyObject.getKeyx()) to keyObject only");
+            Object value = getCache(setNameWhichIsCacheName).get(keyObject.getKeyx());
+            byte[] serializedValue = Utils.serialize(value);
+            String encodedValue = encoder.encode(serializedValue);
+            response = Responses.simple(EdmSimpleType.STRING, "valueEncodedSerializedObject", encodedValue);
          } else {
-//            getCache(setNameWhichIsCacheName).get(simpleKey);
-            // just get the right response
-            response = getEntity(context, setNameWhichIsCacheName,
-                                 oentityKey, null);
+           String value = (String) getCache(setNameWhichIsCacheName).get(simpleKey);
+           response = Responses.simple(EdmSimpleType.STRING, "valueSimpleString", value);
          }
-         // TODO: how to set retun value for function get?
-         // TODO: can this by serialized and encoded ValueObject?
       }
 
 
@@ -1001,7 +1005,6 @@ public class InfinispanProducer2 implements ODataProducer {
 //           }
 
 
-      // TODO: find out what to return so there is no need to call getEntity and touch cache and do unnecessary transformations
       return response;
    }
 
@@ -2001,7 +2004,8 @@ public class InfinispanProducer2 implements ODataProducer {
             fb2.setName(entitySetNameCacheName + "_get")
                   .setEntitySet(container.getEntitySets().get(i))
                   .setEntitySetName(entitySetNameCacheName)
-//                  .setReturnType(EdmSimpleType.STRING)
+                        // let return type to null to be able to directly access response
+                  .setReturnType(EdmSimpleType.STRING)
 //                 .setHttpMethod("GET")
                   .setBindable(true)
                   .setSideEffecting(false)  // true for Action (POST)

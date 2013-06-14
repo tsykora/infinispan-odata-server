@@ -8,7 +8,10 @@ import org.odata4j.core.OProperties;
 import org.tsykora.odata.common.CacheObjectSerializationAble;
 import org.tsykora.odata.common.Utils;
 import org.tsykora.odata.producer.AbstractExample;
+import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
+
+import java.io.IOException;
 
 /**
  * @author tsykora
@@ -31,7 +34,7 @@ public class ExampleConsumer extends AbstractExample {
       ODataConsumer.dump.all(true);
 
       // CONSUME IT
-      // format null, method to tunnel null (maybe needs change in the future)
+      // format null - ATOM by default?, method to tunnel null (maybe needs change in the future)
       System.out.println("Creating instance of ExampleConsumer, initializing oDataConsumer...");
       ODataConsumer consumer = this.rtFacde.create(endpointUri, null, null);
 
@@ -50,8 +53,8 @@ public class ExampleConsumer extends AbstractExample {
       // do decision in getEntity for this case + is it needed? think...
       // automatically serialize response -- but what if I call simple getEntity from browser on simple cache based entity?
       reportEntity(" new cache entry report: ", consumer.createEntity("defaultCache").
-            properties(OProperties.binary("Key", Utils.serialize("key7"))).
-            properties(OProperties.binary("Value", Utils.serialize("value7"))).execute());
+            properties(OProperties.binary("Key", Utils.serialize("key4"))).
+            properties(OProperties.binary("Value", Utils.serialize("value4"))).execute());
 
       // TODO - FIX THIS
       // this is for only one REGISTERED entry - this does not reflex cache content!! yet!!
@@ -77,6 +80,7 @@ public class ExampleConsumer extends AbstractExample {
 
 
       BASE64Encoder encoder = new BASE64Encoder();
+      BASE64Decoder decoder = new BASE64Decoder();
       CacheObjectSerializationAble objectForTransfer = new CacheObjectSerializationAble("keyxx1", "valuexx1");
       byte[] serializedObject = Utils.serialize(objectForTransfer);
       System.out.println("serialized object into byte[]: " + serializedObject);
@@ -92,7 +96,25 @@ public class ExampleConsumer extends AbstractExample {
             .pString("valueEncodedSerializedObject", encodedString)
             .execute();
 
+      Enumerable<OObject> results_get_default = consumer.callFunction(entitySetNameCacheName + "_get")
+            .bind("defaultCache")
+            .pString("keyEncodedSerializedObject", encodedString)
+            .execute();
 
+      for(OObject o : results_get_default) {
+         System.out.println("\n\n\n");
+         System.out.println("Some results here of type: " + o.getType());
+         System.out.println(o.toString());
+         String encodedSerializedString = o.toString();
+         try {
+            byte[] serialized = decoder.decodeBuffer(encodedSerializedString);
+            System.out.println("decoded: " + serialized);
+            System.out.println("deserialize: " + Utils.deserialize(serialized).toString());
+         } catch (IOException e) {
+            e.printStackTrace();
+         }
+         System.out.println();
+      }
 
 
 
@@ -119,11 +141,11 @@ public class ExampleConsumer extends AbstractExample {
 
 
       // ispn_get is defined (in addFunctions) to have return type EdmSimpleType.STRING so results should be here
-      // TODO: Q: do I have string results here? or can I get entity?
       // TODO: It would be ideal to return serialized decoded string which I can encode and deserialize then
 
+
       try {
-         Thread.sleep(2000);
+         Thread.sleep(1000);
       } catch (InterruptedException e) {
          e.printStackTrace();  // TODO: Customise this generated block
       }
@@ -131,17 +153,25 @@ public class ExampleConsumer extends AbstractExample {
       Enumerable<OObject> results_get = consumer.callFunction(entitySetNameCacheName + "_get")
             .bind("mySpecialNamedCache")
             .pString("keySimpleString", "simpleKey1")
-//            .pString("valueSimpleString", simpleValue)
             .execute();
 
+
       for(OObject o : results_get) {
-         System.out.println("\n\n\n\n");
-
-         System.out.println("Some results here: ");
+         System.out.println("\n\n\n");
+         System.out.println("Some results here of type: " + o.getType());
          System.out.println(o.toString());
-         System.out.println("result type: " + o.getType());
-
+         System.out.println();
       }
+
+
+//      String key = "simpleKey1";
+//      // does not work properly currently, predicate does not match
+//      String value = (String) consumer.getEntity(entitySetNameCacheName, simpleKey).execute().getProperty("valueSimpleString").getValue();
+//      System.out.println("\n\n\n\n");
+//      System.out.println(" SIMPLE GET ENTITY FROM CONSUMER ");
+//      System.out.println("get on " + entitySetNameCacheName + " key " + key + " value: " + value);
+
+
 
 
 //      ODataCache<String, String> mySpecialNamedCache = new ODataCache<String, String>(consumer, "mySpecialNamedCache");
