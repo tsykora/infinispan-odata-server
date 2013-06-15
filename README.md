@@ -19,6 +19,6 @@ http://localhost:8887/ODataInfinispanEndpoint.svc/myNamedCache_put?value='simple
 
 Example get:
 
-http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_get?key='simpleKey1'
+http://localhost:8887/ODataInfinispanEndpoint.svc/myNamedCache_get?key='simpleKey1'
 
 Pretty easy, isn't it?
