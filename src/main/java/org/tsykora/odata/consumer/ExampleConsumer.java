@@ -11,8 +11,6 @@ import org.tsykora.odata.producer.AbstractExample;
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 
-import java.io.IOException;
-
 /**
  * @author tsykora
  */
@@ -31,7 +29,7 @@ public class ExampleConsumer extends AbstractExample {
       // To dump all the HTTP trafic
       // Sends http request and/or response information to standard out.  Useful for debugging.
       // TODO: enable it for producer as well? Is it even possible?
-      ODataConsumer.dump.all(true);
+      ODataConsumer.dump.all(false);
 
       // CONSUME IT
       // format null - ATOM by default?, method to tunnel null (maybe needs change in the future)
@@ -52,9 +50,11 @@ public class ExampleConsumer extends AbstractExample {
       // TODO !!!!!!!!!! FIX THIS
       // do decision in getEntity for this case + is it needed? think...
       // automatically serialize response -- but what if I call simple getEntity from browser on simple cache based entity?
-      reportEntity(" new cache entry report: ", consumer.createEntity("defaultCache").
-            properties(OProperties.binary("Key", Utils.serialize("key4"))).
-            properties(OProperties.binary("Value", Utils.serialize("value4"))).execute());
+
+//      reportEntity(" new cache entry report: ", consumer.createEntity("defaultCache").
+//            properties(OProperties.binary("Key", Utils.serialize("key4"))).
+//            properties(OProperties.binary("Value", Utils.serialize("value4"))).execute())
+
 
       // TODO - FIX THIS
       // this is for only one REGISTERED entry - this does not reflex cache content!! yet!!
@@ -88,34 +88,33 @@ public class ExampleConsumer extends AbstractExample {
       System.out.println("encodedObject for transfer: " + encodedString);
 
       String entitySetNameCacheName = "defaultCache";
+//
+//      Enumerable<OObject> results_put_empty = consumer.callFunction(entitySetNameCacheName + "_put")
+//            .bind(entitySetNameCacheName)
+//                  // Note: when there is no definition of parameter, parameter is simply null
+//            .pString("keyEncodedSerializedObject", encodedString)
+//            .pString("valueEncodedSerializedObject", encodedString)
+//            .execute();
+//
+//      Enumerable<OObject> results_get_default = consumer.callFunction(entitySetNameCacheName + "_get")
+//            .bind("defaultCache")
+//            .pString("keyEncodedSerializedObject", encodedString)
+//            .execute();
 
-      Enumerable<OObject> results_put_empty = consumer.callFunction(entitySetNameCacheName + "_put")
-            .bind(entitySetNameCacheName)
-                  // Note: when there is no definition of parameter, parameter is simply null
-            .pString("keyEncodedSerializedObject", encodedString)
-            .pString("valueEncodedSerializedObject", encodedString)
-            .execute();
-
-      Enumerable<OObject> results_get_default = consumer.callFunction(entitySetNameCacheName + "_get")
-            .bind("defaultCache")
-            .pString("keyEncodedSerializedObject", encodedString)
-            .execute();
-
-      for(OObject o : results_get_default) {
-         System.out.println("\n\n\n");
-         System.out.println("Some results here of type: " + o.getType());
-         System.out.println(o.toString());
-         String encodedSerializedString = o.toString();
-         try {
-            byte[] serialized = decoder.decodeBuffer(encodedSerializedString);
-            System.out.println("decoded: " + serialized);
-            System.out.println("deserialize: " + Utils.deserialize(serialized).toString());
-         } catch (IOException e) {
-            e.printStackTrace();
-         }
-         System.out.println();
-      }
-
+//      for(OObject o : results_get_default) {
+//         System.out.println("\n\n\n");
+//         System.out.println("Some results here of type: " + o.getType());
+//         System.out.println(o.toString());
+//         String encodedSerializedString = o.toString();
+//         try {
+//            byte[] serialized = decoder.decodeBuffer(encodedSerializedString);
+//            System.out.println("decoded: " + serialized);
+//            System.out.println("deserialize: " + Utils.deserialize(serialized).toString());
+//         } catch (IOException e) {
+//            e.printStackTrace();
+//         }
+//         System.out.println();
+//      }
 
 
       // mySpecialNamedCache - SIMPLE BASED
@@ -124,20 +123,19 @@ public class ExampleConsumer extends AbstractExample {
 
       // working with cache entry simple class (String, String)
       OEntity createdEntity = consumer.createEntity("mySpecialNamedCache").
-            properties(OProperties.string("simpleStringKey", "key77simple")).
-            properties(OProperties.string("simpleStringValue", "value77simple")).execute();
+            properties(OProperties.string("simpleStringKey", "key7777simple")).
+            properties(OProperties.string("simpleStringValue", "value7777simple")).execute();
 
       String simpleKey = "simpleKey1";
       String simpleValue = "simpleValue1";
 
       // ispn_put is defined (in addFunctions) to have NO return type so results are null here
       Enumerable<OObject> results_put_empty2 = consumer.callFunction(entitySetNameCacheName + "_put")
-            .bind(entitySetNameCacheName)
+//            .bind(entitySetNameCacheName)
             // Note: when there is no definition of parameter, parameter is simply null
             .pString("keySimpleString", simpleKey)
             .pString("valueSimpleString", simpleValue)
             .execute();
-
 
 
       // ispn_get is defined (in addFunctions) to have return type EdmSimpleType.STRING so results should be here
@@ -151,12 +149,12 @@ public class ExampleConsumer extends AbstractExample {
       }
 
       Enumerable<OObject> results_get = consumer.callFunction(entitySetNameCacheName + "_get")
-            .bind("mySpecialNamedCache")
+//            .bind("mySpecialNamedCache")
             .pString("keySimpleString", "simpleKey1")
             .execute();
 
 
-      for(OObject o : results_get) {
+      for (OObject o : results_get) {
          System.out.println("\n\n\n");
          System.out.println("Some results here of type: " + o.getType());
          System.out.println(o.toString());
@@ -172,11 +170,8 @@ public class ExampleConsumer extends AbstractExample {
 //      System.out.println("get on " + entitySetNameCacheName + " key " + key + " value: " + value);
 
 
-
-
 //      ODataCache<String, String> mySpecialNamedCache = new ODataCache<String, String>(consumer, "mySpecialNamedCache");
 //      mySpecialNamedCache.put();
-
 
 
       // URI here is only for caption
@@ -187,5 +182,96 @@ public class ExampleConsumer extends AbstractExample {
       System.out.println("REPORT WHOLE ENTITY SET (mySpecialNamedCache)");
       reportEntities("******** " + endpointUri.concat("mySpecialNamedCache"),
                      consumer.getEntities("mySpecialNamedCache").execute());
+
+
+      int opsCount = 100;
+      System.out.println("Starting benchmark now. OpsCount: " + opsCount);
+
+      entitySetNameCacheName = "mySpecialNamedCache";
+      Enumerable<OObject> results_get_bench = null;
+      long start = System.currentTimeMillis();
+
+      System.out.println("Dump memory before benchmark...");
+      long totalMemBefore = Runtime.getRuntime().totalMemory();
+      long maxMemBefore = Runtime.getRuntime().maxMemory();
+      long freeMemBefore = Runtime.getRuntime().freeMemory();
+      System.out.println("Memory total: " + totalMemBefore);
+      System.out.println("Memory max: " + maxMemBefore);
+      System.out.println("Memory free: " + freeMemBefore);
+
+
+      //****************** SIMPLE CACHE PUT - GET 1:1 **********************
+      for (int i = 0; i < opsCount; i++) {
+         consumer.callFunction(entitySetNameCacheName + "_put")
+               .pString("keySimpleString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
+               .pString("valueSimpleString", "simpleValueBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
+               .execute();
+         results_get_bench = consumer.callFunction(entitySetNameCacheName + "_get")
+               .pString("keySimpleString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
+               .execute();
+//         for(OObject o : results_get_bench) {
+//            System.out.println(o.toString());
+//         }
+//         System.out.println("Dump time: " + System.currentTimeMillis());
+      }
+
+
+      //****************** COMPLEX CACHE PUT - GET 1:1 **********************
+      // Object -> serialize -> encode into String -> put -> get -> decode from String to byte[] -> deserialize
+//      entitySetNameCacheName = "defaultCache";
+//      for (int i = 0; i < opsCount; i++) {
+//
+//         objectForTransfer = new CacheObjectSerializationAble("complexKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i,
+//                                                              "complexValueBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i);
+//         serializedObject = Utils.serialize(objectForTransfer);
+//         System.out.println("serialized object into byte[]: " + serializedObject);
+//         encodedString = encoder.encode(serializedObject);
+//         System.out.println("encodedObject for transfer: " + encodedString);
+//
+//         consumer.callFunction(entitySetNameCacheName + "_put")
+//               .pString("keyEncodedSerializedObject", encodedString)
+//               .pString("valueEncodedSerializedObject", encodedString)
+//               .execute();
+//
+//         Enumerable<OObject> results_get_default = consumer.callFunction(entitySetNameCacheName + "_get")
+//               .pString("keyEncodedSerializedObject", encodedString)
+//               .execute();
+//
+//         for (OObject o : results_get_default) {
+//            System.out.println(o.toString());
+//            String encodedSerializedString = o.toString();
+//            try {
+//               byte[] serialized = decoder.decodeBuffer(encodedSerializedString);
+//               System.out.println("decoded: " + serialized);
+//               System.out.println("deserialize: " + Utils.deserialize(serialized).toString());
+//            } catch (IOException e) {
+//               e.printStackTrace();
+//            }
+//            System.out.println();
+//         }
+//      }
+
+
+      long stop = System.currentTimeMillis();
+
+      System.out.println("Dump memory after benchmark...");
+      long totalMemAfter = Runtime.getRuntime().totalMemory();
+      long maxMemAfter = Runtime.getRuntime().maxMemory();
+      long freeMemAfter = Runtime.getRuntime().freeMemory();
+      System.out.println("Memory total: " + totalMemAfter);
+      System.out.println("Memory max: " + maxMemAfter);
+      System.out.println("Memory free: " + freeMemAfter);
+
+      System.out.println("DIFF Memory total: " + (totalMemAfter - totalMemBefore));
+      System.out.println("DIFF Memory max: " + (maxMemAfter - maxMemBefore));
+      System.out.println("DIFF Memory free: " + (freeMemAfter - freeMemBefore));
+      System.out.println("\n\n");
+
+      System.out.println("TIME Results: start:" + start + " stop:" + stop + " test duration (diff):" + (stop - start));
+      double opsPerSec = new Double(opsCount / ( new Double(stop - start) / 1000));
+      System.out.println("OpsCount: " + opsCount + " Operations per second: " + opsPerSec);
+      System.out.println();
+
+      System.out.println("\n\n\n\n\n\n\n");
    }
 }
