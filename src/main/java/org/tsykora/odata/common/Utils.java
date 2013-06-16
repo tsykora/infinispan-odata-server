@@ -10,6 +10,8 @@ import java.io.ObjectOutputStream;
 
 /**
  *
+ * TODO: USE JBOSS MARSHALLER INSTEAD -- suitable for embedded Infinispan usage
+ *
  * @author tsykora
  */
 public class Utils {

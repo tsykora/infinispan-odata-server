@@ -184,7 +184,7 @@ public class ExampleConsumer extends AbstractExample {
                      consumer.getEntities("mySpecialNamedCache").execute());
 
 
-      int opsCount = 100;
+      int opsCount = 1000;
       System.out.println("Starting benchmark now. OpsCount: " + opsCount);
 
       entitySetNameCacheName = "mySpecialNamedCache";
@@ -201,19 +201,23 @@ public class ExampleConsumer extends AbstractExample {
 
 
       //****************** SIMPLE CACHE PUT - GET 1:1 **********************
-      for (int i = 0; i < opsCount; i++) {
-         consumer.callFunction(entitySetNameCacheName + "_put")
-               .pString("keySimpleString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
-               .pString("valueSimpleString", "simpleValueBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
-               .execute();
-         results_get_bench = consumer.callFunction(entitySetNameCacheName + "_get")
-               .pString("keySimpleString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
-               .execute();
+//      for (int i = 0; i < opsCount; i++) {
+//
+//         consumer.callFunction(entitySetNameCacheName + "_put")
+//               .pString("keySimpleString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
+////               .pString("keySimpleString", "simpleKey" + i)
+//               .pString("valueSimpleString", "simpleValueBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
+////               .pString("valueSimpleString", "simpleValue" + i)
+//               .execute();
+//         results_get_bench = consumer.callFunction(entitySetNameCacheName + "_get")
+//               .pString("keySimpleString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
+////               .pString("keySimpleString", "simpleKey" + i)
+//               .execute();
 //         for(OObject o : results_get_bench) {
 //            System.out.println(o.toString());
 //         }
-//         System.out.println("Dump time: " + System.currentTimeMillis());
-      }
+////         System.out.println("Dump time: " + System.currentTimeMillis());
+//      }
 
 
       //****************** COMPLEX CACHE PUT - GET 1:1 **********************

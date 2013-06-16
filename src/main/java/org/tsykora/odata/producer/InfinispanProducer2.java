@@ -48,7 +48,7 @@ public class InfinispanProducer2 implements ODataProducer {
 
    private static final boolean DUMP = false;
 
-   private static void dump(String msg) {
+   private static void dump(Object msg) {
       if (DUMP) {
          System.out.println(msg);
       }
@@ -126,11 +126,11 @@ public class InfinispanProducer2 implements ODataProducer {
       // TODO add possibility for passing configurations (global, local)
       defaultCacheManager = new DefaultCacheManager();
       defaultCacheManager.start();
-      System.out.println("Default cache manager started.");
+      dump("Default cache manager started.");
 
       for (String cacheName : cacheNames.keySet()) {
          defaultCacheManager.startCache(cacheName);
-         System.out.println("Cache with name " + cacheName + " started.");
+         dump("Cache with name " + cacheName + " started.");
 
          // TODO: IDEA -- if not registered yet -- register it during first put
          // TODO just for Producer2 -- NOW - only register my EDM entity set
@@ -671,9 +671,9 @@ public class InfinispanProducer2 implements ODataProducer {
 
       PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
 
-      System.out.println("\n entityKey processing in getEntity method:");
-      System.out.println(entityKey);
-      System.out.println(entityKey.asSingleValue());
+      dump("\n entityKey processing in getEntity method:");
+      dump(entityKey);
+      dump(entityKey.asSingleValue());
 
       // Need to properly set up ispnCacheKey here for RequestContext
       Object ispnCacheKey = entityKey.asSingleValue();
@@ -684,14 +684,14 @@ public class InfinispanProducer2 implements ODataProducer {
       // TODO: in the future make it more dynamic
       if (cacheNames.get(entitySetName) == MyInternalCacheEntry.class) {
          // only string key and value into cache
-         System.out.println("TODO: make it more dynamic. getEntity(): setting isSimpleStringKeyValue to FALSE " +
-                                  "(this is cache operating with COMPLEX entries." +
-                                  " Model is based on MyInternalCacheEntry.class)");
+         dump("TODO: make it more dynamic. getEntity(): setting isSimpleStringKeyValue to FALSE " +
+                    "(this is cache operating with COMPLEX entries." +
+                    " Model is based on MyInternalCacheEntry.class)");
          isSimpleStringKeyValue = false;
       } else {
-         System.out.println("TODO: make it more dynamic. getEntity(): isSimpleStringKeyValue stays TRUE " +
-                                  "(this is cache operating with SIMPLE (String,String) entries." +
-                                  " Model is based on MyInternalCacheEntrySimple.class)");
+         dump("TODO: make it more dynamic. getEntity(): isSimpleStringKeyValue stays TRUE " +
+                    "(this is cache operating with SIMPLE (String,String) entries." +
+                    " Model is based on MyInternalCacheEntrySimple.class)");
       }
 
       // now build request context to include exact and right key for internal cache entry
@@ -752,9 +752,9 @@ public class InfinispanProducer2 implements ODataProducer {
          }
       } catch (Exception e) {
 
-         System.out.println("java.lang.RuntimeException: No elements match the predicate. " +
-                                  "In create entity has been caught. Probably because of single String String handling. \n" +
-                                  "TODO: DO BETTER DECISION MECHANISM HERE! Maybe parameter for OEntity isSimple=true");
+         dump("java.lang.RuntimeException: No elements match the predicate. " +
+                    "In create entity has been caught. Probably because of single String String handling. \n" +
+                    "TODO: DO BETTER DECISION MECHANISM HERE! Maybe parameter for OEntity isSimple=true");
             // property Key is not passed through this OEntity
             // this is probably SIMPLE call for (String,String) only handling
             // simple object put (dealing with MyInternalCacheEntrySIMPLE entity)
@@ -787,7 +787,7 @@ public class InfinispanProducer2 implements ODataProducer {
 
    @Override
    public EntityResponse createEntity(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, OEntity entity) {
-      System.out.println("THIS IS SECOND createEntity METHOD CALL -- NOT IMPLEMENTED YET!!!");
+      dump("THIS IS SECOND createEntity METHOD CALL -- NOT IMPLEMENTED YET!!!");
       throw new NotImplementedException();
    }
 
@@ -896,37 +896,37 @@ public class InfinispanProducer2 implements ODataProducer {
       // for getting cache name (function is bindable to this entity set (which is collection type))
       // function.getEntitySet();
 
-      System.out.println("Params passed into callFunction method in Producer:");
+      dump("Params passed into callFunction method in Producer:");
       for (String paramKey : params.keySet()) {
          if (params.get(paramKey) != null) {
-            System.out.println(paramKey + "=" + params.get(paramKey).getValue() + " of type: " + params.get(paramKey).getType());
+            dump(paramKey + "=" + params.get(paramKey).getValue() + " of type: " + params.get(paramKey).getType());
          } else {
-            System.out.println(paramKey + "=" + params.get(paramKey) + " is null");
+            dump(paramKey + "=" + params.get(paramKey) + " is null");
          }
       }
 
       if (params.get("keyEncodedSerializedObject") != null || params.get("valueEncodedSerializedObject") != null) {
-         System.out.println("Working with SERIALIZED and ENCODED OBJECT KEY and VALUE");
+         dump("Working with SERIALIZED and ENCODED OBJECT KEY and VALUE");
 
          try {
             String keyEncodedString = params.get("keyEncodedSerializedObject").getValue().toString();
             byte[] keyDecodedBytes = decoder.decodeBuffer(keyEncodedString);
-            System.out.println("PRODUCER, key decoded bytes for deserialization: " + keyDecodedBytes);
+            dump("PRODUCER, key decoded bytes for deserialization: " + keyDecodedBytes);
             Object keyDeserializedObject = Utils.deserialize(keyDecodedBytes);
-            System.out.println("PRODUCER, key deserialized object: " + keyDeserializedObject.toString());
+            dump("PRODUCER, key deserialized object: " + keyDeserializedObject.toString());
             keyObject = (CacheObjectSerializationAble) keyDeserializedObject;
 
             // when calling _get value is not defined of course
             if (function.getName().endsWith("_put")) {
                String valueEncodedString = params.get("valueEncodedSerializedObject").getValue().toString();
                byte[] valueDecodedBytes = decoder.decodeBuffer(valueEncodedString);
-               System.out.println("PRODUCER, value decoded bytes for deserialization: " + valueDecodedBytes);
+               dump("PRODUCER, value decoded bytes for deserialization: " + valueDecodedBytes);
                Object valueDeserializedObject = Utils.deserialize(valueDecodedBytes);
-               System.out.println("PRODUCER, value deserialized object: " + valueDeserializedObject.toString());
+               dump("PRODUCER, value deserialized object: " + valueDeserializedObject.toString());
                valueObject = (CacheObjectSerializationAble) valueDeserializedObject;
             }
          } catch (Exception e) {
-            System.out.println("EXCEPTION: " + e.getMessage() + " " + e.getCause().getMessage());
+            dump("EXCEPTION: " + e.getMessage() + " " + e.getCause().getMessage());
             e.printStackTrace();
          }
 
@@ -934,10 +934,9 @@ public class InfinispanProducer2 implements ODataProducer {
          complex = false;
 
          // Working with only simple String KEY and VALUE
-         System.out.println("Working with only simple String KEY and VALUE");
+         dump("Working with only simple String KEY and VALUE");
          simpleKey = params.get("keySimpleString").getValue().toString();
          // set simpleValue later because when calling _get valueSimpleString is not defined
-         oentityKey = OEntityKey.create(simpleKey);
       }
 
 
@@ -947,13 +946,13 @@ public class InfinispanProducer2 implements ODataProducer {
       BaseResponse response = null;
 
       if (function.getName().endsWith("_put")) {
-         System.out.println("Putting into " + setNameWhichIsCacheName + " cache....... ");
+         dump("Putting into " + setNameWhichIsCacheName + " cache....... ");
 
          if (complex) {
             // TODO!! FIX THIS!!! up ->> key object, put whole key object and pass whole keyObject as a entityKey
             // TODO: or simply return nothing when putting? but it returns... (flag it if wanna nothing?)
-            System.out.println("TODO... FIX THIS!!! in callFunction put branch. " +
-                                     "There is a put not of a whole object but only String as a Key!");
+            dump("TODO... FIX THIS!!! in callFunction put branch. " +
+                       "There is a put not of a whole object but only String as a Key!");
             getCache(setNameWhichIsCacheName).put(keyObject.getKeyx(), valueObject);
          } else {
             simpleValue = params.get("valueSimpleString").getValue().toString();
@@ -975,10 +974,9 @@ public class InfinispanProducer2 implements ODataProducer {
 
 
       if (function.getName().endsWith("_get")) {
-
          if (complex) {
             // TODO change this to keyObject only!!
-            System.out.println("_get call from callFunction, FIX cache.get(keyObject.getKeyx()) to keyObject only");
+            dump("_get call from callFunction, FIX cache.get(keyObject.getKeyx()) to keyObject only");
             Object value = getCache(setNameWhichIsCacheName).get(keyObject.getKeyx());
             byte[] serializedValue = Utils.serialize(value);
             String encodedValue = encoder.encode(serializedValue);
@@ -1172,10 +1170,10 @@ public class InfinispanProducer2 implements ODataProducer {
       // entry exists?
       Object value = getCache(rc.getEntitySetName()).get(rc.getIspnCacheKey());
       if (value != null) {
-         System.out.println("Found value : " + value + " for key: " + rc.getIspnCacheKey() + " in cache: " + rc.getEntitySetName());
+         dump("Found value : " + value + " for key: " + rc.getIspnCacheKey() + " in cache: " + rc.getEntitySetName());
 
          if (rc.isSimpleStringKeyValue()) {
-            System.out.println("getEntityPojo(): NO serialization of response. Simple String value key only.");
+            dump("getEntityPojo(): NO serialization of response. Simple String value key only.");
             // Calling (String, String) constructor here, so response is OK, no need of serialization
             // setting of Simple attributes in MyInternalCacheEntry is ok a supposed to be filled by String values
             miceSimple = new InMemoryProducerExample.MyInternalCacheEntrySimple(rc.getIspnCacheKey().toString(), value.toString());
@@ -1187,12 +1185,12 @@ public class InfinispanProducer2 implements ODataProducer {
             // but they can't be cast to byte[]
             // this mice is put into OEntity and I need to put there properties in byte[] => in edm.binary format
             // so I need to serialize these objects here
-            System.out.println("getEntityPojo(): Serializing response.");
+            dump("getEntityPojo(): Serializing response.");
             mice = new InMemoryProducerExample.MyInternalCacheEntry(Utils.serialize(rc.getIspnCacheKey()), Utils.serialize(value));
          }
 
       } else {
-         System.out.println("Value NOT FOUND for key: " + rc.getIspnCacheKey() + " in cache: " + rc.getEntitySetName());
+         dump("Value NOT FOUND for key: " + rc.getIspnCacheKey() + " in cache: " + rc.getEntitySetName());
       }
 
       if (mice == null) {
@@ -1382,7 +1380,7 @@ public class InfinispanProducer2 implements ODataProducer {
       }
 
       public Func1<RequestContext, Iterable<TEntity>> getGetWithContext() {
-         System.out.println("Call from getGetWithContext method - return type was changed!!!");
+         dump("Call from getGetWithContext method - return type was changed!!!");
          return getWithContext;
       }
 
@@ -1411,7 +1409,7 @@ public class InfinispanProducer2 implements ODataProducer {
 
       private static final boolean DUMP = false;
       //      private static void dump(String msg) { if (DUMP) System.out.println(msg); }
-      private final Logger log = Logger.getLogger(this.getClass().getName());
+      private final Logger log = Logger.getLogger(InMemoryEdmGenerator.class.getName());
       private final String namespace;
       private final String containerName;
       protected final InMemoryTypeMapping typeMapping;
@@ -1963,17 +1961,18 @@ public class InfinispanProducer2 implements ODataProducer {
 //         EdmFunctionParameter.Builder pb6 = new EdmFunctionParameter.Builder();
 
             // TODO: do it as some complex type
-            EdmCollectionType collectionType = new EdmCollectionType(EdmProperty.CollectionKind.Collection,
-                                                                     schema.getEntityTypes().get(i).build());
+            // causing performance problems (getEntities) in every function call
+//            EdmCollectionType collectionType = new EdmCollectionType(EdmProperty.CollectionKind.Collection,
+//                                                                     schema.getEntityTypes().get(i).build());
 
             // setMode(IN)
-            pb.setName("cacheName").setType(collectionType).setNullable(false).setBound(true).build();
+//            pb.setName("cacheName").setType(collectionType).setNullable(false).setBound(true).build();
             pb2.setName("keyEncodedSerializedObject").setType(EdmType.getSimple("String")).setNullable(true).build();
             pb3.setName("valueEncodedSerializedObject").setType(EdmType.getSimple("String")).setNullable(true).build();
             pb4.setName("keySimpleString").setType(EdmType.getSimple("String")).setNullable(true).build();
             pb5.setName("valueSimpleString").setType(EdmType.getSimple("String")).setNullable(true).build();
 
-            funcParameters.add(pb);
+//            funcParameters.add(pb);
             funcParameters.add(pb2);
             funcParameters.add(pb3);
             funcParameters.add(pb4);
@@ -1994,7 +1993,8 @@ public class InfinispanProducer2 implements ODataProducer {
                   .setEntitySetName(entitySetNameCacheName)
 //                 .setReturnType(null)
 //                 .setHttpMethod("GET")
-                  .setBindable(true)
+//                  .setBindable(true)
+                  .setBindable(false)
                   .setSideEffecting(false)  // true for Action (POST)
                   .setAlwaysBindable(false)
                   .addParameters(funcParameters).build();
@@ -2007,7 +2007,8 @@ public class InfinispanProducer2 implements ODataProducer {
                         // let return type to null to be able to directly access response
                   .setReturnType(EdmSimpleType.STRING)
 //                 .setHttpMethod("GET")
-                  .setBindable(true)
+//                  .setBindable(true)
+                  .setBindable(false)
                   .setSideEffecting(false)  // true for Action (POST)
                   .setAlwaysBindable(false)
                   .addParameters(funcParameters).build();
@@ -2017,7 +2018,7 @@ public class InfinispanProducer2 implements ODataProducer {
             i++;
          }
 
-         System.out.println("Functions import ok...");
+         dump("Functions import ok...");
          container.addFunctionImports(funcImports);
       }
    }
