@@ -11,7 +11,8 @@ I will clear it and refactor code once I will be done with this.
 -----------------
 
 For now: Endpoint is ODataJerseyServer which hosts embedded Infinispan cache manager inside.
-
+It is sufficient to run Runner.java class.
+It starts producer thread (starting OData server) and consumer thread for issuing a few basic operations.
 
 Example put into cache looks like:
 
