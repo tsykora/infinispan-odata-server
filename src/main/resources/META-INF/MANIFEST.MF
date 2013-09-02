@@ -1,0 +1,1 @@
+Main-Class: org.tsykora.odata.common.Runner

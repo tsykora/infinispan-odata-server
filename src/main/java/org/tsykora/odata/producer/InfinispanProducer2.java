@@ -31,6 +31,7 @@ import org.tsykora.odata.producer.InfinispanProducer2.RequestContext.RequestType
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
@@ -46,7 +47,7 @@ import static org.tsykora.odata.common.Utils.deserialize;
  */
 public class InfinispanProducer2 implements ODataProducer {
 
-   private static final boolean DUMP = false;
+   private static final boolean DUMP = true;
 
    private static void dump(Object msg) {
       if (DUMP) {
@@ -79,8 +80,8 @@ public class InfinispanProducer2 implements ODataProducer {
     *
     * @param namespace the namespace of the schema registrations
     */
-   public InfinispanProducer2(String namespace, Map<String, Class> cacheNames) {
-      this(namespace, DEFAULT_MAX_RESULTS, cacheNames);
+   public InfinispanProducer2(String namespace, Map<String, Class> cacheNames, String ispnConfigFile) {
+      this(namespace, DEFAULT_MAX_RESULTS, cacheNames, ispnConfigFile);
    }
 
    /**
@@ -89,8 +90,8 @@ public class InfinispanProducer2 implements ODataProducer {
     * @param namespace  the namespace of the schema registrations
     * @param maxResults the maximum number of entities to return in a single call
     */
-   public InfinispanProducer2(String namespace, int maxResults, Map<String, Class> cacheNames) {
-      this(namespace, null, maxResults, null, null, cacheNames);
+   public InfinispanProducer2(String namespace, int maxResults, Map<String, Class> cacheNames, String ispnConfigFile) {
+      this(namespace, null, maxResults, null, null, cacheNames, ispnConfigFile);
    }
 
    /**
@@ -103,9 +104,9 @@ public class InfinispanProducer2 implements ODataProducer {
     * @param typeMapping   optional mapping between java types and edm types, null for default
     */
    public InfinispanProducer2(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
-                              Map<String, Class> cacheNames) {
+                              Map<String, Class> cacheNames, String ispnConfigFile) {
       this(namespace, containerName, maxResults, decorator, typeMapping,
-           true, cacheNames); // legacy: flatten edm
+           true, cacheNames, ispnConfigFile); // legacy: flatten edm
    }
 
    /**
@@ -113,7 +114,7 @@ public class InfinispanProducer2 implements ODataProducer {
     */
    public <TEntity, TKey> InfinispanProducer2(String namespace, String containerName, int maxResults,
                                               EdmDecorator decorator, InMemoryTypeMapping typeMapping,
-                                              boolean flattenEdm, Map<String, Class> cacheNames) {
+                                              boolean flattenEdm, Map<String, Class> cacheNames, String ispnConfigFile) {
       this.namespace = namespace;
       this.containerName = containerName != null && !containerName.isEmpty() ? containerName : "Container";
       this.maxResults = maxResults;
@@ -124,13 +125,22 @@ public class InfinispanProducer2 implements ODataProducer {
       this.cacheNames = cacheNames;
 
       // TODO add possibility for passing configurations (global, local)
-      defaultCacheManager = new DefaultCacheManager();
-      defaultCacheManager.start();
-      dump("Default cache manager started.");
+      try {
+         // true = start it
+         defaultCacheManager = new DefaultCacheManager(ispnConfigFile, true);
+//         defaultCacheManager.start();
+         dump("Default cache manager started.");
+
+      } catch (IOException e) {
+         dump(" PROBLEM WITH CREATING DEFAULT CACHE MANAGER !!!!!!!!!! ");
+         System.out.println(" PROBLEM WITH CREATING DEFAULT CACHE MANAGER !!!!!!!!!! ");
+         e.printStackTrace();
+      }
 
       for (String cacheName : cacheNames.keySet()) {
-         defaultCacheManager.startCache(cacheName);
-         dump("Cache with name " + cacheName + " started.");
+//         defaultCacheManager.startCache(cacheName);
+//         dump("Cache with name " + cacheName + " started.");
+         dump("Registering cache with name " + cacheName);
 
          // TODO: IDEA -- if not registered yet -- register it during first put
          // TODO just for Producer2 -- NOW - only register my EDM entity set
@@ -155,6 +165,34 @@ public class InfinispanProducer2 implements ODataProducer {
             register(cacheNames.get(cacheName), cacheNames.get(cacheName), cacheName, new Func<Iterable<MyInternalCacheEntrySimple>>() {
                public Iterable<MyInternalCacheEntrySimple> apply() {
                   List<MyInternalCacheEntrySimple> firstEntryForRegister = new ArrayList<MyInternalCacheEntrySimple>();
+                  return firstEntryForRegister;
+               }
+            }, Funcs.method(cacheNames.get(cacheName), cacheNames.get(cacheName), "toString"));
+         }
+
+
+         ///// 2 case
+
+         if (cacheNames.get(cacheName) == InMemoryProducerExample.MyInternalCacheEntry2.class) {
+            System.out.println("\n\n\n I am in case 2 of registering............" + cacheName);
+            // register entity set with name of cache
+            register(cacheNames.get(cacheName), cacheNames.get(cacheName), cacheName, new Func<Iterable<InMemoryProducerExample.MyInternalCacheEntry2>>() {
+               // TODO - can I skip this registration? Can I do it inside of producer while starting new cache?
+               // TODO - while starting service? while creating new cache from builder? or according to xml?
+               // TODO - register entrySet for new cache after it starts.
+               public Iterable<InMemoryProducerExample.MyInternalCacheEntry2> apply() {
+                  List<InMemoryProducerExample.MyInternalCacheEntry2> firstEntryForRegister = new ArrayList<InMemoryProducerExample.MyInternalCacheEntry2>();
+                  return firstEntryForRegister;
+               }
+            }, Funcs.method(cacheNames.get(cacheName), cacheNames.get(cacheName), "toString"));
+         }
+
+         if (cacheNames.get(cacheName) == InMemoryProducerExample.MyInternalCacheEntrySimple2.class) {
+            System.out.println("\n\n\n I am in case 2 of registering............ " + cacheName);
+            // register entity set with name of cache
+            register(cacheNames.get(cacheName), cacheNames.get(cacheName), cacheName, new Func<Iterable<InMemoryProducerExample.MyInternalCacheEntrySimple2>>() {
+               public Iterable<InMemoryProducerExample.MyInternalCacheEntrySimple2> apply() {
+                  List<InMemoryProducerExample.MyInternalCacheEntrySimple2> firstEntryForRegister = new ArrayList<InMemoryProducerExample.MyInternalCacheEntrySimple2>();
                   return firstEntryForRegister;
                }
             }, Funcs.method(cacheNames.get(cacheName), cacheNames.get(cacheName), "toString"));

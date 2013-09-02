@@ -17,6 +17,7 @@ import sun.misc.BASE64Encoder;
 public class ExampleConsumer extends AbstractExample {
 
    public static String endpointUri = "http://localhost:8887/ODataInfinispanEndpoint.svc/";
+   public static String endpointUri2 = "http://localhost:9887/ODataInfinispanEndpoint.svc/";
 
    public static void main(String[] args) {
       ExampleConsumer example = new ExampleConsumer();
@@ -25,19 +26,28 @@ public class ExampleConsumer extends AbstractExample {
 
    public void run(String[] args) {
 
+      String appendix = "";
+
+      if(args != null) {
+         endpointUri = endpointUri2;
+         appendix = "valueToEndpoint9887";
+      }
+
       // ********** HINT **********
       // To dump all the HTTP trafic
       // Sends http request and/or response information to standard out.  Useful for debugging.
       // TODO: enable it for producer as well? Is it even possible?
-      ODataConsumer.dump.all(false);
+      ODataConsumer.dump.all(true);
 
       // CONSUME IT
       // format null - ATOM by default?, method to tunnel null (maybe needs change in the future)
       System.out.println("Creating instance of ExampleConsumer, initializing oDataConsumer...");
       ODataConsumer consumer = this.rtFacde.create(endpointUri, null, null);
+//      ODataConsumer consumer2 = this.rtFacde.create(endpointUri2, null, null);
 
       System.out.println("\n\n\n\n");
       reportMetadata(consumer.getMetadata());
+//      reportMetadata(consumer2.getMetadata());
       System.out.println("\n\n\n\n");
 
       // http://datajs.codeplex.com/discussions/391490  ??
@@ -78,16 +88,17 @@ public class ExampleConsumer extends AbstractExample {
 //         }
 //      }
 
+      String entitySetNameCacheName = "NONSENSE";
 
       BASE64Encoder encoder = new BASE64Encoder();
       BASE64Decoder decoder = new BASE64Decoder();
-      CacheObjectSerializationAble objectForTransfer = new CacheObjectSerializationAble("keyxx1", "valuexx1");
+      CacheObjectSerializationAble objectForTransfer = new CacheObjectSerializationAble("keyxx1" + appendix, "valuexx1" + appendix);
       byte[] serializedObject = Utils.serialize(objectForTransfer);
       System.out.println("serialized object into byte[]: " + serializedObject);
       String encodedString = encoder.encode(serializedObject);
       System.out.println("encodedObject for transfer: " + encodedString);
 
-      String entitySetNameCacheName = "defaultCache";
+//      entitySetNameCacheName = "defaultCache";
 //
 //      Enumerable<OObject> results_put_empty = consumer.callFunction(entitySetNameCacheName + "_put")
 //            .bind(entitySetNameCacheName)
@@ -122,15 +133,15 @@ public class ExampleConsumer extends AbstractExample {
       entitySetNameCacheName = "mySpecialNamedCache";
 
       // working with cache entry simple class (String, String)
-      OEntity createdEntity = consumer.createEntity("mySpecialNamedCache").
-            properties(OProperties.string("simpleStringKey", "key7777simple")).
-            properties(OProperties.string("simpleStringValue", "value7777simple")).execute();
+      OEntity createdEntity = consumer.createEntity(entitySetNameCacheName).
+            properties(OProperties.string("simpleStringKey", "key7777simple" + appendix)).
+            properties(OProperties.string("simpleStringValue", "value7777simple" + appendix)).execute();
 
-      String simpleKey = "simpleKey1";
-      String simpleValue = "simpleValue1";
+      String simpleKey = "simpleKey1" + appendix;
+      String simpleValue = "simpleValue1" + appendix;
 
       // ispn_put is defined (in addFunctions) to have NO return type so results are null here
-      Enumerable<OObject> results_put_empty2 = consumer.callFunction(entitySetNameCacheName + "_put")
+      Enumerable<OObject> results_put_empty = consumer.callFunction(entitySetNameCacheName + "_put")
 //            .bind(entitySetNameCacheName)
             // Note: when there is no definition of parameter, parameter is simply null
             .pString("keySimpleString", simpleKey)
@@ -150,7 +161,7 @@ public class ExampleConsumer extends AbstractExample {
 
       Enumerable<OObject> results_get = consumer.callFunction(entitySetNameCacheName + "_get")
 //            .bind("mySpecialNamedCache")
-            .pString("keySimpleString", "simpleKey1")
+            .pString("keySimpleString", "simpleKey1" + appendix)
             .execute();
 
 
@@ -184,25 +195,30 @@ public class ExampleConsumer extends AbstractExample {
                      consumer.getEntities("mySpecialNamedCache").execute());
 
 
-      int opsCount = 1000;
-      System.out.println("Starting benchmark now. OpsCount: " + opsCount);
-
-      entitySetNameCacheName = "mySpecialNamedCache";
-      Enumerable<OObject> results_get_bench = null;
-      long start = System.currentTimeMillis();
-
-      System.out.println("Dump memory before benchmark...");
-      long totalMemBefore = Runtime.getRuntime().totalMemory();
-      long maxMemBefore = Runtime.getRuntime().maxMemory();
-      long freeMemBefore = Runtime.getRuntime().freeMemory();
-      System.out.println("Memory total: " + totalMemBefore);
-      System.out.println("Memory max: " + maxMemBefore);
-      System.out.println("Memory free: " + freeMemBefore);
-
+      // <editor-fold name=Benchmark>
+//      *******************************************************
+//      ******************* BENCHMARK STUFF *******************
+//      *******************************************************
+//
+//      int opsCount = 100;
+//      System.out.println("Starting benchmark now. OpsCount: " + opsCount);
+//
+//      entitySetNameCacheName = "mySpecialNamedCache";
+//      Enumerable<OObject> results_get_bench = null;
+//      long start = System.currentTimeMillis();
+//
+//      System.out.println("Dump memory before benchmark...");
+//      long totalMemBefore = Runtime.getRuntime().totalMemory();
+//      long maxMemBefore = Runtime.getRuntime().maxMemory();
+//      long freeMemBefore = Runtime.getRuntime().freeMemory();
+//      System.out.println("Memory total: " + totalMemBefore);
+//      System.out.println("Memory max: " + maxMemBefore);
+//      System.out.println("Memory free: " + freeMemBefore);
+//
+//      StringBuffer sb = new StringBuffer();
 
       //****************** SIMPLE CACHE PUT - GET 1:1 **********************
 //      for (int i = 0; i < opsCount; i++) {
-//
 //         consumer.callFunction(entitySetNameCacheName + "_put")
 //               .pString("keySimpleString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
 ////               .pString("keySimpleString", "simpleKey" + i)
@@ -216,8 +232,10 @@ public class ExampleConsumer extends AbstractExample {
 //         for(OObject o : results_get_bench) {
 //            System.out.println(o.toString());
 //         }
-////         System.out.println("Dump time: " + System.currentTimeMillis());
+//         System.out.println("Dump time: " + System.currentTimeMillis());
 //      }
+
+
 
 
       //****************** COMPLEX CACHE PUT - GET 1:1 **********************
@@ -254,28 +272,31 @@ public class ExampleConsumer extends AbstractExample {
 //            System.out.println();
 //         }
 //      }
+//
+//
+//      long stop = System.currentTimeMillis();
+//
+//      System.out.println("Dump memory after benchmark...");
+//      long totalMemAfter = Runtime.getRuntime().totalMemory();
+//      long maxMemAfter = Runtime.getRuntime().maxMemory();
+//      long freeMemAfter = Runtime.getRuntime().freeMemory();
+//      System.out.println("Memory total: " + totalMemAfter);
+//      System.out.println("Memory max: " + maxMemAfter);
+//      System.out.println("Memory free: " + freeMemAfter);
+//
+//      System.out.println("DIFF Memory total: " + (totalMemAfter - totalMemBefore));
+//      System.out.println("DIFF Memory max: " + (maxMemAfter - maxMemBefore));
+//      System.out.println("DIFF Memory free (AFTER - BEFORE) = : " + (freeMemAfter - freeMemBefore));
+//      System.out.println("\n\n");
+//
+//      System.out.println("TIME Results: start:" + start + " stop:" + stop + " test duration (diff):" + (stop - start));
+//      double opsPerSec = new Double(opsCount / ( new Double(stop - start) / 1000));
+//      System.out.println("OpsCount: " + opsCount + ", Operations per second: " + opsPerSec);
+//      System.out.println();
+//
+//      System.out.println("\n\n\n\n\n\n\n");
 
+      // </editor-fold>
 
-      long stop = System.currentTimeMillis();
-
-      System.out.println("Dump memory after benchmark...");
-      long totalMemAfter = Runtime.getRuntime().totalMemory();
-      long maxMemAfter = Runtime.getRuntime().maxMemory();
-      long freeMemAfter = Runtime.getRuntime().freeMemory();
-      System.out.println("Memory total: " + totalMemAfter);
-      System.out.println("Memory max: " + maxMemAfter);
-      System.out.println("Memory free: " + freeMemAfter);
-
-      System.out.println("DIFF Memory total: " + (totalMemAfter - totalMemBefore));
-      System.out.println("DIFF Memory max: " + (maxMemAfter - maxMemBefore));
-      System.out.println("DIFF Memory free: " + (freeMemAfter - freeMemBefore));
-      System.out.println("\n\n");
-
-      System.out.println("TIME Results: start:" + start + " stop:" + stop + " test duration (diff):" + (stop - start));
-      double opsPerSec = new Double(opsCount / ( new Double(stop - start) / 1000));
-      System.out.println("OpsCount: " + opsCount + " Operations per second: " + opsPerSec);
-      System.out.println();
-
-      System.out.println("\n\n\n\n\n\n\n");
    }
 }

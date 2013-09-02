@@ -27,25 +27,39 @@ import java.util.Map;
  */
 public class InMemoryProducerExample extends AbstractExample {
 
-    public static void main(String[] args) {
-        InMemoryProducerExample example = new InMemoryProducerExample();
-        example.run(args);
-    }
+   public static void main(String[] args) {
+      InMemoryProducerExample example = new InMemoryProducerExample();
+      example.run(args);
+   }
 
-    @SuppressWarnings({"unchecked", "rawtypes"})
-    public void run(String[] args) {
+   @SuppressWarnings({"unchecked", "rawtypes"})
+   public void run(String[] args) {
 
-        String endpointUri = "http://localhost:8887/ODataInfinispanEndpoint.svc/";
+//        String endpointUri = "http://localhost:8887/ODataInfinispanEndpoint.svc/";
+      String endpointUri = args[0];
 
-        // final InMemoryProducer producer = new InMemoryProducer("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
+      // final InMemoryProducer producer = new InMemoryProducer("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null);
 
-       // later do it based on infinispan.xml file
-       Map<String, Class> cacheNames = new HashMap<String, Class>();
-       cacheNames.put("defaultCache", MyInternalCacheEntry.class);
-       cacheNames.put("mySpecialNamedCache", MyInternalCacheEntrySimple.class);
+      // later do it based on infinispan.xml file
+      String containerName;
+      String configFile;
+      Map<String, Class> cacheNames = new HashMap<String, Class>();
 
-        final InfinispanProducer2 producerBig =
-              new InfinispanProducer2("InMemoryProducerExample", null, 100, new MyEdmDecorator(), null, cacheNames);
+//      if (args[0].contains("8887")) {
+         containerName = "InMemoryProducerExample";
+         cacheNames.put("defaultCache", MyInternalCacheEntry.class);
+         cacheNames.put("mySpecialNamedCache", MyInternalCacheEntrySimple.class);
+         configFile = "infinispan-dist.xml";
+//      } else {
+//         containerName = "InMemoryProducerExample";
+//         cacheNames.put("defaultCache2", MyInternalCacheEntry.class);
+//         cacheNames.put("mySpecialNamedCache2", MyInternalCacheEntrySimple.class);
+//         configFile = "infinispan-dist2.xml";
+//      }
+
+      // the first parameter is containerName
+      final InfinispanProducer2 producerBig =
+            new InfinispanProducer2(containerName, null, 100, new MyEdmDecorator(), null, cacheNames, configFile);
 //        final LightweightInfinispanProducer producer = new LightweightInfinispanProducer("InMemoryProducerExample", null, 100, null, null);
 
 
@@ -90,7 +104,7 @@ public class InMemoryProducerExample extends AbstractExample {
 //      }
 //    }), "Symbol");
 
-        // expose an large list of integers as an entity-set called "Integers"
+      // expose an large list of integers as an entity-set called "Integers"
 //      producerBig.register(Integer.class, Integer.class, "Integers", new Func<Iterable<Integer>>() {
 //         public Iterable<Integer> apply() {
 //            return Enumerable.range(0, 150);
@@ -111,10 +125,10 @@ public class InMemoryProducerExample extends AbstractExample {
 
 // <editor-fold defaultstate="collapsed" desc="2 entity creations from PRODUCER here">        
 
-        // NOTES:
-        // calling put and through some visitor? transferer? I will build OEntity for request here
-        // this will be sent to the server side as an OEntity and there put in remote cache (via OData)
-        
+      // NOTES:
+      // calling put and through some visitor? transferer? I will build OEntity for request here
+      // this will be sent to the server side as an OEntity and there put in remote cache (via OData)
+
 //        byte[] serializedKey = null;
 //        try {
 //            serializedKey = Utils.serialize("key8");
@@ -148,11 +162,6 @@ public class InMemoryProducerExample extends AbstractExample {
 //
 //        OEntity createdRightNow = response.getEntity();
 //        reportEntity("\n\n\n This is response from producer (InMemoryProducerExample), recently created OEntity: \n ", createdRightNow);
-        
-        
-
-
-
 
 
 //        entityKeysValues = new HashMap<String, Object>();
@@ -179,15 +188,15 @@ public class InMemoryProducerExample extends AbstractExample {
 //        reportEntity("\n\n\n This is response from producer (InMemoryProducerExample), recently created OEntity: \n ", createdRightNow);
 
 
-        //      </editor-fold>
+      //      </editor-fold>
 
 
-        // START ODATA SERVER
-        // register the producer as the static instance, then launch the http server
+      // START ODATA SERVER
+      // register the producer as the static instance, then launch the http server
 
-        DefaultODataProducerProvider.setInstance(producerBig);
-        this.rtFacde.hostODataServer(endpointUri);
-    }
+      DefaultODataProducerProvider.setInstance(producerBig);
+      this.rtFacde.hostODataServer(endpointUri);
+   }
 
 //   public static Set<MyInternalCacheEntry> returnInternalCacheEntrySet() {
 //      Set<MyInternalCacheEntry> setOfEntries = new HashSet<MyInternalCacheEntry>();
@@ -196,55 +205,55 @@ public class InMemoryProducerExample extends AbstractExample {
 //      }
 //      return setOfEntries;
 //   }
-    
 
-    public static class MyInternalCacheEntry {
 
-        private Object key;
-        private Object value;
+   public static class MyInternalCacheEntry {
 
-        public MyInternalCacheEntry(Object key, Object value) {
-            this.key = key;
-            this.value = value;
-        }
+      private Object key;
+      private Object value;
 
-        public Object getKey() {
-            return key;
-        }
+      public MyInternalCacheEntry(Object key, Object value) {
+         this.key = key;
+         this.value = value;
+      }
 
-        public Object getValue() {
-            return value;
-        }
+      public Object getKey() {
+         return key;
+      }
 
-        public void setKey(Object key) {
-            this.key = key;
-        }
+      public Object getValue() {
+         return value;
+      }
 
-        public void setValue(Object value) {
-            this.value = value;
-        }
+      public void setKey(Object key) {
+         this.key = key;
+      }
 
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == null) {
-                return false;
-            }
-            if (getClass() != obj.getClass()) {
-                return false;
-            }
-            final MyInternalCacheEntry other = (MyInternalCacheEntry) obj;
-            if ((this.key == null) ? (other.key != null) : !this.key.equals(other.key)) {
-                return false;
-            }
-            return true;
-        }
+      public void setValue(Object value) {
+         this.value = value;
+      }
 
-        @Override
-        public int hashCode() {
-            int hash = 5;
-            return hash;
-        }
-    }
+      @Override
+      public boolean equals(Object obj) {
+         if (obj == null) {
+            return false;
+         }
+         if (getClass() != obj.getClass()) {
+            return false;
+         }
+         final MyInternalCacheEntry other = (MyInternalCacheEntry) obj;
+         if ((this.key == null) ? (other.key != null) : !this.key.equals(other.key)) {
+            return false;
+         }
+         return true;
+      }
+
+      @Override
+      public int hashCode() {
+         int hash = 5;
+         return hash;
+      }
+   }
 
    public static class MyInternalCacheEntrySimple {
 
@@ -273,147 +282,223 @@ public class InMemoryProducerExample extends AbstractExample {
       }
    }
 
-    private static Iterable<EtfInfo> getETFs() throws Exception {
-        return Enumerables.lines(new URL("http://www.masterdata.com/HelpFiles/ETF_List_Downloads/AllETFs.csv")).select(new Func1<String, EtfInfo>() {
 
-            public EtfInfo apply(String csvLine) {
-                return EtfInfo.parse(csvLine);
-            }
-        }).skip(1); // skip header line
-    }
+   public static class MyInternalCacheEntry2 {
 
-    public static class EtfInfo {
+      private Object key;
+      private Object value;
 
-        private final String name;
-        private final String symbol;
-        private final String fundType;
+      public MyInternalCacheEntry2(Object key, Object value) {
+         this.key = key;
+         this.value = value;
+      }
 
-        private EtfInfo(String name, String symbol, String fundType) {
-            this.name = name;
-            this.symbol = symbol;
-            this.fundType = fundType;
-        }
+      public Object getKey() {
+         return key;
+      }
 
-        public static EtfInfo parse(String csvLine) {
+      public Object getValue() {
+         return value;
+      }
 
-            csvLine = csvLine.substring(0, csvLine.lastIndexOf(','));
-            int i = csvLine.lastIndexOf(',');
-            String type = csvLine.substring(i + 1);
-            csvLine = csvLine.substring(0, csvLine.lastIndexOf(','));
-            i = csvLine.lastIndexOf(',');
-            String sym = csvLine.substring(i + 1);
-            csvLine = csvLine.substring(0, csvLine.lastIndexOf(','));
-            String name = csvLine;
-            name = name.startsWith("\"") ? name.substring(1) : name;
-            name = name.endsWith("\"") ? name.substring(0, name.length() - 1) : name;
-            name = name.replace("\u00A0", " ");
+      public void setKey(Object key) {
+         this.key = key;
+      }
 
-            return new EtfInfo(name, sym, type);
-        }
+      public void setValue(Object value) {
+         this.value = value;
+      }
 
-        public String getName() {
-            return name;
-        }
+      @Override
+      public boolean equals(Object obj) {
+         if (obj == null) {
+            return false;
+         }
+         if (getClass() != obj.getClass()) {
+            return false;
+         }
+         final MyInternalCacheEntry other = (MyInternalCacheEntry) obj;
+         if ((this.key == null) ? (other.key != null) : !this.key.equals(other.key)) {
+            return false;
+         }
+         return true;
+      }
 
-        public String getSymbol() {
-            return symbol;
-        }
+      @Override
+      public int hashCode() {
+         int hash = 5;
+         return hash;
+      }
+   }
 
-        public String getFundType() {
-            return fundType;
-        }
-    }
+   public static class MyInternalCacheEntrySimple2 {
 
-    public static class MyEdmDecorator implements EdmDecorator {
+      private String simpleStringKey;
+      private String simpleStringValue;
 
-        public static final String namespace = "http://infinispan.org";
-        public static final String prefix = "inmem";
-        private final List<PrefixedNamespace> namespaces = new ArrayList<PrefixedNamespace>(1);
-        private final EdmComplexType schemaInfoType;
+      public MyInternalCacheEntrySimple2(String simpleStringKey, String simpleStringValue) {
+         this.simpleStringKey = simpleStringKey;
+         this.simpleStringValue = simpleStringValue;
+      }
 
-        public MyEdmDecorator() {
-            namespaces.add(new PrefixedNamespace(namespace, prefix));
-            this.schemaInfoType = createSchemaInfoType().build();
-        }
+      public String getSimpleStringKey() {
+         return simpleStringKey;
+      }
 
-        @Override
-        public List<PrefixedNamespace> getNamespaces() {
-            return namespaces;
-        }
+      public void setSimpleStringKey(String simpleStringKey) {
+         this.simpleStringKey = simpleStringKey;
+      }
 
-        @Override
-        public EdmDocumentation getDocumentationForSchema(String namespace) {
-            return new EdmDocumentation("InMemoryProducerExample", "This schema exposes cache entries stored in Infinispan cache.");
-        }
+      public String getSimpleStringValue() {
+         return simpleStringValue;
+      }
 
-        private EdmComplexType.Builder createSchemaInfoType() {
-            List<EdmProperty.Builder> props = new ArrayList<EdmProperty.Builder>();
+      public void setSimpleStringValue(String simpleStringValue) {
+         this.simpleStringValue = simpleStringValue;
+      }
+   }
 
-            EdmProperty.Builder ep = EdmProperty.newBuilder("Author").setType(EdmSimpleType.STRING);
-            props.add(ep);
+   private static Iterable<EtfInfo> getETFs() throws Exception {
+      return Enumerables.lines(new URL("http://www.masterdata.com/HelpFiles/ETF_List_Downloads/AllETFs.csv")).select(new Func1<String, EtfInfo>() {
 
-            ep = EdmProperty.newBuilder("SeeAlso").setType(EdmSimpleType.STRING);
-            props.add(ep);
+         public EtfInfo apply(String csvLine) {
+            return EtfInfo.parse(csvLine);
+         }
+      }).skip(1); // skip header line
+   }
 
-            return EdmComplexType.newBuilder().setNamespace(namespace).setName("SchemaInfo").addProperties(props);
+   public static class EtfInfo {
 
-        }
+      private final String name;
+      private final String symbol;
+      private final String fundType;
 
-        @Override
-        public List<EdmAnnotation<?>> getAnnotationsForSchema(String namespace) {
-            List<EdmAnnotation<?>> annots = new ArrayList<EdmAnnotation<?>>();
-            annots.add(new EdmAnnotationAttribute(namespace, prefix, "Version", "1.0 early experience pre-alpha"));
+      private EtfInfo(String name, String symbol, String fundType) {
+         this.name = name;
+         this.symbol = symbol;
+         this.fundType = fundType;
+      }
 
-            List<OProperty<?>> p = new ArrayList<OProperty<?>>();
-            p.add(OProperties.string("Author", "Tomas Sykora"));
-            p.add(OProperties.string("SeeAlso", "InMemoryProducerExample.java"));
+      public static EtfInfo parse(String csvLine) {
 
-            annots.add(EdmAnnotation.element(namespace, prefix, "SchemaInfo", OComplexObject.class,
-                    OComplexObjects.create(schemaInfoType, p)));
+         csvLine = csvLine.substring(0, csvLine.lastIndexOf(','));
+         int i = csvLine.lastIndexOf(',');
+         String type = csvLine.substring(i + 1);
+         csvLine = csvLine.substring(0, csvLine.lastIndexOf(','));
+         i = csvLine.lastIndexOf(',');
+         String sym = csvLine.substring(i + 1);
+         csvLine = csvLine.substring(0, csvLine.lastIndexOf(','));
+         String name = csvLine;
+         name = name.startsWith("\"") ? name.substring(1) : name;
+         name = name.endsWith("\"") ? name.substring(0, name.length() - 1) : name;
+         name = name.replace("\u00A0", " ");
 
-            annots.add(EdmAnnotation.element(namespace, prefix, "Tags", OCollection.class,
-                    OCollections.newBuilder(EdmSimpleType.STRING).add(OSimpleObjects.create(EdmSimpleType.STRING, "tag1")).add(OSimpleObjects.create(EdmSimpleType.STRING, "tag2")).build()));
-            return annots;
-        }
+         return new EtfInfo(name, sym, type);
+      }
 
-        @Override
-        public EdmDocumentation getDocumentationForEntityType(String namespace, String typeName) {
-            return null;
-        }
+      public String getName() {
+         return name;
+      }
 
-        @Override
-        public List<EdmAnnotation<?>> getAnnotationsForEntityType(String namespace, String typeName) {
-            return null;
-        }
+      public String getSymbol() {
+         return symbol;
+      }
 
-        @Override
-        public Object resolveStructuralTypeProperty(EdmStructuralType st, PropertyPath path) throws IllegalArgumentException {
-            return null;
-        }
+      public String getFundType() {
+         return fundType;
+      }
+   }
 
-        @Override
-        public EdmDocumentation getDocumentationForProperty(String namespace, String typename, String propName) {
-            return null;
-        }
+   public static class MyEdmDecorator implements EdmDecorator {
 
-        @Override
-        public List<EdmAnnotation<?>> getAnnotationsForProperty(String namespace, String typename, String propName) {
-            return null;
-        }
+      public static final String namespace = "http://infinispan.org";
+      public static final String prefix = "inmem";
+      private final List<PrefixedNamespace> namespaces = new ArrayList<PrefixedNamespace>(1);
+      private final EdmComplexType schemaInfoType;
 
-        @Override
-        public Object resolvePropertyProperty(EdmProperty st, PropertyPath path) throws IllegalArgumentException {
-            return null;
-        }
+      public MyEdmDecorator() {
+         namespaces.add(new PrefixedNamespace(namespace, prefix));
+         this.schemaInfoType = createSchemaInfoType().build();
+      }
 
-        @Override
-        public Object getAnnotationValueOverride(EdmItem item, NamespacedAnnotation<?> annot, boolean flatten, Locale locale, Map<String, String> options) {
-            return null;
-        }
+      @Override
+      public List<PrefixedNamespace> getNamespaces() {
+         return namespaces;
+      }
 
-        @Override
-        public void decorateEntity(EdmEntitySet entitySet, EdmItem item, EdmItem originalQueryItem, List<OProperty<?>> props, boolean flatten, Locale locale, Map<String, String> options) {
-            // no-op
-        }
-    }
+      @Override
+      public EdmDocumentation getDocumentationForSchema(String namespace) {
+         return new EdmDocumentation("InMemoryProducerExample", "This schema exposes cache entries stored in Infinispan cache.");
+      }
+
+      private EdmComplexType.Builder createSchemaInfoType() {
+         List<EdmProperty.Builder> props = new ArrayList<EdmProperty.Builder>();
+
+         EdmProperty.Builder ep = EdmProperty.newBuilder("Author").setType(EdmSimpleType.STRING);
+         props.add(ep);
+
+         ep = EdmProperty.newBuilder("SeeAlso").setType(EdmSimpleType.STRING);
+         props.add(ep);
+
+         return EdmComplexType.newBuilder().setNamespace(namespace).setName("SchemaInfo").addProperties(props);
+
+      }
+
+      @Override
+      public List<EdmAnnotation<?>> getAnnotationsForSchema(String namespace) {
+         List<EdmAnnotation<?>> annots = new ArrayList<EdmAnnotation<?>>();
+         annots.add(new EdmAnnotationAttribute(namespace, prefix, "Version", "1.0 early experience pre-alpha"));
+
+         List<OProperty<?>> p = new ArrayList<OProperty<?>>();
+         p.add(OProperties.string("Author", "Tomas Sykora"));
+         p.add(OProperties.string("SeeAlso", "InMemoryProducerExample.java"));
+
+         annots.add(EdmAnnotation.element(namespace, prefix, "SchemaInfo", OComplexObject.class,
+                                          OComplexObjects.create(schemaInfoType, p)));
+
+         annots.add(EdmAnnotation.element(namespace, prefix, "Tags", OCollection.class,
+                                          OCollections.newBuilder(EdmSimpleType.STRING).add(OSimpleObjects.create(EdmSimpleType.STRING, "tag1")).add(OSimpleObjects.create(EdmSimpleType.STRING, "tag2")).build()));
+         return annots;
+      }
+
+      @Override
+      public EdmDocumentation getDocumentationForEntityType(String namespace, String typeName) {
+         return null;
+      }
+
+      @Override
+      public List<EdmAnnotation<?>> getAnnotationsForEntityType(String namespace, String typeName) {
+         return null;
+      }
+
+      @Override
+      public Object resolveStructuralTypeProperty(EdmStructuralType st, PropertyPath path) throws IllegalArgumentException {
+         return null;
+      }
+
+      @Override
+      public EdmDocumentation getDocumentationForProperty(String namespace, String typename, String propName) {
+         return null;
+      }
+
+      @Override
+      public List<EdmAnnotation<?>> getAnnotationsForProperty(String namespace, String typename, String propName) {
+         return null;
+      }
+
+      @Override
+      public Object resolvePropertyProperty(EdmProperty st, PropertyPath path) throws IllegalArgumentException {
+         return null;
+      }
+
+      @Override
+      public Object getAnnotationValueOverride(EdmItem item, NamespacedAnnotation<?> annot, boolean flatten, Locale locale, Map<String, String> options) {
+         return null;
+      }
+
+      @Override
+      public void decorateEntity(EdmEntitySet entitySet, EdmItem item, EdmItem originalQueryItem, List<OProperty<?>> props, boolean flatten, Locale locale, Map<String, String> options) {
+         // no-op
+      }
+   }
 }
