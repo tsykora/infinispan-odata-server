@@ -1,7 +1,11 @@
 package org.tsykora.odata.producer;
 
-import org.core4j.Enumerables;
-import org.core4j.Func1;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
 import org.odata4j.core.NamespacedAnnotation;
 import org.odata4j.core.OCollection;
 import org.odata4j.core.OCollections;
@@ -11,16 +15,18 @@ import org.odata4j.core.OProperties;
 import org.odata4j.core.OProperty;
 import org.odata4j.core.OSimpleObjects;
 import org.odata4j.core.PrefixedNamespace;
-import org.odata4j.edm.*;
+import org.odata4j.edm.EdmAnnotation;
+import org.odata4j.edm.EdmAnnotationAttribute;
+import org.odata4j.edm.EdmComplexType;
+import org.odata4j.edm.EdmDecorator;
+import org.odata4j.edm.EdmDocumentation;
+import org.odata4j.edm.EdmEntitySet;
+import org.odata4j.edm.EdmItem;
+import org.odata4j.edm.EdmProperty;
+import org.odata4j.edm.EdmSimpleType;
+import org.odata4j.edm.EdmStructuralType;
 import org.odata4j.producer.PropertyPath;
 import org.odata4j.producer.resources.DefaultODataProducerProvider;
-
-import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
 
 /**
  * @author tsykora
@@ -45,17 +51,10 @@ public class InMemoryProducerExample extends AbstractExample {
       String configFile;
       Map<String, Class> cacheNames = new HashMap<String, Class>();
 
-//      if (args[0].contains("8887")) {
-         containerName = "InMemoryProducerExample";
-         cacheNames.put("defaultCache", MyInternalCacheEntry.class);
-         cacheNames.put("mySpecialNamedCache", MyInternalCacheEntrySimple.class);
-         configFile = "infinispan-dist.xml";
-//      } else {
-//         containerName = "InMemoryProducerExample";
-//         cacheNames.put("defaultCache2", MyInternalCacheEntry.class);
-//         cacheNames.put("mySpecialNamedCache2", MyInternalCacheEntrySimple.class);
-//         configFile = "infinispan-dist2.xml";
-//      }
+      containerName = "InMemoryProducerExample";
+      cacheNames.put("defaultCache", MyInternalCacheEntry.class);
+      cacheNames.put("mySpecialNamedCache", MyInternalCacheEntrySimple.class);
+      configFile = "infinispan-dist.xml"; // cacheNames listing mimic infinispan-dist.xml created caches
 
       // the first parameter is containerName
       final InfinispanProducer2 producerBig =
@@ -279,133 +278,6 @@ public class InMemoryProducerExample extends AbstractExample {
 
       public void setSimpleStringValue(String simpleStringValue) {
          this.simpleStringValue = simpleStringValue;
-      }
-   }
-
-
-   public static class MyInternalCacheEntry2 {
-
-      private Object key;
-      private Object value;
-
-      public MyInternalCacheEntry2(Object key, Object value) {
-         this.key = key;
-         this.value = value;
-      }
-
-      public Object getKey() {
-         return key;
-      }
-
-      public Object getValue() {
-         return value;
-      }
-
-      public void setKey(Object key) {
-         this.key = key;
-      }
-
-      public void setValue(Object value) {
-         this.value = value;
-      }
-
-      @Override
-      public boolean equals(Object obj) {
-         if (obj == null) {
-            return false;
-         }
-         if (getClass() != obj.getClass()) {
-            return false;
-         }
-         final MyInternalCacheEntry other = (MyInternalCacheEntry) obj;
-         if ((this.key == null) ? (other.key != null) : !this.key.equals(other.key)) {
-            return false;
-         }
-         return true;
-      }
-
-      @Override
-      public int hashCode() {
-         int hash = 5;
-         return hash;
-      }
-   }
-
-   public static class MyInternalCacheEntrySimple2 {
-
-      private String simpleStringKey;
-      private String simpleStringValue;
-
-      public MyInternalCacheEntrySimple2(String simpleStringKey, String simpleStringValue) {
-         this.simpleStringKey = simpleStringKey;
-         this.simpleStringValue = simpleStringValue;
-      }
-
-      public String getSimpleStringKey() {
-         return simpleStringKey;
-      }
-
-      public void setSimpleStringKey(String simpleStringKey) {
-         this.simpleStringKey = simpleStringKey;
-      }
-
-      public String getSimpleStringValue() {
-         return simpleStringValue;
-      }
-
-      public void setSimpleStringValue(String simpleStringValue) {
-         this.simpleStringValue = simpleStringValue;
-      }
-   }
-
-   private static Iterable<EtfInfo> getETFs() throws Exception {
-      return Enumerables.lines(new URL("http://www.masterdata.com/HelpFiles/ETF_List_Downloads/AllETFs.csv")).select(new Func1<String, EtfInfo>() {
-
-         public EtfInfo apply(String csvLine) {
-            return EtfInfo.parse(csvLine);
-         }
-      }).skip(1); // skip header line
-   }
-
-   public static class EtfInfo {
-
-      private final String name;
-      private final String symbol;
-      private final String fundType;
-
-      private EtfInfo(String name, String symbol, String fundType) {
-         this.name = name;
-         this.symbol = symbol;
-         this.fundType = fundType;
-      }
-
-      public static EtfInfo parse(String csvLine) {
-
-         csvLine = csvLine.substring(0, csvLine.lastIndexOf(','));
-         int i = csvLine.lastIndexOf(',');
-         String type = csvLine.substring(i + 1);
-         csvLine = csvLine.substring(0, csvLine.lastIndexOf(','));
-         i = csvLine.lastIndexOf(',');
-         String sym = csvLine.substring(i + 1);
-         csvLine = csvLine.substring(0, csvLine.lastIndexOf(','));
-         String name = csvLine;
-         name = name.startsWith("\"") ? name.substring(1) : name;
-         name = name.endsWith("\"") ? name.substring(0, name.length() - 1) : name;
-         name = name.replace("\u00A0", " ");
-
-         return new EtfInfo(name, sym, type);
-      }
-
-      public String getName() {
-         return name;
-      }
-
-      public String getSymbol() {
-         return symbol;
-      }
-
-      public String getFundType() {
-         return fundType;
       }
    }
 

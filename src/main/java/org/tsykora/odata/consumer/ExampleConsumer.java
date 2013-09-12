@@ -11,6 +11,8 @@ import org.tsykora.odata.producer.AbstractExample;
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
 
+import java.io.IOException;
+
 /**
  * @author tsykora
  */
@@ -88,7 +90,12 @@ public class ExampleConsumer extends AbstractExample {
 //         }
 //      }
 
-      String entitySetNameCacheName = "NONSENSE";
+      String entitySetNameCacheName = "STARTING_NONSENSE";
+
+      System.out.println("\n\n\n");
+      System.out.println("PLAYING with defaultCache for serialization + encoding64 whole objects");
+      System.out.println("\n\n\n");
+
 
       BASE64Encoder encoder = new BASE64Encoder();
       BASE64Decoder decoder = new BASE64Decoder();
@@ -98,34 +105,46 @@ public class ExampleConsumer extends AbstractExample {
       String encodedString = encoder.encode(serializedObject);
       System.out.println("encodedObject for transfer: " + encodedString);
 
-//      entitySetNameCacheName = "defaultCache";
-//
-//      Enumerable<OObject> results_put_empty = consumer.callFunction(entitySetNameCacheName + "_put")
-//            .bind(entitySetNameCacheName)
-//                  // Note: when there is no definition of parameter, parameter is simply null
-//            .pString("keyEncodedSerializedObject", encodedString)
-//            .pString("valueEncodedSerializedObject", encodedString)
-//            .execute();
-//
-//      Enumerable<OObject> results_get_default = consumer.callFunction(entitySetNameCacheName + "_get")
-//            .bind("defaultCache")
-//            .pString("keyEncodedSerializedObject", encodedString)
-//            .execute();
+      entitySetNameCacheName = "defaultCache";
 
-//      for(OObject o : results_get_default) {
-//         System.out.println("\n\n\n");
-//         System.out.println("Some results here of type: " + o.getType());
-//         System.out.println(o.toString());
-//         String encodedSerializedString = o.toString();
-//         try {
-//            byte[] serialized = decoder.decodeBuffer(encodedSerializedString);
-//            System.out.println("decoded: " + serialized);
-//            System.out.println("deserialize: " + Utils.deserialize(serialized).toString());
-//         } catch (IOException e) {
-//            e.printStackTrace();
-//         }
-//         System.out.println();
-//      }
+      OEntity createdEntity = consumer.createEntity(entitySetNameCacheName).
+            properties(OProperties.binary("Key", serializedObject)).
+            properties(OProperties.binary("Value", serializedObject)).execute();
+
+       System.out.println("\n\n CREATED COMPLEX!! ENTITY REPORT (created by consumer.createEntity): \n");
+       System.out.println("Key: " + createdEntity.getProperty("Key").getValue());
+       System.out.println("Value: " + createdEntity.getProperty("Value").getValue());
+       System.out.println("Deserialized Value: " + Utils.deserialize((byte[]) createdEntity.getProperty("Value").getValue()));
+       System.out.println("\n\n");
+
+
+
+      Enumerable<OObject> results_put_empty = consumer.callFunction(entitySetNameCacheName + "_put")
+//            .bind(entitySetNameCacheName) // we are not binding this -- need to be null to pass condition for finding function
+                  // Note: when there is no definition of parameter, parameter is simply null
+            .pString("keyEncodedSerializedObject", encodedString)
+            .pString("valueEncodedSerializedObject", encodedString)
+            .execute();
+
+      Enumerable<OObject> results_get_default = consumer.callFunction(entitySetNameCacheName + "_get")
+//            .bind(entitySetNameCacheName) // we are not binding this -- need to be null to pass condition for finding function
+            .pString("keyEncodedSerializedObject", encodedString)
+            .execute();
+
+      for(OObject o : results_get_default) {
+         System.out.println("\n\n\n");
+         System.out.println("Some results here of type: " + o.getType());
+         System.out.println(o.toString());
+         String encodedSerializedString = o.toString();
+         try {
+            byte[] serialized = decoder.decodeBuffer(encodedSerializedString);
+            System.out.println("decoded: " + serialized);
+            System.out.println("deserialize: " + Utils.deserialize(serialized).toString());
+         } catch (IOException e) {
+            e.printStackTrace();
+         }
+         System.out.println();
+      }
 
 
       // mySpecialNamedCache - SIMPLE BASED
@@ -133,7 +152,7 @@ public class ExampleConsumer extends AbstractExample {
       entitySetNameCacheName = "mySpecialNamedCache";
 
       // working with cache entry simple class (String, String)
-      OEntity createdEntity = consumer.createEntity(entitySetNameCacheName).
+      OEntity createdEntity2 = consumer.createEntity(entitySetNameCacheName).
             properties(OProperties.string("simpleStringKey", "key7777simple" + appendix)).
             properties(OProperties.string("simpleStringValue", "value7777simple" + appendix)).execute();
 
@@ -141,7 +160,7 @@ public class ExampleConsumer extends AbstractExample {
       String simpleValue = "simpleValue1" + appendix;
 
       // ispn_put is defined (in addFunctions) to have NO return type so results are null here
-      Enumerable<OObject> results_put_empty = consumer.callFunction(entitySetNameCacheName + "_put")
+      Enumerable<OObject> results_put_empty2 = consumer.callFunction(entitySetNameCacheName + "_put")
 //            .bind(entitySetNameCacheName)
             // Note: when there is no definition of parameter, parameter is simply null
             .pString("keySimpleString", simpleKey)

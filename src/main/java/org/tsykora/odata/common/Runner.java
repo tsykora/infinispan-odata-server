@@ -35,33 +35,6 @@ public class Runner {
       }
 
 
-      // wait until registration
-//      Thread.sleep(3000);
-//
-//      Thread producerThread2 = new Thread() {
-//         public void run() {
-//            System.out.println("\nStarting producer...\n");
-//            InMemoryProducerExample producer = new InMemoryProducerExample();
-//            String[] args = {"http://localhost:9887/ODataInfinispanEndpoint2.svc/"};
-//            producer.run(args);
-//         }
-//      };
-//      producerThread2.start();
-//      producerThread2.sleep(3000);
-
-
-      // start second server (with replicated/distributed cache)
-//      Thread producerThread2 = new Thread() {
-//         public void run() {
-//            System.out.println("\nStarting producer...\n");
-//            InMemoryProducerExample2 producer2 = new InMemoryProducerExample2();
-//            String[] args = {"http://localhost:9887/ODataInfinispanEndpoint2.svc/"};
-//            producer2.run(args);
-//         }
-//      };
-//      producerThread2.start();
-
-
       // start consumer in different thread and work with exposed data
 
       if (args == null || args[0] == null || args[0].equals("8887")) {
@@ -75,7 +48,7 @@ public class Runner {
          };
          // wait for server starting
          System.out.println("\n\n\nWaiting some seconds before starting consumerThread.............\n\n\n");
-         Thread.sleep(6000);
+         Thread.sleep(5000);
          consumerThread.start();
 
       } else {
@@ -89,7 +62,7 @@ public class Runner {
          };
          // wait for server starting
          System.out.println("\n\n\nWaiting some seconds before starting consumerThread.............\n\n\n");
-         Thread.sleep(6000);
+         Thread.sleep(5000);
          consumerThread.start();
 
       }

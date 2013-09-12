@@ -34,4 +34,24 @@ public class CacheObjectSerializationAble implements Serializable {
    public String toString() {
       return "[" + getKeyx() + "," + getValuex() + "]";
    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+
+        CacheObjectSerializationAble that = (CacheObjectSerializationAble) o;
+
+        if (!keyx.equals(that.keyx)) return false;
+        if (!valuex.equals(that.valuex)) return false;
+
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = keyx.hashCode();
+        result = 31 * result + valuex.hashCode();
+        return result;
+    }
 }

@@ -27,7 +27,7 @@
 
         <transport clusterName="OData-Cluster" transportClass="org.infinispan.remoting.transport.jgroups.JGroupsTransport">
             <properties>
-                <property name="configurationFile" value="jgroups.xml" />
+                <property name="configurationFile" value="jgroups-tcp.xml" />
             </properties>
         </transport>
 
