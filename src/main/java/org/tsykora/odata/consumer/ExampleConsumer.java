@@ -2,9 +2,7 @@ package org.tsykora.odata.consumer;
 
 import org.core4j.Enumerable;
 import org.odata4j.consumer.ODataConsumer;
-import org.odata4j.core.OEntity;
 import org.odata4j.core.OObject;
-import org.odata4j.core.OProperties;
 import org.tsykora.odata.common.CacheObjectSerializationAble;
 import org.tsykora.odata.common.Utils;
 import org.tsykora.odata.producer.AbstractExample;
@@ -107,18 +105,18 @@ public class ExampleConsumer extends AbstractExample {
 
       entitySetNameCacheName = "defaultCache";
 
-      OEntity createdEntity = consumer.createEntity(entitySetNameCacheName).
-            properties(OProperties.binary("Key", serializedObject)).
-            properties(OProperties.binary("Value", serializedObject)).execute();
-
-       System.out.println("\n\n CREATED COMPLEX!! ENTITY REPORT (created by consumer.createEntity): \n");
-       System.out.println("Key: " + createdEntity.getProperty("Key").getValue());
-       System.out.println("Value: " + createdEntity.getProperty("Value").getValue());
-       System.out.println("Deserialized Value: " + Utils.deserialize((byte[]) createdEntity.getProperty("Value").getValue()));
-       System.out.println("\n\n");
-
-
-
+//      OEntity createdEntity = consumer.createEntity(entitySetNameCacheName).
+//            properties(OProperties.binary("Key", serializedObject)).
+//            properties(OProperties.binary("Value", serializedObject)).execute();
+//
+//       System.out.println("\n\n CREATED COMPLEX!! ENTITY REPORT (created by consumer.createEntity): \n");
+//       System.out.println("Key: " + createdEntity.getProperty("Key").getValue());
+//       System.out.println("Value: " + createdEntity.getProperty("Value").getValue());
+//       System.out.println("Deserialized Value: " + Utils.deserialize((byte[]) createdEntity.getProperty("Value").getValue()));
+//       System.out.println("\n\n");
+//
+//
+//
       Enumerable<OObject> results_put_empty = consumer.callFunction(entitySetNameCacheName + "_put")
 //            .bind(entitySetNameCacheName) // we are not binding this -- need to be null to pass condition for finding function
                   // Note: when there is no definition of parameter, parameter is simply null
@@ -139,7 +137,7 @@ public class ExampleConsumer extends AbstractExample {
          try {
             byte[] serialized = decoder.decodeBuffer(encodedSerializedString);
             System.out.println("decoded: " + serialized);
-            System.out.println("deserialize: " + Utils.deserialize(serialized).toString());
+            System.out.println("deserialize: " + Utils.deserialize(serialized).toString() + " of class: " + Utils.deserialize(serialized).getClass());
          } catch (IOException e) {
             e.printStackTrace();
          }
@@ -152,9 +150,9 @@ public class ExampleConsumer extends AbstractExample {
       entitySetNameCacheName = "mySpecialNamedCache";
 
       // working with cache entry simple class (String, String)
-      OEntity createdEntity2 = consumer.createEntity(entitySetNameCacheName).
-            properties(OProperties.string("simpleStringKey", "key7777simple" + appendix)).
-            properties(OProperties.string("simpleStringValue", "value7777simple" + appendix)).execute();
+//      OEntity createdEntity2 = consumer.createEntity(entitySetNameCacheName).
+//            properties(OProperties.string("simpleStringKey", "key7777simple" + appendix)).
+//            properties(OProperties.string("simpleStringValue", "value7777simple" + appendix)).execute();
 
       String simpleKey = "simpleKey1" + appendix;
       String simpleValue = "simpleValue1" + appendix;
@@ -171,12 +169,6 @@ public class ExampleConsumer extends AbstractExample {
       // ispn_get is defined (in addFunctions) to have return type EdmSimpleType.STRING so results should be here
       // TODO: It would be ideal to return serialized decoded string which I can encode and deserialize then
 
-
-      try {
-         Thread.sleep(1000);
-      } catch (InterruptedException e) {
-         e.printStackTrace();  // TODO: Customise this generated block
-      }
 
       Enumerable<OObject> results_get = consumer.callFunction(entitySetNameCacheName + "_get")
 //            .bind("mySpecialNamedCache")
@@ -205,13 +197,13 @@ public class ExampleConsumer extends AbstractExample {
 
 
       // URI here is only for caption
-      System.out.println("REPORT WHOLE ENTITY SET (defaultCache)");
-      reportEntities("******** " + endpointUri.concat("defaultCache"),
-                     consumer.getEntities("defaultCache").execute());
-
-      System.out.println("REPORT WHOLE ENTITY SET (mySpecialNamedCache)");
-      reportEntities("******** " + endpointUri.concat("mySpecialNamedCache"),
-                     consumer.getEntities("mySpecialNamedCache").execute());
+//      System.out.println("REPORT WHOLE ENTITY SET (defaultCache)");
+//      reportEntities("******** " + endpointUri.concat("defaultCache"),
+//                     consumer.getEntities("defaultCache").execute());
+//
+//      System.out.println("REPORT WHOLE ENTITY SET (mySpecialNamedCache)");
+//      reportEntities("******** " + endpointUri.concat("mySpecialNamedCache"),
+//                     consumer.getEntities("mySpecialNamedCache").execute());
 
 
       // <editor-fold name=Benchmark>

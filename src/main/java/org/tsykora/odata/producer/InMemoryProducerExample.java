@@ -1,11 +1,5 @@
 package org.tsykora.odata.producer;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-
 import org.odata4j.core.NamespacedAnnotation;
 import org.odata4j.core.OCollection;
 import org.odata4j.core.OCollections;
@@ -15,18 +9,15 @@ import org.odata4j.core.OProperties;
 import org.odata4j.core.OProperty;
 import org.odata4j.core.OSimpleObjects;
 import org.odata4j.core.PrefixedNamespace;
-import org.odata4j.edm.EdmAnnotation;
-import org.odata4j.edm.EdmAnnotationAttribute;
-import org.odata4j.edm.EdmComplexType;
-import org.odata4j.edm.EdmDecorator;
-import org.odata4j.edm.EdmDocumentation;
-import org.odata4j.edm.EdmEntitySet;
-import org.odata4j.edm.EdmItem;
-import org.odata4j.edm.EdmProperty;
-import org.odata4j.edm.EdmSimpleType;
-import org.odata4j.edm.EdmStructuralType;
+import org.odata4j.edm.*;
 import org.odata4j.producer.PropertyPath;
 import org.odata4j.producer.resources.DefaultODataProducerProvider;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 
 /**
  * @author tsykora
@@ -57,8 +48,8 @@ public class InMemoryProducerExample extends AbstractExample {
       configFile = "infinispan-dist.xml"; // cacheNames listing mimic infinispan-dist.xml created caches
 
       // the first parameter is containerName
-      final InfinispanProducer2 producerBig =
-            new InfinispanProducer2(containerName, null, 100, new MyEdmDecorator(), null, cacheNames, configFile);
+      final InfinispanProducer3 producerBig =
+            new InfinispanProducer3(containerName, null, 100, new MyEdmDecorator(), null, cacheNames, configFile);
 //        final LightweightInfinispanProducer producer = new LightweightInfinispanProducer("InMemoryProducerExample", null, 100, null, null);
 
 

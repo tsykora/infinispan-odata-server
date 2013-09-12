@@ -686,7 +686,9 @@ public class InfinispanProducer2 implements ODataProducer {
         dump("\n entityKey processing in getEntity method:");
         dump("entityKey raw: " + entityKey);
         dump("entityKey asSingleValue:" + entityKey.asSingleValue());
-        dump("entityKey asSingleValue deserialized:" + deserialize((byte[]) entityKey.asSingleValue()));
+
+       // Warning: you can't use it while using simple values (these strings can't be simply converted to byte[])
+//        dump("entityKey asSingleValue deserialized:" + deserialize((byte[]) entityKey.asSingleValue()));
 
         Object ispnCacheKey = null;
 
