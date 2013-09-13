@@ -116,6 +116,14 @@ public class ExampleConsumer extends AbstractExample {
 //       System.out.println("\n\n");
 //
 //
+
+
+      Enumerable<OObject> results_put_empty_serialized_only = consumer.callFunction(entitySetNameCacheName + "_put")
+            .pByteArray("keySerializedObject", serializedObject)
+            .pByteArray("valueSerializedObject", serializedObject)
+            .execute();
+
+
 //
       Enumerable<OObject> results_put_empty = consumer.callFunction(entitySetNameCacheName + "_put")
 //            .bind(entitySetNameCacheName) // we are not binding this -- need to be null to pass condition for finding function
