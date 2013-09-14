@@ -3,13 +3,12 @@ package org.tsykora.odata.consumer;
 import org.core4j.Enumerable;
 import org.odata4j.consumer.ODataConsumer;
 import org.odata4j.core.OObject;
+import org.odata4j.core.OSimpleObject;
 import org.tsykora.odata.common.CacheObjectSerializationAble;
 import org.tsykora.odata.common.Utils;
 import org.tsykora.odata.producer.AbstractExample;
 import sun.misc.BASE64Decoder;
 import sun.misc.BASE64Encoder;
-
-import java.io.IOException;
 
 /**
  * @author tsykora
@@ -123,30 +122,39 @@ public class ExampleConsumer extends AbstractExample {
             .pByteArray("valueSerializedObject", serializedObject)
             .execute();
 
-
 //
-      Enumerable<OObject> results_put_empty = consumer.callFunction(entitySetNameCacheName + "_put")
-//            .bind(entitySetNameCacheName) // we are not binding this -- need to be null to pass condition for finding function
-                  // Note: when there is no definition of parameter, parameter is simply null
-            .pString("keyEncodedSerializedObject", encodedString)
-            .pString("valueEncodedSerializedObject", encodedString)
-            .execute();
+//      Enumerable<OObject> results_put_empty = consumer.callFunction(entitySetNameCacheName + "_put")
+////            .bind(entitySetNameCacheName) // we are not binding this -- need to be null to pass condition for finding function
+//                  // Note: when there is no definition of parameter, parameter is simply null
+//            .pString("keyEncodedSerializedObject", encodedString)
+//            .pString("valueEncodedSerializedObject", encodedString)
+//            .execute();
 
+//      Enumerable<OObject> results_get_default = consumer.callFunction(entitySetNameCacheName + "_get")
+////            .bind(entitySetNameCacheName) // we are not binding this -- need to be null to pass condition for finding function
+//            .pString("keyEncodedSerializedObject", encodedString)
+//            .execute();
+
+      // returnType of get function is now EdmSimpleType.BINARY
       Enumerable<OObject> results_get_default = consumer.callFunction(entitySetNameCacheName + "_get")
-//            .bind(entitySetNameCacheName) // we are not binding this -- need to be null to pass condition for finding function
-            .pString("keyEncodedSerializedObject", encodedString)
+            .pByteArray("keySerializedObject", serializedObject)
             .execute();
 
       for(OObject o : results_get_default) {
+
          System.out.println("\n\n\n");
          System.out.println("Some results here of type: " + o.getType());
          System.out.println(o.toString());
          String encodedSerializedString = o.toString();
          try {
-            byte[] serialized = decoder.decodeBuffer(encodedSerializedString);
-            System.out.println("decoded: " + serialized);
-            System.out.println("deserialize: " + Utils.deserialize(serialized).toString() + " of class: " + Utils.deserialize(serialized).getClass());
-         } catch (IOException e) {
+
+            OSimpleObject simpleObject = (OSimpleObject) o;
+            byte[] valueBytes = (byte[]) simpleObject.getValue();
+
+            System.out.println("serialized in byte[]: " + valueBytes);
+            System.out.println("deserialized: " + Utils.deserialize(valueBytes).toString() + " of class: " +
+                                     Utils.deserialize(valueBytes).getClass());
+         } catch (Exception e) {
             e.printStackTrace();
          }
          System.out.println();

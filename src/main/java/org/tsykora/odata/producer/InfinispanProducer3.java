@@ -58,6 +58,7 @@ import java.util.logging.Logger;
 public class InfinispanProducer3 implements ODataProducer {
 
    private static final boolean DUMP = true;
+   private final Logger log = Logger.getLogger(InfinispanProducer3.class.getName());
 
    private static void dump(Object msg) {
       if (DUMP) {
@@ -469,23 +470,14 @@ public class InfinispanProducer3 implements ODataProducer {
       }
 
 
-
-
-
-
       // false = simple or complex => simple or serialized AND encoded
       boolean serializedOnly = false;
-
       if (params.get("keySerializedObject") != null || params.get("valueSerializedObject") != null) {
          dump("Working with SERIALIZED!! (only serialized) OBJECT KEY and VALUE");
          serializedOnly = true;
-
          try {
-
             System.out.println("\n\n\n!!!\n");
-
             System.out.println(params.get("keySerializedObject"));
-
             // is returning 0xaced0005737200356f72672e7473796b6f72612e6f646174612e636f6d6d6f6e2e43616368654f626a65637453657269616c697a6174696f6e41626c65b437f81b2d92f2220200024c00046b6579787400124c6a6176612f6c616e672f537472696e673b4c000676616c75657871007e000178707400066b657978783174000876616c7565787831
             System.out.println(params.get("keySerializedObject").getValue());
 
@@ -503,41 +495,10 @@ public class InfinispanProducer3 implements ODataProducer {
             } catch (Exception e) {
                e.printStackTrace();
             }
-
-
-
-
-
-
-//            Utils.deserialize((byte[]) "fff");
-
             System.out.println(params.get("keySerializedObject").getValue().toString());
             System.out.println(params.get("keySerializedObject").getType());
 
             System.out.println("\n............ !!!\n");
-
-
-
-//            byte[] keySerializedObject = (byte[]) params.get("keySerializedObject").getValue();
-//            byte[] keyDecodedBytes = decoder.decodeBuffer(keyEncodedString);
-//            dump("PRODUCER, key decoded bytes for deserialization: " + keyDecodedBytes);
-//            Object keyDeserializedObject = Utils.deserialize(keyDecodedBytes);
-//            dump("PRODUCER, key deserialized object: " + keyDeserializedObject.toString());
-//            keyObject = (CacheObjectSerializationAble) keyDeserializedObject;
-//
-//            // when calling _get value is not defined of course
-//            if (function.getName().endsWith("_put")) {
-//               String valueEncodedString = params.get("valueEncodedSerializedObject").getValue().toString();
-//               byte[] valueDecodedBytes = decoder.decodeBuffer(valueEncodedString);
-//               dump("PRODUCER, value decoded bytes for deserialization: " + valueDecodedBytes);
-//               Object valueDeserializedObject = Utils.deserialize(valueDecodedBytes);
-//               dump("PRODUCER, value deserialized object: " + valueDeserializedObject.toString());
-//               valueObject = (CacheObjectSerializationAble) valueDeserializedObject;
-//            }
-//         } catch (Exception e) {
-//            dump("EXCEPTION: " + e.getMessage() + " " + e.getCause().getMessage());
-//            e.printStackTrace();
-//         }
 
          } catch (Exception e) {
             dump("EXCEPTION: " + e.getMessage() + " " + e.getCause().getMessage());
@@ -546,49 +507,26 @@ public class InfinispanProducer3 implements ODataProducer {
       }
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-      if (params.get("keyEncodedSerializedObject") != null || params.get("valueEncodedSerializedObject") != null) {
-         dump("Working with SERIALIZED and ENCODED OBJECT KEY and VALUE");
+      if (params.get("keySerializedObject") != null || params.get("valueSerializedObject") != null) {
+         dump("Working with SERIALIZED OBJECT KEY and VALUE");
 
          try {
-            String keyEncodedString = params.get("keyEncodedSerializedObject").getValue().toString();
-            byte[] keyDecodedBytes = decoder.decodeBuffer(keyEncodedString);
-            dump("PRODUCER, key decoded bytes for deserialization: " + keyDecodedBytes);
-            Object keyDeserializedObject = Utils.deserialize(keyDecodedBytes);
+
+            OSimpleObject simpleObject = (OSimpleObject) params.get("keySerializedObject").getValue();
+            byte[] keyBytes = (byte[]) simpleObject.getValue();
+
+            dump("PRODUCER, key bytes for deserialization: " + keyBytes);
+            Object keyDeserializedObject = Utils.deserialize(keyBytes);
             dump("PRODUCER, key deserialized object: " + keyDeserializedObject.toString());
             keyObject = (CacheObjectSerializationAble) keyDeserializedObject;
 
             // when calling _get value is not defined of course
             if (function.getName().endsWith("_put")) {
-               String valueEncodedString = params.get("valueEncodedSerializedObject").getValue().toString();
-               byte[] valueDecodedBytes = decoder.decodeBuffer(valueEncodedString);
-               dump("PRODUCER, value decoded bytes for deserialization: " + valueDecodedBytes);
-               Object valueDeserializedObject = Utils.deserialize(valueDecodedBytes);
+               simpleObject = (OSimpleObject) params.get("valueSerializedObject").getValue();
+               byte[] valueBytes = (byte[]) simpleObject.getValue();
+
+               dump("PRODUCER, value bytes for deserialization: " + valueBytes);
+               Object valueDeserializedObject = Utils.deserialize(valueBytes);
                dump("PRODUCER, value deserialized object: " + valueDeserializedObject.toString());
                valueObject = (CacheObjectSerializationAble) valueDeserializedObject;
             }
@@ -607,9 +545,6 @@ public class InfinispanProducer3 implements ODataProducer {
       }
 
 
-
-
-
       String setNameWhichIsCacheName = function.getEntitySet().getName();
 
       // returning just right putted entity in this case
@@ -618,31 +553,21 @@ public class InfinispanProducer3 implements ODataProducer {
       if (function.getName().endsWith("_put")) {
          dump("Putting into " + setNameWhichIsCacheName + " cache....... ");
 
-
-         if (serializedOnly) {
-
-
+         if (complex) {
+            // TODO!! FIX THIS!!! up ->> key object, put whole key object and pass whole keyObject as a entityKey
+            // TODO: or simply return nothing when putting? but it returns... (flag it if wanna nothing?)
+            dump("TODO... FIX THIS!!! in callFunction put branch. " +
+                       "There is a put not of a whole object but only String as a Key!");
+            getCache(setNameWhichIsCacheName).put(keyObject.getKeyx(), valueObject);
          } else {
-            // complex (= serialized + ENCODED!!) or simple
-            if (complex) {
-               // TODO!! FIX THIS!!! up ->> key object, put whole key object and pass whole keyObject as a entityKey
-               // TODO: or simply return nothing when putting? but it returns... (flag it if wanna nothing?)
-               dump("TODO... FIX THIS!!! in callFunction put branch. " +
-                          "There is a put not of a whole object but only String as a Key!");
-               getCache(setNameWhichIsCacheName).put(keyObject.getKeyx(), valueObject);
-            } else {
-               simpleValue = params.get("valueSimpleString").getValue().toString();
-               getCache(setNameWhichIsCacheName).put(simpleKey, simpleValue);
-            }
+            simpleValue = params.get("valueSimpleString").getValue().toString();
+            getCache(setNameWhichIsCacheName).put(simpleKey, simpleValue);
          }
-
 
          // TODO: this will depend on the function name (for PUT no return type, for GET yes)
          // TODO: WHEN USER WANTS SOMETHING RETURNED WHEN PUTTING, YOU CAN RETURN WHOLE ENTITY LIKE THIS:
-//         response = getEntity(context, setNameWhichIsCacheName,
-//                              oentityKey, null);
          // **** !!! ****
-         // set return type for put as EDM.STRING and call only put here and encode + serialize value -> return
+         // set return type for put as EDM.BINARY and call only put here and serialize value -> return
 
          // otherwise when put return nothing
          // dealing with this as a Status.NO_CONTENT (it is successful for functions)
@@ -656,8 +581,7 @@ public class InfinispanProducer3 implements ODataProducer {
             dump("_get call from callFunction, FIX cache.get(keyObject.getKeyx()) to keyObject only");
             Object value = getCache(setNameWhichIsCacheName).get(keyObject.getKeyx());
             byte[] serializedValue = Utils.serialize(value);
-            String encodedValue = encoder.encode(serializedValue);
-            response = Responses.simple(EdmSimpleType.STRING, "valueEncodedSerializedObject", encodedValue);
+            response = Responses.simple(EdmSimpleType.BINARY, "valueSerializedObject", serializedValue);
          } else {
             String value = (String) getCache(setNameWhichIsCacheName).get(simpleKey);
             response = Responses.simple(EdmSimpleType.STRING, "valueSimpleString", value);
@@ -665,9 +589,9 @@ public class InfinispanProducer3 implements ODataProducer {
       }
 
 
-      // need to pass the right parameters
+// need to pass the right parameters
 //           try {
-//              Method m = c.getClass().getMethod("put", null); // tady mam metody
+//              Method m = c.getClass().getMethod("put", null);
 //              try {
 //                 m.invoke(c, new Object());
 //              } catch (IllegalAccessException e) {
@@ -824,79 +748,79 @@ public class InfinispanProducer3 implements ODataProducer {
       }
    }
 
-   /**
-    * TODO - document THIS PROPERLY? Change in the future? Given an entity set and an entity key, returns the pojo that
-    * is that entity instance. The default implementation iterates over the entire set of pojos to find the desired
-    * instance.
-    *
-    * @param rc the current ReqeustContext, may be valuable to the ei.getWithContext impl
-    * @return the pojo
-    */
-   @SuppressWarnings("unchecked")
-   protected Object getEntityPojo(final RequestContext rc) {
-
-      // I need to transfer cache entry to MyInternalCacheEntry
-      // because this is Entity and I have EntityInfo about this class
-      // RequestContext is my internal class here and it has rc.getEntityKey()
-
-      // Citation EntityKey DOC: "The string representation of an entity-key is wrapped with parentheses" ('foo')
-
-      MyInternalCacheEntry mice = null;
-      MyInternalCacheEntrySimple miceSimple = null;
-
-      // entry exists?
-
-      System.out.println("\n\n\n");
-      System.out.println("rc.getIspnCacheKey (have to be the same as the first entry later: " + rc.getIspnCacheKey());
-      System.out.println("Cache KEYSET before creating MICE object in getEntityPojo!!! " + getCache(rc.getEntitySetName()).keySet().toString());
-      System.out.println("Cache KEYSET before creating MICE object in getEntityPojo the first entry " +
-                               getCache(rc.getEntitySetName()).keySet().toArray()[0]);
-      System.out.println(" rc.getIspnCacheKey class " + rc.getIspnCacheKey().getClass());
-      System.out.println(" key from keyset class: " + getCache(rc.getEntitySetName()).keySet().toArray()[0].getClass());
-
-      System.out.println("EQUALS???: " + getCache(rc.getEntitySetName()).keySet().toArray()[0].equals(rc.getIspnCacheKey()));
-
-//        Object value = getCache(rc.getEntitySetName()).get(getCache(rc.getEntitySetName()).keySet().toArray()[0]);
-      Object value = getCache(rc.getEntitySetName()).get(rc.getIspnCacheKey()); // I need this to work
-
-
-      System.out.println("value: " + value + " toString: " + value.toString());
-      System.out.println("\n\n\n");
-
-      if (value != null) {
-         dump("Found value : " + value + " for key: " + rc.getIspnCacheKey() + " in cache: " + rc.getEntitySetName());
-
-         if (rc.isSimpleStringKeyValue()) {
-            dump("getEntityPojo(): NO serialization of response. Simple String value key only.");
-            // Calling (String, String) constructor here, so response is OK, no need of serialization
-            // setting of Simple attributes in MyInternalCacheEntry is ok a supposed to be filled by String values
-            miceSimple = new MyInternalCacheEntrySimple(rc.getIspnCacheKey().toString(), value.toString());
-         } else {
-            // we are dealing with complex objects, do proper serialization
-
-            // IMPORTANT
-            // now I have OBJECTS here -- (which are strings for example)
-            // but they can't be cast to byte[]
-            // this mice is put into OEntity and I need to put there properties in byte[] => in edm.binary format
-            // so I need to serialize these objects here
-
-            // NOPE: NEW!!! approach
-            // rc.IspnCacheKey is OBJECT here. No serialization needed
-
-            dump("getEntityPojo(): Serializing response.");
-            mice = new MyInternalCacheEntry(Utils.serialize(rc.getIspnCacheKey()), Utils.serialize(value));
-         }
-
-      } else {
-         dump("Value NOT FOUND for key: " + rc.getIspnCacheKey() + " in cache: " + rc.getEntitySetName());
-      }
-
-      if (mice == null) {
-         return miceSimple;
-      } else {
-         return mice;
-      }
-   }
+//   /**
+//    * TODO - document THIS PROPERLY? Change in the future? Given an entity set and an entity key, returns the pojo that
+//    * is that entity instance. The default implementation iterates over the entire set of pojos to find the desired
+//    * instance.
+//    *
+//    * @param rc the current ReqeustContext, may be valuable to the ei.getWithContext impl
+//    * @return the pojo
+//    */
+//   @SuppressWarnings("unchecked")
+//   protected Object getEntityPojo(final RequestContext rc) {
+//
+//      // I need to transfer cache entry to MyInternalCacheEntry
+//      // because this is Entity and I have EntityInfo about this class
+//      // RequestContext is my internal class here and it has rc.getEntityKey()
+//
+//      // Citation EntityKey DOC: "The string representation of an entity-key is wrapped with parentheses" ('foo')
+//
+//      MyInternalCacheEntry mice = null;
+//      MyInternalCacheEntrySimple miceSimple = null;
+//
+//      // entry exists?
+//
+//      System.out.println("\n\n\n");
+//      System.out.println("rc.getIspnCacheKey (have to be the same as the first entry later: " + rc.getIspnCacheKey());
+//      System.out.println("Cache KEYSET before creating MICE object in getEntityPojo!!! " + getCache(rc.getEntitySetName()).keySet().toString());
+//      System.out.println("Cache KEYSET before creating MICE object in getEntityPojo the first entry " +
+//                               getCache(rc.getEntitySetName()).keySet().toArray()[0]);
+//      System.out.println(" rc.getIspnCacheKey class " + rc.getIspnCacheKey().getClass());
+//      System.out.println(" key from keyset class: " + getCache(rc.getEntitySetName()).keySet().toArray()[0].getClass());
+//
+//      System.out.println("EQUALS???: " + getCache(rc.getEntitySetName()).keySet().toArray()[0].equals(rc.getIspnCacheKey()));
+//
+////        Object value = getCache(rc.getEntitySetName()).get(getCache(rc.getEntitySetName()).keySet().toArray()[0]);
+//      Object value = getCache(rc.getEntitySetName()).get(rc.getIspnCacheKey()); // I need this to work
+//
+//
+//      System.out.println("value: " + value + " toString: " + value.toString());
+//      System.out.println("\n\n\n");
+//
+//      if (value != null) {
+//         dump("Found value : " + value + " for key: " + rc.getIspnCacheKey() + " in cache: " + rc.getEntitySetName());
+//
+//         if (rc.isSimpleStringKeyValue()) {
+//            dump("getEntityPojo(): NO serialization of response. Simple String value key only.");
+//            // Calling (String, String) constructor here, so response is OK, no need of serialization
+//            // setting of Simple attributes in MyInternalCacheEntry is ok a supposed to be filled by String values
+//            miceSimple = new MyInternalCacheEntrySimple(rc.getIspnCacheKey().toString(), value.toString());
+//         } else {
+//            // we are dealing with complex objects, do proper serialization
+//
+//            // IMPORTANT
+//            // now I have OBJECTS here -- (which are strings for example)
+//            // but they can't be cast to byte[]
+//            // this mice is put into OEntity and I need to put there properties in byte[] => in edm.binary format
+//            // so I need to serialize these objects here
+//
+//            // NOPE: NEW!!! approach
+//            // rc.IspnCacheKey is OBJECT here. No serialization needed
+//
+//            dump("getEntityPojo(): Serializing response.");
+//            mice = new MyInternalCacheEntry(Utils.serialize(rc.getIspnCacheKey()), Utils.serialize(value));
+//         }
+//
+//      } else {
+//         dump("Value NOT FOUND for key: " + rc.getIspnCacheKey() + " in cache: " + rc.getEntitySetName());
+//      }
+//
+//      if (mice == null) {
+//         return miceSimple;
+//      } else {
+//         return mice;
+//      }
+//   }
 
    private enum TriggerType {
       Before, After
@@ -907,7 +831,8 @@ public class InfinispanProducer3 implements ODataProducer {
    protected void fireUnmarshalEvent(Object pojo, OStructuralObject sobj, TriggerType ttype)
          throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
       try {
-         Method m = pojo.getClass().getMethod(ttype == TriggerType.Before ? "beforeOEntityUnmarshal" : "afterOEntityUnmarshal", OStructuralObject.class);
+         Method m = pojo.getClass().getMethod(ttype == TriggerType.Before ? "beforeOEntityUnmarshal" :
+                                                    "afterOEntityUnmarshal", OStructuralObject.class);
          if (m != null) {
             m.invoke(pojo, sobj);
          }
@@ -1243,7 +1168,7 @@ public class InfinispanProducer3 implements ODataProducer {
                   .setEntitySet(container.getEntitySets().get(i))
                   .setEntitySetName(entitySetNameCacheName)
                         // let return type to null to be able to directly access response
-                  .setReturnType(EdmSimpleType.STRING)
+                  .setReturnType(EdmSimpleType.BINARY)
 //                 .setHttpMethod("GET")
 //                  .setBindable(true)
                   .setBindable(false)
