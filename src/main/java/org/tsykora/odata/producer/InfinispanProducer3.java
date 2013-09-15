@@ -3,11 +3,9 @@ package org.tsykora.odata.producer;
 import org.core4j.Enumerable;
 import org.core4j.Func;
 import org.core4j.Func1;
-import org.core4j.Funcs;
 import org.core4j.Predicate1;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
-import org.odata4j.core.OAtomStreamEntity;
 import org.odata4j.core.OEntity;
 import org.odata4j.core.OEntityId;
 import org.odata4j.core.OEntityKey;
@@ -23,7 +21,6 @@ import org.odata4j.expression.OrderByExpression.Direction;
 import org.odata4j.producer.*;
 import org.odata4j.producer.edm.MetadataProducer;
 import org.odata4j.producer.inmemory.BeanBasedPropertyModel;
-import org.odata4j.producer.inmemory.EntityIdFunctionPropertyModelDelegate;
 import org.odata4j.producer.inmemory.EnumsAsStringsPropertyModelDelegate;
 import org.odata4j.producer.inmemory.InMemoryComplexTypeInfo;
 import org.odata4j.producer.inmemory.InMemoryEvaluation;
@@ -31,10 +28,6 @@ import org.odata4j.producer.inmemory.InMemoryTypeMapping;
 import org.odata4j.producer.inmemory.PropertyModel;
 import org.tsykora.odata.common.CacheObjectSerializationAble;
 import org.tsykora.odata.common.Utils;
-import org.tsykora.odata.producer.InMemoryProducerExample.MyInternalCacheEntry;
-import org.tsykora.odata.producer.InMemoryProducerExample.MyInternalCacheEntrySimple;
-import sun.misc.BASE64Decoder;
-import sun.misc.BASE64Encoder;
 
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
@@ -70,20 +63,21 @@ public class InfinispanProducer3 implements ODataProducer {
    private final String namespace;
    private final String containerName;
    private final int maxResults;
+
    // preserve the order of registration
    private final Map<String, InMemoryEntityInfo<?>> eis = new LinkedHashMap<String, InMemoryEntityInfo<?>>();
+
    private final Map<String, InMemoryComplexTypeInfo<?>> complexTypes = new LinkedHashMap<String, InMemoryComplexTypeInfo<?>>();
    private EdmDataServices metadata;
    private final EdmDecorator decorator;
    private final MetadataProducer metadataProducer;
    private final InMemoryTypeMapping typeMapping;
-   private boolean includeNullPropertyValues = true;
    private final boolean flattenEdm;
    private static final int DEFAULT_MAX_RESULTS = 100;
-   private final BASE64Decoder decoder = new BASE64Decoder();
-   private final BASE64Encoder encoder = new BASE64Encoder();
-   // not static - cache instance is running with producer instance
+
+   // TODO: properly decide: not static??? - cache instance is running with producer instance
    private static DefaultCacheManager defaultCacheManager;
+
    private Map<String, Class> cacheNames = null;
 
    /**
@@ -139,11 +133,15 @@ public class InfinispanProducer3 implements ODataProducer {
       try {
          // true = start it + start defined caches
          defaultCacheManager = new DefaultCacheManager(ispnConfigFile, true);
+
+         // TODO: FLOW: create cacheManager based on ispn.xml and then get namesOfCaches and define functions accordingly
+//         defaultCacheManager.getCacheNames()
+
+
 //         defaultCacheManager.start();
          dump("Default cache manager started.");
 
       } catch (IOException e) {
-         dump(" PROBLEM WITH CREATING DEFAULT CACHE MANAGER !!!!!!!!!! ");
          System.out.println(" PROBLEM WITH CREATING DEFAULT CACHE MANAGER !!!!!!!!!! ");
          e.printStackTrace();
       }
@@ -153,36 +151,9 @@ public class InfinispanProducer3 implements ODataProducer {
 //         dump("Cache with name " + cacheName + " started.");
          dump("Registering cache with name " + cacheName + " in Producer...");
 
-         // TODO: IDEA -- if not registered yet -- register it during first put
-         // TODO just for Producer2 -- NOW - only register my EDM entity set
-         // TODO - check class of KEY and the last Funcs.method (try to use simple strings for key or Object.getId()??
-         // TODO -- move this registration into PRODUCER and find how to register it properly and easily
+         // cacheName = entitySetName
+         eis.put(cacheName, null);
 
-         if (cacheNames.get(cacheName) == MyInternalCacheEntry.class) {
-            // register entity set with name of cache
-            register(cacheNames.get(cacheName), cacheNames.get(cacheName), cacheName, new Func<Iterable<MyInternalCacheEntry>>() {
-               // TODO - can I skip this registration? Can I do it inside of producer while starting new cache?
-               // TODO - while starting service? while creating new cache from builder? or according to xml?
-               // TODO - register entrySet for new cache after it starts.
-               public Iterable<MyInternalCacheEntry> apply() {
-//               // TODO - can I skip this registration? Can I do it inside of producer while starting new cache?
-//               // TODO - while starting service? while creating new cache from builder? or according to xml?
-//               // TODO - register entrySet for new cache after it starts.
-                  List<MyInternalCacheEntry> firstEntryForRegister = new ArrayList<MyInternalCacheEntry>();
-                  return firstEntryForRegister;
-               }
-            }, Funcs.method(cacheNames.get(cacheName), cacheNames.get(cacheName), "toString"));
-         }
-
-         if (cacheNames.get(cacheName) == MyInternalCacheEntrySimple.class) {
-            // register entity set with name of cache
-            register(cacheNames.get(cacheName), cacheNames.get(cacheName), cacheName, new Func<Iterable<MyInternalCacheEntrySimple>>() {
-               public Iterable<MyInternalCacheEntrySimple> apply() {
-                  List<MyInternalCacheEntrySimple> firstEntryForRegister = new ArrayList<MyInternalCacheEntrySimple>();
-                  return firstEntryForRegister;
-               }
-            }, Funcs.method(cacheNames.get(cacheName), cacheNames.get(cacheName), "toString"));
-         }
       }
    }
 
@@ -217,107 +188,6 @@ public class InfinispanProducer3 implements ODataProducer {
    }
 
 
-   /**
-    * Registers a new entity based on a POJO, with support for composite keys.
-    *
-    * @param entityClass   the class of the entities that are to be stored in the set
-    * @param entitySetName the alias the set will be known by; this is what is used in the OData url
-    * @param get           a function to iterate over the elements in the set
-    * @param keys          one or more keys for the entity
-    */
-   public <TEntity> void register(Class<TEntity> entityClass, String entitySetName, Func<Iterable<TEntity>> get, String... keys) {
-      register(entityClass, entitySetName, entitySetName, get, keys);
-   }
-
-   /**
-    * Registers a new entity based on a POJO, with support for composite keys.
-    *
-    * @param entityClass    the class of the entities that are to be stored in the set
-    * @param entitySetName  the alias the set will be known by; this is what is used in the OData url
-    * @param entityTypeName type name of the entity
-    * @param get            a function to iterate over the elements in the set
-    * @param keys           one or more keys for the entity
-    */
-   public <TEntity> void register(Class<TEntity> entityClass, String entitySetName,
-                                  String entityTypeName, Func<Iterable<TEntity>> get, String... keys) {
-      PropertyModel model = new BeanBasedPropertyModel(entityClass, this.flattenEdm);
-      model = new EnumsAsStringsPropertyModelDelegate(model);
-      register(entityClass, model, entitySetName, entityTypeName, get, keys);
-   }
-
-   /**
-    * Registers a new entity set based on a POJO type using the default property model.
-    */
-   public <TEntity, TKey> void register(Class<TEntity> entityClass, Class<TKey> keyClass,
-                                        String entitySetName, Func<Iterable<TEntity>> get, Func1<TEntity, TKey> id) {
-      PropertyModel model = new BeanBasedPropertyModel(entityClass, this.flattenEdm);
-      model = new EnumsAsStringsPropertyModelDelegate(model);
-      model = new EntityIdFunctionPropertyModelDelegate<TEntity, TKey>(model, ID_PROPNAME, keyClass, id);
-      register(entityClass, model, entitySetName, get, ID_PROPNAME);
-   }
-
-   /**
-    * Registers a new entity set based on a POJO type and a property model.
-    *
-    * @param entityClass   the class of the entities that are to be stored in the set
-    * @param propertyModel a way to get/set properties on the POJO
-    * @param entitySetName the alias the set will be known by; this is what is used in the ODATA URL
-    * @param get           a function to iterate over the elements in the set
-    * @param keys          one or more keys for the entity
-    */
-   public <TEntity, TKey> void register(
-         Class<TEntity> entityClass,
-         PropertyModel propertyModel,
-         String entitySetName,
-         Func<Iterable<TEntity>> get,
-         String... keys) {
-      register(entityClass, propertyModel, entitySetName, entitySetName, get, keys);
-   }
-
-   public <TEntity> void register(
-         final Class<TEntity> entityClass,
-         final PropertyModel propertyModel,
-         final String entitySetName,
-         final String entityTypeName,
-         final Func<Iterable<TEntity>> get,
-         final String... keys) {
-      register(entityClass, propertyModel, entitySetName, entityTypeName,
-               get, null, keys);
-   }
-
-   public <TEntity> void register(
-         final Class<TEntity> entityClass,
-         final PropertyModel propertyModel,
-         final String entitySetName,
-         final String entityTypeName,
-         final Func<Iterable<TEntity>> get,
-         final Func1<RequestContext, Iterable<TEntity>> getWithContext,
-         final String... keys) {
-
-      InMemoryEntityInfo<TEntity> ei = new InMemoryEntityInfo<TEntity>();
-      ei.entitySetName = entitySetName;
-      ei.entityTypeName = entityTypeName;
-      ei.properties = propertyModel;
-      ei.get = get;
-      ei.getWithContext = getWithContext;
-      ei.keys = keys;
-      ei.entityClass = entityClass;
-      ei.hasStream = OAtomStreamEntity.class.isAssignableFrom(entityClass);
-
-      ei.id = new Func1<Object, HashMap<String, Object>>() {
-         @Override
-         public HashMap<String, Object> apply(Object input) {
-            HashMap<String, Object> values = new HashMap<String, Object>();
-            for (String key : keys) {
-               values.put(key, eis.get(entitySetName).properties.getPropertyValue(input, key));
-            }
-            return values;
-         }
-      };
-
-      eis.put(entitySetName, ei);
-      metadata = null;
-   }
 
 
    private static Predicate1<Object> filterToPredicate(final BoolCommonExpression filter, final PropertyModel properties) {
@@ -449,8 +319,6 @@ public class InfinispanProducer3 implements ODataProducer {
    @Override
    public BaseResponse callFunction(ODataContext context, EdmFunctionImport function, Map<String, OFunctionParameter> params, QueryInfo queryInfo) {
 
-      // if complex issue put with serialized encoded objects
-      boolean complex = true;
       OEntityKey oentityKey = null;
       CacheObjectSerializationAble keyObject = null;
       CacheObjectSerializationAble valueObject = null;
@@ -469,65 +337,27 @@ public class InfinispanProducer3 implements ODataProducer {
          }
       }
 
-
-      // false = simple or complex => simple or serialized AND encoded
-      boolean serializedOnly = false;
-      if (params.get("keySerializedObject") != null || params.get("valueSerializedObject") != null) {
-         dump("Working with SERIALIZED!! (only serialized) OBJECT KEY and VALUE");
-         serializedOnly = true;
-         try {
-            System.out.println("\n\n\n!!!\n");
-            System.out.println(params.get("keySerializedObject"));
-            // is returning 0xaced0005737200356f72672e7473796b6f72612e6f646174612e636f6d6d6f6e2e43616368654f626a65637453657269616c697a6174696f6e41626c65b437f81b2d92f2220200024c00046b6579787400124c6a6176612f6c616e672f537472696e673b4c000676616c75657871007e000178707400066b657978783174000876616c7565787831
-            System.out.println(params.get("keySerializedObject").getValue());
-
-            // params.get("keySerializedObject").getValue() returns OObject
-            try {
-
-               OSimpleObject simpleObject = (OSimpleObject) params.get("keySerializedObject").getValue();
-               // is returning byte[]! directly, yes! No additional external encoding/decoding to EDM.SimpleString needed
-               System.out.println(simpleObject.getValue());
-               System.out.println(simpleObject);
-
-               System.out.println("deserialized object: " + Utils.deserialize((byte[]) simpleObject.getValue()));
-               System.out.println("deserialized object's class: " + Utils.deserialize((byte[]) simpleObject.getValue()).getClass());
-
-            } catch (Exception e) {
-               e.printStackTrace();
-            }
-            System.out.println(params.get("keySerializedObject").getValue().toString());
-            System.out.println(params.get("keySerializedObject").getType());
-
-            System.out.println("\n............ !!!\n");
-
-         } catch (Exception e) {
-            dump("EXCEPTION: " + e.getMessage() + " " + e.getCause().getMessage());
-            e.printStackTrace();
-         }
-      }
-
-
-      if (params.get("keySerializedObject") != null || params.get("valueSerializedObject") != null) {
-         dump("Working with SERIALIZED OBJECT KEY and VALUE");
+      if (params.get("keyBinary") != null || params.get("valueBinary") != null) {
+//         dump("Working with SERIALIZED OBJECT KEY and VALUE");
 
          try {
 
-            OSimpleObject simpleObject = (OSimpleObject) params.get("keySerializedObject").getValue();
+            OSimpleObject simpleObject = (OSimpleObject) params.get("keyBinary").getValue();
             byte[] keyBytes = (byte[]) simpleObject.getValue();
 
-            dump("PRODUCER, key bytes for deserialization: " + keyBytes);
+//            dump("PRODUCER, key bytes for deserialization: " + keyBytes);
             Object keyDeserializedObject = Utils.deserialize(keyBytes);
-            dump("PRODUCER, key deserialized object: " + keyDeserializedObject.toString());
+//            dump("PRODUCER, key deserialized object: " + keyDeserializedObject.toString());
             keyObject = (CacheObjectSerializationAble) keyDeserializedObject;
 
             // when calling _get value is not defined of course
             if (function.getName().endsWith("_put")) {
-               simpleObject = (OSimpleObject) params.get("valueSerializedObject").getValue();
+               simpleObject = (OSimpleObject) params.get("valueBinary").getValue();
                byte[] valueBytes = (byte[]) simpleObject.getValue();
 
-               dump("PRODUCER, value bytes for deserialization: " + valueBytes);
+//               dump("PRODUCER, value bytes for deserialization: " + valueBytes);
                Object valueDeserializedObject = Utils.deserialize(valueBytes);
-               dump("PRODUCER, value deserialized object: " + valueDeserializedObject.toString());
+//               dump("PRODUCER, value deserialized object: " + valueDeserializedObject.toString());
                valueObject = (CacheObjectSerializationAble) valueDeserializedObject;
             }
          } catch (Exception e) {
@@ -536,11 +366,10 @@ public class InfinispanProducer3 implements ODataProducer {
          }
 
       } else {
-         complex = false;
 
          // Working with only simple String KEY and VALUE
          dump("Working with only simple String KEY and VALUE");
-         simpleKey = params.get("keySimpleString").getValue().toString();
+         simpleKey = params.get("keyString").getValue().toString();
          // set simpleValue later because when calling _get valueSimpleString is not defined
       }
 
@@ -552,44 +381,35 @@ public class InfinispanProducer3 implements ODataProducer {
 
       if (function.getName().endsWith("_put")) {
          dump("Putting into " + setNameWhichIsCacheName + " cache....... ");
+         getCache(setNameWhichIsCacheName).put(keyObject, valueObject);
 
-         if (complex) {
-            // TODO!! FIX THIS!!! up ->> key object, put whole key object and pass whole keyObject as a entityKey
-            // TODO: or simply return nothing when putting? but it returns... (flag it if wanna nothing?)
-            dump("TODO... FIX THIS!!! in callFunction put branch. " +
-                       "There is a put not of a whole object but only String as a Key!");
-            getCache(setNameWhichIsCacheName).put(keyObject.getKeyx(), valueObject);
-         } else {
-            simpleValue = params.get("valueSimpleString").getValue().toString();
-            getCache(setNameWhichIsCacheName).put(simpleKey, simpleValue);
-         }
-
-         // TODO: this will depend on the function name (for PUT no return type, for GET yes)
-         // TODO: WHEN USER WANTS SOMETHING RETURNED WHEN PUTTING, YOU CAN RETURN WHOLE ENTITY LIKE THIS:
-         // **** !!! ****
-         // set return type for put as EDM.BINARY and call only put here and serialize value -> return
-
-         // otherwise when put return nothing
+         // put should return value too (as Infinispan itself)
          // dealing with this as a Status.NO_CONTENT (it is successful for functions)
+         response = null;
+      }
+
+      if (function.getName().endsWith("_putString")) {
+         dump("Putting into " + setNameWhichIsCacheName + " cache....... ");
+
+         simpleValue = params.get("valueString").getValue().toString();
+         getCache(setNameWhichIsCacheName).put(simpleKey, simpleValue);
          response = null;
       }
 
 
       if (function.getName().endsWith("_get")) {
-         if (complex) {
-            // TODO change this to keyObject only!!
-            dump("_get call from callFunction, FIX cache.get(keyObject.getKeyx()) to keyObject only");
-            Object value = getCache(setNameWhichIsCacheName).get(keyObject.getKeyx());
-            byte[] serializedValue = Utils.serialize(value);
-            response = Responses.simple(EdmSimpleType.BINARY, "valueSerializedObject", serializedValue);
-         } else {
-            String value = (String) getCache(setNameWhichIsCacheName).get(simpleKey);
-            response = Responses.simple(EdmSimpleType.STRING, "valueSimpleString", value);
-         }
+         Object value = getCache(setNameWhichIsCacheName).get(keyObject);
+         byte[] serializedValue = Utils.serialize(value);
+         response = Responses.simple(EdmSimpleType.BINARY, "valueBinary", serializedValue);
+      }
+
+      if (function.getName().endsWith("_getString")) {
+         String value = (String) getCache(setNameWhichIsCacheName).get(simpleKey);
+         response = Responses.simple(EdmSimpleType.STRING, "valueString", value);
       }
 
 
-// need to pass the right parameters
+//           need to pass the right parameters
 //           try {
 //              Method m = c.getClass().getMethod("put", null);
 //              try {
@@ -612,141 +432,6 @@ public class InfinispanProducer3 implements ODataProducer {
       return null;
    }
 
-   public static class RequestContext {
-
-      public enum RequestType {
-
-         GetEntity, GetEntities, GetEntitiesCount, GetNavProperty
-      }
-
-      ;
-      public final RequestType requestType;
-      private final String entitySetName;
-      private EdmEntitySet entitySet;
-      private final String navPropName;
-      private final OEntityKey entityKey;
-      private final QueryInfo queryInfo;
-      private final PropertyPathHelper pathHelper;
-      private final Object ispnCacheKey;
-      private final boolean isSimpleStringKeyValue;
-
-      public boolean isSimpleStringKeyValue() {
-         return isSimpleStringKeyValue;
-      }
-
-      public Object getIspnCacheKey() {
-         return ispnCacheKey;
-      }
-
-      public RequestType getRequestType() {
-         return requestType;
-      }
-
-      public String getEntitySetName() {
-         return entitySetName;
-      }
-
-      public EdmEntitySet getEntitySet() {
-         return entitySet;
-      }
-
-      public String getNavPropName() {
-         return navPropName;
-      }
-
-      public OEntityKey getEntityKey() {
-         return entityKey;
-      }
-
-      public QueryInfo getQueryInfo() {
-         return queryInfo;
-      }
-
-      public PropertyPathHelper getPathHelper() {
-         return pathHelper;
-      }
-
-      public static Builder newBuilder(RequestType requestType) {
-         return new Builder().requestType(requestType);
-      }
-
-      public static class Builder {
-
-         private RequestType requestType;
-         private String entitySetName;
-         private EdmEntitySet entitySet;
-         private String navPropName;
-         private OEntityKey entityKey;
-         private QueryInfo queryInfo;
-         private PropertyPathHelper pathHelper;
-         private Object ispnCacheKey;
-         private boolean isSimpleStringKeyValue;
-
-         public Builder isSimpleStringKeyValue(boolean value) {
-            this.isSimpleStringKeyValue = value;
-            return this;
-         }
-
-         public Builder ispnCacheKey(Object value) {
-            this.ispnCacheKey = value;
-            return this;
-         }
-
-         public Builder requestType(RequestType value) {
-            this.requestType = value;
-            return this;
-         }
-
-         public Builder entitySetName(String value) {
-            this.entitySetName = value;
-            return this;
-         }
-
-         public Builder entitySet(EdmEntitySet value) {
-            this.entitySet = value;
-            return this;
-         }
-
-         public Builder navPropName(String value) {
-            this.navPropName = value;
-            return this;
-         }
-
-         public Builder entityKey(OEntityKey value) {
-            this.entityKey = value;
-            return this;
-         }
-
-         public Builder queryInfo(QueryInfo value) {
-            this.queryInfo = value;
-            return this;
-         }
-
-         public Builder pathHelper(PropertyPathHelper value) {
-            this.pathHelper = value;
-            return this;
-         }
-
-         public RequestContext build() {
-            return new RequestContext(requestType, entitySetName, entitySet, navPropName, entityKey, queryInfo,
-                                      pathHelper, ispnCacheKey, isSimpleStringKeyValue);
-         }
-      }
-
-      private RequestContext(RequestType requestType, String entitySetName, EdmEntitySet entitySet,
-                             String navPropName, OEntityKey entityKey, QueryInfo queryInfo, PropertyPathHelper pathHelper,
-                             Object ispnCacheKey, boolean simpleStringKeyValue) {
-         this.requestType = requestType;
-         this.entitySetName = entitySetName;
-         this.entitySet = entitySet;
-         this.navPropName = navPropName;
-         this.entityKey = entityKey;
-         this.queryInfo = queryInfo;
-         this.pathHelper = pathHelper;
-         this.ispnCacheKey = ispnCacheKey;
-         this.isSimpleStringKeyValue = simpleStringKeyValue;
-      }
-   }
 
 //   /**
 //    * TODO - document THIS PROPERLY? Change in the future? Given an entity set and an entity key, returns the pojo that
@@ -849,7 +534,7 @@ public class InfinispanProducer3 implements ODataProducer {
       String[] keys;
       Class<TEntity> entityClass;
       Func<Iterable<TEntity>> get; //returning defined apply()
-      Func1<RequestContext, Iterable<TEntity>> getWithContext;
+
       Func1<Object, HashMap<String, Object>> id;
       PropertyModel properties;
       boolean hasStream;
@@ -872,11 +557,6 @@ public class InfinispanProducer3 implements ODataProducer {
 
       public Func<Iterable<TEntity>> getGet() {
          return get;
-      }
-
-      public Func1<RequestContext, Iterable<TEntity>> getGetWithContext() {
-         dump("Call from getGetWithContext method - return type was changed!!!");
-         return getWithContext;
       }
 
       public Func1<Object, HashMap<String, Object>> getId() {
@@ -934,11 +614,12 @@ public class InfinispanProducer3 implements ODataProducer {
          this.eis = eis;
          this.complexTypeInfo = complexTypes;
 
-         for (Map.Entry<String, InfinispanProducer3.InMemoryEntityInfo<?>> e : eis.entrySet()) {
-            // e.getValue().entityClass = MyInternalCacheEntry , e.getKey() = "CacheEntries"
-            // e.getValue() = InMemoryEntityInfo
-            entitySetNameByClass.put(e.getValue().entityClass, e.getKey());
-         }
+         // if not registering, this is null
+//         for (Map.Entry<String, InfinispanProducer3.InMemoryEntityInfo<?>> e : eis.entrySet()) {
+//            // e.getValue().entityClass = MyInternalCacheEntry , e.getKey() = "CacheEntries"
+//            // e.getValue() = InMemoryEntityInfo
+//            entitySetNameByClass.put(e.getValue().entityClass, e.getKey());
+//         }
          this.flatten = flatten;
       }
 
@@ -947,8 +628,6 @@ public class InfinispanProducer3 implements ODataProducer {
 
          List<EdmSchema.Builder> schemas = new ArrayList<EdmSchema.Builder>();
          List<EdmEntityContainer.Builder> containers = new ArrayList<EdmEntityContainer.Builder>();
-         List<EdmAssociation.Builder> associations = new ArrayList<EdmAssociation.Builder>();
-         List<EdmAssociationSet.Builder> associationSets = new ArrayList<EdmAssociationSet.Builder>();
 
 //            createComplexTypes(decorator, edmComplexTypes);
 
@@ -961,18 +640,34 @@ public class InfinispanProducer3 implements ODataProducer {
 //            createNavigationProperties(associations, associationSets,
 //                    entityTypesByName, entitySetsByName, entitySetNameByClass);
 
+
+
          EdmEntityContainer.Builder container = EdmEntityContainer.newBuilder().
                setName(containerName).setIsDefault(true).
-               addEntitySets(entitySetsByName.values()).addAssociationSets(associationSets);
+               addEntitySets(entitySetsByName.values());
 
-         EdmSchema.Builder schema = EdmSchema.newBuilder().setNamespace(namespace).
-               addEntityTypes(entityTypesByName.values()).addAssociations(associations).
-               addEntityContainers(containers).addComplexTypes(edmComplexTypes);
+         // I need EntityType for EntitySet for EdmxFormatWriter
 
-         addFunctions(schema, container);
+//         EdmSchema.Builder schema = EdmSchema.newBuilder().setNamespace(namespace).
+//               addEntityTypes(entityTypesByName.values()).addAssociations(associations).
+//               addEntityContainers(containers).addComplexTypes(edmComplexTypes);
+
+         // fictional entity type to satisfy EdmxFormatWriter & EdmxFormatParser
+//         EdmEntityType.Builder d = EdmEntityType.newBuilder().setBaseType("java.lang.String");
+         EdmEntityType.Builder eet = EdmEntityType.newBuilder().setNamespace(namespace).
+               setName("java.lang.String").setHasStream(false);
+         // java.lang.IllegalArgumentException: Root types must have keys
+//         at org.odata4j.edm.EdmEntityType.<init>(EdmEntityType.java:54)
+
+
+         // I don't have entity types, nor associations... however I need to register containers
+//         EdmSchema.Builder schema = EdmSchema.newBuilder().setNamespace(namespace).addComplexTypes(edmComplexTypes).addEntityTypes(eet);
+         EdmSchema.Builder schema = EdmSchema.newBuilder().setNamespace(namespace).addComplexTypes(edmComplexTypes);
+
+         addFunctions(container);
 
          // FIXED *****************************************
-         // FIXED add container after function registration
+         // FIXED add container after function registration / functions are added directly into container object
          containers.add(container);
 
          if (decorator != null) {
@@ -992,19 +687,23 @@ public class InfinispanProducer3 implements ODataProducer {
       }
 
 
+      // TODO: use decorator in other way if needed
       private void createStructuralEntities(EdmDecorator decorator) {
 
          // eis contains all of the registered entity sets.
          for (String entitySetName : eis.keySet()) {
-            InfinispanProducer3.InMemoryEntityInfo<?> entityInfo = eis.get(entitySetName);
 
-            // do we have this type yet?
-            EdmEntityType.Builder eet = entityTypesByName.get(entityInfo.entityTypeName);
-            if (eet == null) {
-               eet = createStructuralType(decorator, entityInfo);
-            }
+//            InfinispanProducer3.InMemoryEntityInfo<?> entityInfo = eis.get(entitySetName);
+//
+//            // do we have this type yet?
+//            EdmEntityType.Builder eet = entityTypesByName.get(entityInfo.entityTypeName);
+//            if (eet == null) {
+//               eet = createStructuralType(decorator, entityInfo);
+//            }
 
-            EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName).setEntityType(eet);
+            // I don't need EntityType now
+//            EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName).setEntityType(eet);
+            EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName);
             entitySetsByName.put(ees.getName(), ees);
          }
       }
@@ -1076,14 +775,6 @@ public class InfinispanProducer3 implements ODataProducer {
       }
 
 
-      /**
-       * get the Edm namespace
-       *
-       * @return the Edm namespace
-       */
-      public String getNamespace() {
-         return namespace;
-      }
 
       /**
        * Function definitions it defines and add functions into EDM Schema these functions are callable as GET HTTP
@@ -1097,54 +788,44 @@ public class InfinispanProducer3 implements ODataProducer {
        * <p/>
        * note: if function getReturnType returns null it returns nothing in ConsumerFunctionCallRequest
        *
-       * @param schema    the EdmSchema.Builder
        * @param container the EdmEntityContainer.Builder
        */
-      protected void addFunctions(EdmSchema.Builder schema, EdmEntityContainer.Builder container) {
+      protected void addFunctions(EdmEntityContainer.Builder container) {
 
          List<EdmFunctionImport.Builder> funcImports = new LinkedList<EdmFunctionImport.Builder>();
 
-         // TODO: improve structure (don't call X-times same things)
          int i = 0;
          while (i < container.getEntitySets().size()) {
             // define functions for each entity set (each cache)
 
-            List<EdmFunctionParameter.Builder> funcParameters = new LinkedList<EdmFunctionParameter.Builder>();
+            List<EdmFunctionParameter.Builder> funcParametersBinary = new LinkedList<EdmFunctionParameter.Builder>();
+            List<EdmFunctionParameter.Builder> funcParametersSimpleString = new LinkedList<EdmFunctionParameter.Builder>();
 
             EdmFunctionParameter.Builder pb = new EdmFunctionParameter.Builder();
             EdmFunctionParameter.Builder pb2 = new EdmFunctionParameter.Builder();
             EdmFunctionParameter.Builder pb3 = new EdmFunctionParameter.Builder();
             EdmFunctionParameter.Builder pb4 = new EdmFunctionParameter.Builder();
-            EdmFunctionParameter.Builder pb5 = new EdmFunctionParameter.Builder();
-            EdmFunctionParameter.Builder pb6 = new EdmFunctionParameter.Builder();
-            EdmFunctionParameter.Builder pb7 = new EdmFunctionParameter.Builder();
 
-            // TODO: do it as some complex type
-            // causing performance problems (getEntities) in every function call
-//            EdmCollectionType collectionType = new EdmCollectionType(EdmProperty.CollectionKind.Collection,
-//                                                                     schema.getEntityTypes().get(i).build());
 
             // setMode(IN)
-//          pb.setName("cacheName").setType(collectionType).setNullable(false).setBound(true).build();
-            pb2.setName("keyEncodedSerializedObject").setType(EdmType.getSimple("String")).setNullable(true).build();
-            pb3.setName("valueEncodedSerializedObject").setType(EdmType.getSimple("String")).setNullable(true).build();
-            pb4.setName("keySimpleString").setType(EdmType.getSimple("String")).setNullable(true).build();
-            pb5.setName("valueSimpleString").setType(EdmType.getSimple("String")).setNullable(true).build();
-            pb6.setName("keySerializedObject").setType(EdmType.getSimple("Binary")).setNullable(true).build();
-            pb7.setName("valueSerializedObject").setType(EdmType.getSimple("Binary")).setNullable(true).build();
+            pb.setName("keyBinary").setType(EdmType.getSimple("Binary")).setNullable(true).build();
+            pb2.setName("valueBinary").setType(EdmType.getSimple("Binary")).setNullable(true).build();
+            pb3.setName("keyString").setType(EdmType.getSimple("String")).setNullable(true).build();
+            pb4.setName("valueString").setType(EdmType.getSimple("String")).setNullable(true).build();
 
-//            funcParameters.add(pb);
-            funcParameters.add(pb2);
-            funcParameters.add(pb3);
-            funcParameters.add(pb4);
-            funcParameters.add(pb5);
-            funcParameters.add(pb6);
-            funcParameters.add(pb7);
+            funcParametersBinary.add(pb);
+            funcParametersBinary.add(pb2);
+            funcParametersSimpleString.add(pb3);
+            funcParametersSimpleString.add(pb4);
 
             String entitySetNameCacheName = container.getEntitySets().get(i).getName();
 
+            // binary
             EdmFunctionImport.Builder fb = new EdmFunctionImport.Builder();
             EdmFunctionImport.Builder fb2 = new EdmFunctionImport.Builder();
+            // simple string
+            EdmFunctionImport.Builder fb3 = new EdmFunctionImport.Builder();
+            EdmFunctionImport.Builder fb4 = new EdmFunctionImport.Builder();
 
             // HINT
 //          IsBindable - 'true' indicates that the first parameter is the binding parameter
@@ -1160,10 +841,8 @@ public class InfinispanProducer3 implements ODataProducer {
                   .setBindable(false)
                   .setSideEffecting(false)  // true for Action (POST)
                   .setAlwaysBindable(false)
-                  .addParameters(funcParameters).build();
+                  .addParameters(funcParametersBinary).build();
 
-            // TODO?
-            // returning string as a decoded byte array of value for deserialization?
             fb2.setName(entitySetNameCacheName + "_get")
                   .setEntitySet(container.getEntitySets().get(i))
                   .setEntitySetName(entitySetNameCacheName)
@@ -1174,10 +853,39 @@ public class InfinispanProducer3 implements ODataProducer {
                   .setBindable(false)
                   .setSideEffecting(false)  // true for Action (POST)
                   .setAlwaysBindable(false)
-                  .addParameters(funcParameters).build();
+                  .addParameters(funcParametersBinary).build();
 
+
+            fb3.setName(entitySetNameCacheName + "_putString")
+                  .setEntitySet(container.getEntitySets().get(i))
+                  .setEntitySetName(entitySetNameCacheName)
+//                 .setReturnType(null)
+//                 .setHttpMethod("GET")
+//                  .setBindable(true)
+                  .setBindable(false)
+                  .setSideEffecting(false)  // true for Action (POST)
+                  .setAlwaysBindable(false)
+                  .addParameters(funcParametersSimpleString).build();
+
+            fb4.setName(entitySetNameCacheName + "_getString")
+                  .setEntitySet(container.getEntitySets().get(i))
+                  .setEntitySetName(entitySetNameCacheName)
+                        // let return type to null to be able to directly access response
+                  .setReturnType(EdmSimpleType.STRING)
+//                 .setHttpMethod("GET")
+//                  .setBindable(true)
+                  .setBindable(false)
+                  .setSideEffecting(false)  // true for Action (POST)
+                  .setAlwaysBindable(false)
+                  .addParameters(funcParametersSimpleString).build();
+
+
+            // complex
             funcImports.add(fb);
             funcImports.add(fb2);
+            // simple
+            funcImports.add(fb3);
+            funcImports.add(fb4);
             i++;
          }
 

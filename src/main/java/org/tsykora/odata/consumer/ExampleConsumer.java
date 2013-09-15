@@ -118,8 +118,8 @@ public class ExampleConsumer extends AbstractExample {
 
 
       Enumerable<OObject> results_put_empty_serialized_only = consumer.callFunction(entitySetNameCacheName + "_put")
-            .pByteArray("keySerializedObject", serializedObject)
-            .pByteArray("valueSerializedObject", serializedObject)
+            .pByteArray("keyBinary", serializedObject)
+            .pByteArray("valueBinary", serializedObject)
             .execute();
 
 //
@@ -137,7 +137,7 @@ public class ExampleConsumer extends AbstractExample {
 
       // returnType of get function is now EdmSimpleType.BINARY
       Enumerable<OObject> results_get_default = consumer.callFunction(entitySetNameCacheName + "_get")
-            .pByteArray("keySerializedObject", serializedObject)
+            .pByteArray("keyBinary", serializedObject)
             .execute();
 
       for(OObject o : results_get_default) {
@@ -174,23 +174,17 @@ public class ExampleConsumer extends AbstractExample {
       String simpleValue = "simpleValue1" + appendix;
 
       // ispn_put is defined (in addFunctions) to have NO return type so results are null here
-      Enumerable<OObject> results_put_empty2 = consumer.callFunction(entitySetNameCacheName + "_put")
+      Enumerable<OObject> results_put_empty2 = consumer.callFunction(entitySetNameCacheName + "_putString")
 //            .bind(entitySetNameCacheName)
             // Note: when there is no definition of parameter, parameter is simply null
-            .pString("keySimpleString", simpleKey)
-            .pString("valueSimpleString", simpleValue)
+            .pString("keyString", simpleKey)
+            .pString("valueString", simpleValue)
             .execute();
 
-
-      // ispn_get is defined (in addFunctions) to have return type EdmSimpleType.STRING so results should be here
-      // TODO: It would be ideal to return serialized decoded string which I can encode and deserialize then
-
-
-      Enumerable<OObject> results_get = consumer.callFunction(entitySetNameCacheName + "_get")
+      Enumerable<OObject> results_get = consumer.callFunction(entitySetNameCacheName + "_getString")
 //            .bind("mySpecialNamedCache")
-            .pString("keySimpleString", "simpleKey1" + appendix)
+            .pString("keyString", "simpleKey1" + appendix)
             .execute();
-
 
       for (OObject o : results_get) {
          System.out.println("\n\n\n");
@@ -227,22 +221,7 @@ public class ExampleConsumer extends AbstractExample {
 //      ******************* BENCHMARK STUFF *******************
 //      *******************************************************
 //
-//      int opsCount = 100;
-//      System.out.println("Starting benchmark now. OpsCount: " + opsCount);
-//
-//      entitySetNameCacheName = "mySpecialNamedCache";
-//      Enumerable<OObject> results_get_bench = null;
-//      long start = System.currentTimeMillis();
-//
-//      System.out.println("Dump memory before benchmark...");
-//      long totalMemBefore = Runtime.getRuntime().totalMemory();
-//      long maxMemBefore = Runtime.getRuntime().maxMemory();
-//      long freeMemBefore = Runtime.getRuntime().freeMemory();
-//      System.out.println("Memory total: " + totalMemBefore);
-//      System.out.println("Memory max: " + maxMemBefore);
-//      System.out.println("Memory free: " + freeMemBefore);
-//
-//      StringBuffer sb = new StringBuffer();
+
 
       //****************** SIMPLE CACHE PUT - GET 1:1 **********************
 //      for (int i = 0; i < opsCount; i++) {
@@ -267,33 +246,81 @@ public class ExampleConsumer extends AbstractExample {
 
       //****************** COMPLEX CACHE PUT - GET 1:1 **********************
       // Object -> serialize -> encode into String -> put -> get -> decode from String to byte[] -> deserialize
-//      entitySetNameCacheName = "defaultCache";
+
+
+      // TODO: prepare serialized object into MAP, mapped to number
+      // and in benchmark don't serialize, but only set requests and get them back
+
+//      int opsCount = 100;
+//
+//      long startSer = System.currentTimeMillis();
+//
+//      HashMap<Integer, byte[]> objects = new HashMap<Integer, byte[]>();
 //      for (int i = 0; i < opsCount; i++) {
 //
 //         objectForTransfer = new CacheObjectSerializationAble("complexKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i,
 //                                                              "complexValueBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i);
 //         serializedObject = Utils.serialize(objectForTransfer);
-//         System.out.println("serialized object into byte[]: " + serializedObject);
-//         encodedString = encoder.encode(serializedObject);
-//         System.out.println("encodedObject for transfer: " + encodedString);
+//
+//         objects.put(i, serializedObject);
+//      }
+//      long stopSer = System.currentTimeMillis();
+//      System.out.println("SERIALIZATION of " + opsCount + " objects: start:" + startSer + " stop:" + stopSer +
+//                               " serialization duration (diff):" + (stopSer - startSer));
+//
+//      try {
+//         Thread.sleep(5000);
+//      } catch (InterruptedException e) {
+//         e.printStackTrace();  // TODO: Customise this generated block
+//      }
+//
+//
+//      System.out.println("Starting benchmark now. OpsCount: " + opsCount);
+//
+//      entitySetNameCacheName = "mySpecialNamedCache";
+//      Enumerable<OObject> results_get_bench = null;
+//      long start = System.currentTimeMillis();
+//
+//      System.out.println("Dump memory before benchmark...");
+//      long totalMemBefore = Runtime.getRuntime().totalMemory();
+//      long maxMemBefore = Runtime.getRuntime().maxMemory();
+//      long freeMemBefore = Runtime.getRuntime().freeMemory();
+//      System.out.println("Memory total: " + totalMemBefore);
+//      System.out.println("Memory max: " + maxMemBefore);
+//      System.out.println("Memory free: " + freeMemBefore);
+//
+//      StringBuffer sb = new StringBuffer();
+//
+//
+//      entitySetNameCacheName = "defaultCache";
+//      for (int i = 0; i < opsCount; i++) {
+//
+////         objectForTransfer = new CacheObjectSerializationAble("complexKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i,
+////                                                              "complexValueBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i);
+////         serializedObject = Utils.serialize(objectForTransfer);
+////         System.out.println("serialized object into byte[]: " + serializedObject);
 //
 //         consumer.callFunction(entitySetNameCacheName + "_put")
-//               .pString("keyEncodedSerializedObject", encodedString)
-//               .pString("valueEncodedSerializedObject", encodedString)
+//               .pByteArray("keySerializedObject", objects.get(i))
+//               .pByteArray("valueSerializedObject", objects.get(i))
 //               .execute();
 //
-//         Enumerable<OObject> results_get_default = consumer.callFunction(entitySetNameCacheName + "_get")
-//               .pString("keyEncodedSerializedObject", encodedString)
+//         Enumerable<OObject> results = consumer.callFunction(entitySetNameCacheName + "_get")
+//               .pByteArray("keySerializedObject", serializedObject)
 //               .execute();
 //
-//         for (OObject o : results_get_default) {
+//         for (OObject o : results) {
 //            System.out.println(o.toString());
-//            String encodedSerializedString = o.toString();
 //            try {
-//               byte[] serialized = decoder.decodeBuffer(encodedSerializedString);
-//               System.out.println("decoded: " + serialized);
-//               System.out.println("deserialize: " + Utils.deserialize(serialized).toString());
-//            } catch (IOException e) {
+//               OSimpleObject simpleObject = (OSimpleObject) o;
+//               byte[] valueBytes = (byte[]) simpleObject.getValue();
+////               System.out.println(valueBytes);
+//
+////               System.out.println("serialized in byte[]: " + valueBytes);
+////               System.out.println("deserialized: " + Utils.deserialize(valueBytes).toString() + " of class: " +
+////                                        Utils.deserialize(valueBytes).getClass());
+//
+//            } catch (Exception e) {
 //               e.printStackTrace();
 //            }
 //            System.out.println();
