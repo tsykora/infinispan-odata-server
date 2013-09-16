@@ -4,11 +4,12 @@ import org.core4j.Enumerable;
 import org.odata4j.consumer.ODataConsumer;
 import org.odata4j.core.OObject;
 import org.odata4j.core.OSimpleObject;
+import org.odata4j.format.FormatType;
 import org.tsykora.odata.common.CacheObjectSerializationAble;
 import org.tsykora.odata.common.Utils;
 import org.tsykora.odata.producer.AbstractExample;
-import sun.misc.BASE64Decoder;
-import sun.misc.BASE64Encoder;
+
+import java.util.HashMap;
 
 /**
  * @author tsykora
@@ -41,7 +42,7 @@ public class ExampleConsumer extends AbstractExample {
       // CONSUME IT
       // format null - ATOM by default?, method to tunnel null (maybe needs change in the future)
       System.out.println("Creating instance of ExampleConsumer, initializing oDataConsumer...");
-      ODataConsumer consumer = this.rtFacde.create(endpointUri, null, null);
+      ODataConsumer consumer = this.rtFacde.create(endpointUri, FormatType.JSON, null);
 //      ODataConsumer consumer2 = this.rtFacde.create(endpointUri2, null, null);
 
       System.out.println("\n\n\n\n");
@@ -94,13 +95,9 @@ public class ExampleConsumer extends AbstractExample {
       System.out.println("\n\n\n");
 
 
-      BASE64Encoder encoder = new BASE64Encoder();
-      BASE64Decoder decoder = new BASE64Decoder();
       CacheObjectSerializationAble objectForTransfer = new CacheObjectSerializationAble("keyxx1" + appendix, "valuexx1" + appendix);
       byte[] serializedObject = Utils.serialize(objectForTransfer);
       System.out.println("serialized object into byte[]: " + serializedObject);
-      String encodedString = encoder.encode(serializedObject);
-      System.out.println("encodedObject for transfer: " + encodedString);
 
       entitySetNameCacheName = "defaultCache";
 
@@ -223,23 +220,6 @@ public class ExampleConsumer extends AbstractExample {
 //
 
 
-      //****************** SIMPLE CACHE PUT - GET 1:1 **********************
-//      for (int i = 0; i < opsCount; i++) {
-//         consumer.callFunction(entitySetNameCacheName + "_put")
-//               .pString("keySimpleString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
-////               .pString("keySimpleString", "simpleKey" + i)
-//               .pString("valueSimpleString", "simpleValueBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
-////               .pString("valueSimpleString", "simpleValue" + i)
-//               .execute();
-//         results_get_bench = consumer.callFunction(entitySetNameCacheName + "_get")
-//               .pString("keySimpleString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
-////               .pString("keySimpleString", "simpleKey" + i)
-//               .execute();
-//         for(OObject o : results_get_bench) {
-//            System.out.println(o.toString());
-//         }
-//         System.out.println("Dump time: " + System.currentTimeMillis());
-//      }
 
 
 
@@ -251,48 +231,47 @@ public class ExampleConsumer extends AbstractExample {
       // TODO: prepare serialized object into MAP, mapped to number
       // and in benchmark don't serialize, but only set requests and get them back
 
-//      int opsCount = 100;
-//
-//      long startSer = System.currentTimeMillis();
-//
-//      HashMap<Integer, byte[]> objects = new HashMap<Integer, byte[]>();
-//      for (int i = 0; i < opsCount; i++) {
-//
-//         objectForTransfer = new CacheObjectSerializationAble("complexKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i,
-//                                                              "complexValueBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i);
-//         serializedObject = Utils.serialize(objectForTransfer);
-//
-//         objects.put(i, serializedObject);
-//      }
-//      long stopSer = System.currentTimeMillis();
-//      System.out.println("SERIALIZATION of " + opsCount + " objects: start:" + startSer + " stop:" + stopSer +
-//                               " serialization duration (diff):" + (stopSer - startSer));
-//
-//      try {
-//         Thread.sleep(5000);
-//      } catch (InterruptedException e) {
-//         e.printStackTrace();  // TODO: Customise this generated block
-//      }
-//
-//
-//      System.out.println("Starting benchmark now. OpsCount: " + opsCount);
-//
-//      entitySetNameCacheName = "mySpecialNamedCache";
-//      Enumerable<OObject> results_get_bench = null;
-//      long start = System.currentTimeMillis();
-//
-//      System.out.println("Dump memory before benchmark...");
-//      long totalMemBefore = Runtime.getRuntime().totalMemory();
-//      long maxMemBefore = Runtime.getRuntime().maxMemory();
-//      long freeMemBefore = Runtime.getRuntime().freeMemory();
-//      System.out.println("Memory total: " + totalMemBefore);
-//      System.out.println("Memory max: " + maxMemBefore);
-//      System.out.println("Memory free: " + freeMemBefore);
-//
-//      StringBuffer sb = new StringBuffer();
-//
-//
-//      entitySetNameCacheName = "defaultCache";
+      int opsCount = 100;
+
+      long startSer = System.currentTimeMillis();
+
+      HashMap<Integer, byte[]> objects = new HashMap<Integer, byte[]>();
+      for (int i = 0; i < opsCount; i++) {
+
+         objectForTransfer = new CacheObjectSerializationAble("complexKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i,
+                                                              "complexValueBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i);
+         serializedObject = Utils.serialize(objectForTransfer);
+
+         objects.put(i, serializedObject);
+      }
+      long stopSer = System.currentTimeMillis();
+      System.out.println("SERIALIZATION of " + opsCount + " objects: start:" + startSer + " stop:" + stopSer +
+                               " serialization duration (diff):" + (stopSer - startSer));
+
+      try {
+         Thread.sleep(3000);
+      } catch (InterruptedException e) {
+         e.printStackTrace();  // TODO: Customise this generated block
+      }
+
+
+      System.out.println("Starting benchmark now. OpsCount: " + opsCount);
+
+      entitySetNameCacheName = "mySpecialNamedCache";
+      Enumerable<OObject> results_get_bench = null;
+      long start = System.currentTimeMillis();
+
+      System.out.println("Dump memory before benchmark...");
+      long totalMemBefore = Runtime.getRuntime().totalMemory();
+      long maxMemBefore = Runtime.getRuntime().maxMemory();
+      long freeMemBefore = Runtime.getRuntime().freeMemory();
+      System.out.println("Memory total: " + totalMemBefore);
+      System.out.println("Memory max: " + maxMemBefore);
+      System.out.println("Memory free: " + freeMemBefore);
+
+      entitySetNameCacheName = "defaultCache";
+
+
 //      for (int i = 0; i < opsCount; i++) {
 //
 ////         objectForTransfer = new CacheObjectSerializationAble("complexKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i,
@@ -301,12 +280,12 @@ public class ExampleConsumer extends AbstractExample {
 ////         System.out.println("serialized object into byte[]: " + serializedObject);
 //
 //         consumer.callFunction(entitySetNameCacheName + "_put")
-//               .pByteArray("keySerializedObject", objects.get(i))
-//               .pByteArray("valueSerializedObject", objects.get(i))
+//               .pByteArray("keyBinary", objects.get(i))
+//               .pByteArray("valueBinary", objects.get(i))
 //               .execute();
 //
 //         Enumerable<OObject> results = consumer.callFunction(entitySetNameCacheName + "_get")
-//               .pByteArray("keySerializedObject", serializedObject)
+//               .pByteArray("keyBinary", serializedObject)
 //               .execute();
 //
 //         for (OObject o : results) {
@@ -314,7 +293,7 @@ public class ExampleConsumer extends AbstractExample {
 //            try {
 //               OSimpleObject simpleObject = (OSimpleObject) o;
 //               byte[] valueBytes = (byte[]) simpleObject.getValue();
-////               System.out.println(valueBytes);
+//               System.out.println(valueBytes);
 //
 ////               System.out.println("serialized in byte[]: " + valueBytes);
 ////               System.out.println("deserialized: " + Utils.deserialize(valueBytes).toString() + " of class: " +
@@ -326,29 +305,76 @@ public class ExampleConsumer extends AbstractExample {
 //            System.out.println();
 //         }
 //      }
-//
-//
-//      long stop = System.currentTimeMillis();
-//
-//      System.out.println("Dump memory after benchmark...");
-//      long totalMemAfter = Runtime.getRuntime().totalMemory();
-//      long maxMemAfter = Runtime.getRuntime().maxMemory();
-//      long freeMemAfter = Runtime.getRuntime().freeMemory();
-//      System.out.println("Memory total: " + totalMemAfter);
-//      System.out.println("Memory max: " + maxMemAfter);
-//      System.out.println("Memory free: " + freeMemAfter);
-//
-//      System.out.println("DIFF Memory total: " + (totalMemAfter - totalMemBefore));
-//      System.out.println("DIFF Memory max: " + (maxMemAfter - maxMemBefore));
-//      System.out.println("DIFF Memory free (AFTER - BEFORE) = : " + (freeMemAfter - freeMemBefore));
-//      System.out.println("\n\n");
-//
-//      System.out.println("TIME Results: start:" + start + " stop:" + stop + " test duration (diff):" + (stop - start));
-//      double opsPerSec = new Double(opsCount / ( new Double(stop - start) / 1000));
-//      System.out.println("OpsCount: " + opsCount + ", Operations per second: " + opsPerSec);
-//      System.out.println();
-//
-//      System.out.println("\n\n\n\n\n\n\n");
+
+
+
+
+
+      //****************** SIMPLE CACHE PUT - GET 1:1 **********************
+      //****************** SIMPLE CACHE PUT - GET 1:1 **********************
+      //****************** SIMPLE CACHE PUT - GET 1:1 **********************
+
+      long putsTime = 0;
+      long getsTime = 0;
+      for (int i = 0; i < opsCount; i++) {
+
+         long start_put = System.currentTimeMillis();
+         consumer.callFunction(entitySetNameCacheName + "_putString")
+               .pString("keyString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
+               .pString("valueString", "simpleValueBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
+               .execute();
+         long stop_put = System.currentTimeMillis();
+         putsTime = putsTime + (stop_put - start_put);
+         System.out.println("TIME Results: start:" + start_put + " stop:" + stop_put + " test duration (diff):" + (stop_put - start_put));
+
+         long start_get = System.currentTimeMillis();
+         results_get_bench = consumer.callFunction(entitySetNameCacheName + "_getString")
+               .pString("keyString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
+               .execute();
+         long stop_get = System.currentTimeMillis();
+         getsTime = getsTime + (stop_get - start_get);
+         System.out.println("TIME Results: start:" + start_get + " stop:" + stop_get + " test duration (diff):" + (stop_get - start_get));
+
+         for(OObject o : results_get_bench) {
+            System.out.println(o.toString());
+         }
+         System.out.println("Dump time: " + System.currentTimeMillis());
+      }
+
+      System.out.println("\n\n");
+      System.out.println("SUMMARY TIME for puts: " + putsTime);
+      System.out.println("SUMMARY TIME for gets: " + getsTime);
+
+
+
+
+
+
+
+
+
+
+      long stop = System.currentTimeMillis();
+
+      System.out.println("Dump memory after benchmark...");
+      long totalMemAfter = Runtime.getRuntime().totalMemory();
+      long maxMemAfter = Runtime.getRuntime().maxMemory();
+      long freeMemAfter = Runtime.getRuntime().freeMemory();
+      System.out.println("Memory total: " + totalMemAfter);
+      System.out.println("Memory max: " + maxMemAfter);
+      System.out.println("Memory free: " + freeMemAfter);
+
+      System.out.println("DIFF Memory total: " + (totalMemAfter - totalMemBefore));
+      System.out.println("DIFF Memory max: " + (maxMemAfter - maxMemBefore));
+      System.out.println("DIFF Memory free (AFTER - BEFORE) = : " + (freeMemAfter - freeMemBefore));
+      System.out.println("\n\n");
+
+      System.out.println("TIME Results: start:" + start + " stop:" + stop + " test duration (diff):" + (stop - start));
+      double opsPerSec = new Double(opsCount / ( new Double(stop - start) / 1000));
+      System.out.println("OpsCount: " + opsCount + ", Operations per second: " + opsPerSec);
+      System.out.println();
+
+      System.out.println("\n\n\n\n\n\n\n");
 
       // </editor-fold>
 

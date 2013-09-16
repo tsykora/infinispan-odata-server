@@ -39,6 +39,7 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.logging.Logger;
 
 //import org.odata4j.producer.inmemory.InMemoryProducer.RequestContext.RequestType;
@@ -76,17 +77,18 @@ public class InfinispanProducer3 implements ODataProducer {
    private static final int DEFAULT_MAX_RESULTS = 100;
 
    // TODO: properly decide: not static??? - cache instance is running with producer instance
-   private static DefaultCacheManager defaultCacheManager;
+   private DefaultCacheManager defaultCacheManager;
+   // for faster cache access
+   private HashMap<String, Cache> caches = new HashMap<String, Cache>();
 
-   private Map<String, Class> cacheNames = null;
 
    /**
     * Creates a new instance of an in-memory POJO producer.
     *
     * @param namespace the namespace of the schema registrations
     */
-   public InfinispanProducer3(String namespace, Map<String, Class> cacheNames, String ispnConfigFile) {
-      this(namespace, DEFAULT_MAX_RESULTS, cacheNames, ispnConfigFile);
+   public InfinispanProducer3(String namespace, String ispnConfigFile) {
+      this(namespace, DEFAULT_MAX_RESULTS, ispnConfigFile);
    }
 
    /**
@@ -95,8 +97,8 @@ public class InfinispanProducer3 implements ODataProducer {
     * @param namespace  the namespace of the schema registrations
     * @param maxResults the maximum number of entities to return in a single call
     */
-   public InfinispanProducer3(String namespace, int maxResults, Map<String, Class> cacheNames, String ispnConfigFile) {
-      this(namespace, null, maxResults, null, null, cacheNames, ispnConfigFile);
+   public InfinispanProducer3(String namespace, int maxResults, String ispnConfigFile) {
+      this(namespace, null, maxResults, null, null, ispnConfigFile);
    }
 
    /**
@@ -109,9 +111,9 @@ public class InfinispanProducer3 implements ODataProducer {
     * @param typeMapping   optional mapping between java types and edm types, null for default
     */
    public InfinispanProducer3(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
-                              Map<String, Class> cacheNames, String ispnConfigFile) {
+                              String ispnConfigFile) {
       this(namespace, containerName, maxResults, decorator, typeMapping,
-           true, cacheNames, ispnConfigFile); // legacy: flatten edm
+           true, ispnConfigFile); // legacy: flatten edm
    }
 
    /**
@@ -119,7 +121,7 @@ public class InfinispanProducer3 implements ODataProducer {
     */
    public <TEntity, TKey> InfinispanProducer3(String namespace, String containerName, int maxResults,
                                               EdmDecorator decorator, InMemoryTypeMapping typeMapping,
-                                              boolean flattenEdm, Map<String, Class> cacheNames, String ispnConfigFile) {
+                                              boolean flattenEdm, String ispnConfigFile) {
       this.namespace = namespace;
       this.containerName = containerName != null && !containerName.isEmpty() ? containerName : "Container";
       this.maxResults = maxResults;
@@ -127,38 +129,61 @@ public class InfinispanProducer3 implements ODataProducer {
       this.metadataProducer = new MetadataProducer(this, decorator);
       this.typeMapping = typeMapping == null ? InMemoryTypeMapping.DEFAULT : typeMapping;
       this.flattenEdm = flattenEdm;
-      this.cacheNames = cacheNames;
+
 
       // TODO add possibility for passing configurations (global, local)
       try {
          // true = start it + start defined caches
          defaultCacheManager = new DefaultCacheManager(ispnConfigFile, true);
 
-         // TODO: FLOW: create cacheManager based on ispn.xml and then get namesOfCaches and define functions accordingly
-//         defaultCacheManager.getCacheNames()
+         Set<String> cacheNames = defaultCacheManager.getCacheNames();
 
+         for (String cacheName : cacheNames) {
+//            dump("Starting cache with name " + cacheName + " on defaultCacheManager...");
+//            defaultCacheManager.startCache(cacheName);
 
-//         defaultCacheManager.start();
-         dump("Default cache manager started.");
+            dump("Registering cache with name " + cacheName + " in Producer...");
+            // cacheName = entitySetName
+            eis.put(cacheName, null);
+         }
 
       } catch (IOException e) {
-         System.out.println(" PROBLEM WITH CREATING DEFAULT CACHE MANAGER !!!!!!!!!! ");
+         System.out.println(" PROBLEMS WITH CREATING DEFAULT CACHE MANAGER! ");
          e.printStackTrace();
       }
 
-      for (String cacheName : cacheNames.keySet()) {
-//         defaultCacheManager.startCache(cacheName);
-//         dump("Cache with name " + cacheName + " started.");
-         dump("Registering cache with name " + cacheName + " in Producer...");
 
-         // cacheName = entitySetName
-         eis.put(cacheName, null);
-
-      }
    }
 
-   private static Cache getCache(String cacheName) {
-      return defaultCacheManager.getCache(cacheName);
+   /**
+    * Look into global map for registered cache. Avoiding multiple asking CacheManager.
+    * <p/>
+    * If there is no cache with given name, get it from CacheManager and store.
+    *
+    * @param cacheName
+    * @return
+    */
+   private Cache getCache(String cacheName) {
+      if (caches.get(cacheName) != null) {
+
+         return this.caches.get(cacheName);
+      } else {
+
+         try {
+         dump("Starting cache with name " + cacheName + " on defaultCacheManager...");
+         defaultCacheManager.startCache(cacheName);
+
+         Cache cache = defaultCacheManager.getCache(cacheName);
+         cache.put("key1", "value1");
+         dump("Cache " + cacheName + " status: " + cache.getStatus());
+
+             this.caches.put(cacheName, cache);
+            return cache;
+         } catch (Exception e) {
+            e.printStackTrace();
+         }
+      }
+      return this.caches.get(cacheName);
    }
 
    @Override
@@ -186,8 +211,6 @@ public class InfinispanProducer3 implements ODataProducer {
    @Override
    public void close() {
    }
-
-
 
 
    private static Predicate1<Object> filterToPredicate(final BoolCommonExpression filter, final PropertyModel properties) {
@@ -381,7 +404,10 @@ public class InfinispanProducer3 implements ODataProducer {
 
       if (function.getName().endsWith("_put")) {
          dump("Putting into " + setNameWhichIsCacheName + " cache....... ");
+         long start = System.currentTimeMillis();
          getCache(setNameWhichIsCacheName).put(keyObject, valueObject);
+         long end = System.currentTimeMillis();
+         System.out.println("Put into " + setNameWhichIsCacheName + " took: " + (end-start) + " millis.");
 
          // put should return value too (as Infinispan itself)
          // dealing with this as a Status.NO_CONTENT (it is successful for functions)
@@ -392,19 +418,31 @@ public class InfinispanProducer3 implements ODataProducer {
          dump("Putting into " + setNameWhichIsCacheName + " cache....... ");
 
          simpleValue = params.get("valueString").getValue().toString();
+         long start = System.currentTimeMillis();
          getCache(setNameWhichIsCacheName).put(simpleKey, simpleValue);
+         long end = System.currentTimeMillis();
+         System.out.println("Put into " + setNameWhichIsCacheName + " took: " + (end-start) + " millis.");
+
          response = null;
       }
 
 
       if (function.getName().endsWith("_get")) {
+         long start = System.currentTimeMillis();
          Object value = getCache(setNameWhichIsCacheName).get(keyObject);
+         long end = System.currentTimeMillis();
+         System.out.println("Get from " + setNameWhichIsCacheName + " took: " + (end-start) + " millis.");
+
          byte[] serializedValue = Utils.serialize(value);
          response = Responses.simple(EdmSimpleType.BINARY, "valueBinary", serializedValue);
       }
 
       if (function.getName().endsWith("_getString")) {
+         long start = System.currentTimeMillis();
          String value = (String) getCache(setNameWhichIsCacheName).get(simpleKey);
+         long end = System.currentTimeMillis();
+         System.out.println("Get from " + setNameWhichIsCacheName + " took: " + (end-start) + " millis.");
+
          response = Responses.simple(EdmSimpleType.STRING, "valueString", value);
       }
 
@@ -641,7 +679,6 @@ public class InfinispanProducer3 implements ODataProducer {
 //                    entityTypesByName, entitySetsByName, entitySetNameByClass);
 
 
-
          EdmEntityContainer.Builder container = EdmEntityContainer.newBuilder().
                setName(containerName).setIsDefault(true).
                addEntitySets(entitySetsByName.values());
@@ -773,7 +810,6 @@ public class InfinispanProducer3 implements ODataProducer {
          eet.setBaseType(superType);
          return eet;
       }
-
 
 
       /**

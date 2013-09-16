@@ -14,7 +14,6 @@ import org.odata4j.producer.PropertyPath;
 import org.odata4j.producer.resources.DefaultODataProducerProvider;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -40,16 +39,13 @@ public class InMemoryProducerExample extends AbstractExample {
       // later do it based on infinispan.xml file
       String containerName;
       String configFile;
-      Map<String, Class> cacheNames = new HashMap<String, Class>();
-
       containerName = "InMemoryProducerExample";
-      cacheNames.put("defaultCache", MyInternalCacheEntry.class);
-      cacheNames.put("mySpecialNamedCache", MyInternalCacheEntrySimple.class);
-      configFile = "infinispan-dist.xml"; // cacheNames listing mimic infinispan-dist.xml created caches
+//      configFile = "infinispan-dist.xml";
+      configFile = "infinispan-local.xml";
 
       // the first parameter is containerName
       final InfinispanProducer3 producerBig =
-            new InfinispanProducer3(containerName, null, 100, new MyEdmDecorator(), null, cacheNames, configFile);
+            new InfinispanProducer3(containerName, null, 100, new MyEdmDecorator(), null, configFile);
 //        final LightweightInfinispanProducer producer = new LightweightInfinispanProducer("InMemoryProducerExample", null, 100, null, null);
 
 
