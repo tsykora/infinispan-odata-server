@@ -6,7 +6,6 @@ import com.sun.jersey.api.container.filter.LoggingFilter;
 import org.junit.Assert;
 import org.odata4j.consumer.ODataConsumer;
 import org.odata4j.consumer.behaviors.MethodTunnelingBehavior;
-import org.odata4j.core.Throwables;
 import org.odata4j.format.FormatType;
 import org.odata4j.jersey.consumer.ODataJerseyConsumer;
 import org.odata4j.jersey.consumer.ODataJerseyConsumer.Builder;
@@ -17,9 +16,6 @@ import org.odata4j.producer.server.ODataServer;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.ext.RuntimeDelegate;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 
 public class JerseyRuntimeFacade implements RuntimeFacade {
 
@@ -32,18 +28,19 @@ public class JerseyRuntimeFacade implements RuntimeFacade {
 
   @Override
   public void hostODataServer(String baseUri) {
-    try {
+//    try {
       ODataServer server = startODataServer(baseUri);
+
 
 
 //       server.setHttpAuthenticator (need added classes + improvements later)
 
       System.out.println("Press any key to exit");
-      new BufferedReader(new InputStreamReader(System.in)).readLine();
-      server.stop();
-    } catch (IOException e) {
-      throw Throwables.propagate(e);
-    }
+//      new BufferedReader(new InputStreamReader(System.in)).readLine();
+//      server.stop();
+//    } catch (IOException e) {
+//      throw Throwables.propagate(e);
+//    }
   }
 
   @Override
@@ -69,7 +66,8 @@ public class JerseyRuntimeFacade implements RuntimeFacade {
   private ODataServer createODataServer(String baseUri) {
 
     return new ODataJerseyServer(baseUri, DefaultODataApplication.class, RootApplication.class)
-        .addJerseyRequestFilter(LoggingFilter.class).setJerseyTrace(true) // log all requests
+//        .addJerseyRequestFilter(LoggingFilter.class).setJerseyTrace(true) // log all requests
+        .addJerseyRequestFilter(LoggingFilter.class) // log all requests
     //      .addHttpServerFilter(new WhitelistFilter("127.0.0.1","0:0:0:0:0:0:0:1%0")) // only allow local requests
     ;
   }

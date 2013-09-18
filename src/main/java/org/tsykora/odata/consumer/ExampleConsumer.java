@@ -1,10 +1,11 @@
 package org.tsykora.odata.consumer;
 
+import com.sun.jersey.api.client.ClientResponse;
 import org.core4j.Enumerable;
 import org.odata4j.consumer.ODataConsumer;
 import org.odata4j.core.OObject;
-import org.odata4j.core.OSimpleObject;
 import org.odata4j.format.FormatType;
+import org.odata4j.jersey.consumer.JerseyClientResponse;
 import org.tsykora.odata.common.CacheObjectSerializationAble;
 import org.tsykora.odata.common.Utils;
 import org.tsykora.odata.producer.AbstractExample;
@@ -28,7 +29,7 @@ public class ExampleConsumer extends AbstractExample {
 
       String appendix = "";
 
-      if(args != null) {
+      if (args != null) {
          endpointUri = endpointUri2;
          appendix = "valueToEndpoint9887";
       }
@@ -37,12 +38,13 @@ public class ExampleConsumer extends AbstractExample {
       // To dump all the HTTP trafic
       // Sends http request and/or response information to standard out.  Useful for debugging.
       // TODO: enable it for producer as well? Is it even possible?
-      ODataConsumer.dump.all(true);
+      ODataConsumer.dump.all(false);
 
       // CONSUME IT
       // format null - ATOM by default?, method to tunnel null (maybe needs change in the future)
       System.out.println("Creating instance of ExampleConsumer, initializing oDataConsumer...");
       ODataConsumer consumer = this.rtFacde.create(endpointUri, FormatType.JSON, null);
+//      ODataConsumer consumer = this.rtFacde.create(endpointUri, FormatType.ATOM, null); // ATOM IS HACKED NOW!!
 //      ODataConsumer consumer2 = this.rtFacde.create(endpointUri2, null, null);
 
       System.out.println("\n\n\n\n");
@@ -133,29 +135,49 @@ public class ExampleConsumer extends AbstractExample {
 //            .execute();
 
       // returnType of get function is now EdmSimpleType.BINARY
-      Enumerable<OObject> results_get_default = consumer.callFunction(entitySetNameCacheName + "_get")
+      Enumerable results_get_default = consumer.callFunction(entitySetNameCacheName + "_get")
             .pByteArray("keyBinary", serializedObject)
             .execute();
 
-      for(OObject o : results_get_default) {
+      // PERF workaround
+      // NOW - returns ODataClientResponse.... return Enumerable of something extending Object
+      // try to retype return to ODataClientResponse
+//      for(ODataClientResponse o : results_get_default) {
+      for (Object o : results_get_default) {
 
-         System.out.println("\n\n\n");
-         System.out.println("Some results here of type: " + o.getType());
-         System.out.println(o.toString());
-         String encodedSerializedString = o.toString();
-         try {
+         System.out.println("\n\n\n EXPEEEEEEEEEEEEEEEEERIMENTS ");
+         System.out.println(o);
+         JerseyClientResponse jcr = (JerseyClientResponse) o;
+         System.out.println(jcr.toString());
+         System.out.println(jcr.getHeaders().toString());
+         System.out.println(jcr.getClientResponse().getType());
+         ClientResponse clientResponse = jcr.getClientResponse();
+         String textEntity = clientResponse.getEntity(String.class);
+         System.out.println(textEntity);
+         // textEntity is JSON
 
-            OSimpleObject simpleObject = (OSimpleObject) o;
-            byte[] valueBytes = (byte[]) simpleObject.getValue();
-
-            System.out.println("serialized in byte[]: " + valueBytes);
-            System.out.println("deserialized: " + Utils.deserialize(valueBytes).toString() + " of class: " +
-                                     Utils.deserialize(valueBytes).getClass());
-         } catch (Exception e) {
-            e.printStackTrace();
-         }
-         System.out.println();
+//         dumpResponseBody(textEntity, clientResponse.getType());
       }
+
+//      for(OObject o : results_get_default) {
+//
+//         System.out.println("\n\n\n");
+//         System.out.println("Some results here of type: " + o.getType());
+//         System.out.println(o.toString());
+//         String encodedSerializedString = o.toString();
+//         try {
+//
+//            OSimpleObject simpleObject = (OSimpleObject) o;
+//            byte[] valueBytes = (byte[]) simpleObject.getValue();
+//
+//            System.out.println("serialized in byte[]: " + valueBytes);
+//            System.out.println("deserialized: " + Utils.deserialize(valueBytes).toString() + " of class: " +
+//                                     Utils.deserialize(valueBytes).getClass());
+//         } catch (Exception e) {
+//            e.printStackTrace();
+//         }
+//         System.out.println();
+//      }
 
 
       // mySpecialNamedCache - SIMPLE BASED
@@ -183,12 +205,31 @@ public class ExampleConsumer extends AbstractExample {
             .pString("keyString", "simpleKey1" + appendix)
             .execute();
 
-      for (OObject o : results_get) {
-         System.out.println("\n\n\n");
-         System.out.println("Some results here of type: " + o.getType());
-         System.out.println(o.toString());
-         System.out.println();
+      // old with parsing client
+//      for (OObject o : results_get) {
+//         System.out.println("\n\n\n");
+//         System.out.println("Some results here of type: " + o.getType());
+//         System.out.println(o.toString());
+//         System.out.println();
+//      }
+
+      for (Object o : results_get) {
+
+         System.out.println("\n\n\n EXPEEEEEEEEEEEEEEEEERIMENTS ");
+         System.out.println(o);
+         JerseyClientResponse jcr = (JerseyClientResponse) o;
+         System.out.println(jcr.toString());
+         System.out.println(jcr.getHeaders().toString());
+         System.out.println(jcr.getClientResponse().getType());
+         ClientResponse clientResponse = jcr.getClientResponse();
+         String textEntity = clientResponse.getEntity(String.class);
+         System.out.println(textEntity);
+         // textEntity is JSON
+
+//         dumpResponseBody(textEntity, clientResponse.getType());
       }
+
+
 
 
 //      String key = "simpleKey1";
@@ -218,10 +259,6 @@ public class ExampleConsumer extends AbstractExample {
 //      ******************* BENCHMARK STUFF *******************
 //      *******************************************************
 //
-
-
-
-
 
 
       //****************** COMPLEX CACHE PUT - GET 1:1 **********************
@@ -307,9 +344,6 @@ public class ExampleConsumer extends AbstractExample {
 //      }
 
 
-
-
-
       //****************** SIMPLE CACHE PUT - GET 1:1 **********************
       //****************** SIMPLE CACHE PUT - GET 1:1 **********************
       //****************** SIMPLE CACHE PUT - GET 1:1 **********************
@@ -320,8 +354,8 @@ public class ExampleConsumer extends AbstractExample {
 
          long start_put = System.currentTimeMillis();
          consumer.callFunction(entitySetNameCacheName + "_putString")
-               .pString("keyString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
-               .pString("valueString", "simpleValueBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
+               .pString("keyString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
+               .pString("valueString", "simpleValueBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
                .execute();
          long stop_put = System.currentTimeMillis();
          putsTime = putsTime + (stop_put - start_put);
@@ -329,29 +363,38 @@ public class ExampleConsumer extends AbstractExample {
 
          long start_get = System.currentTimeMillis();
          results_get_bench = consumer.callFunction(entitySetNameCacheName + "_getString")
-               .pString("keyString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
+               .pString("keyString", "simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_simpleKeyBenchABCDEFGHIJKLMNOPQRSTUVWXYZ_" + i)
                .execute();
          long stop_get = System.currentTimeMillis();
          getsTime = getsTime + (stop_get - start_get);
          System.out.println("TIME Results: start:" + start_get + " stop:" + stop_get + " test duration (diff):" + (stop_get - start_get));
 
-         for(OObject o : results_get_bench) {
-            System.out.println(o.toString());
+//         for(OObject o : results_get_bench) {
+//            System.out.println(o.toString());
+//         }
+
+         for (Object o : results_get_bench) {
+            JerseyClientResponse jcr = (JerseyClientResponse) o;
+            System.out.println(jcr.toString());
+            System.out.println(jcr.getHeaders().toString());
+            System.out.println(jcr.getClientResponse().getType());
+            ClientResponse clientResponse = jcr.getClientResponse();
+
+//            String textEntity = clientResponse.getEntity(String.class);
+//            System.out.println(textEntity);
+            byte[] byteArrayEntity = clientResponse.getEntity(byte[].class);
+            System.out.println(byteArrayEntity.getClass());
+            System.out.println(byteArrayEntity);
+
          }
+
+
          System.out.println("Dump time: " + System.currentTimeMillis());
       }
 
       System.out.println("\n\n");
       System.out.println("SUMMARY TIME for puts: " + putsTime);
       System.out.println("SUMMARY TIME for gets: " + getsTime);
-
-
-
-
-
-
-
-
 
 
       long stop = System.currentTimeMillis();
@@ -370,11 +413,67 @@ public class ExampleConsumer extends AbstractExample {
       System.out.println("\n\n");
 
       System.out.println("TIME Results: start:" + start + " stop:" + stop + " test duration (diff):" + (stop - start));
-      double opsPerSec = new Double(opsCount / ( new Double(stop - start) / 1000));
+      double opsPerSec = new Double(opsCount / (new Double(stop - start) / 1000));
       System.out.println("OpsCount: " + opsCount + ", Operations per second: " + opsPerSec);
       System.out.println();
 
       System.out.println("\n\n\n\n\n\n\n");
+
+
+//      OutputStreamWriter os = null;
+//      try {
+//         os = new OutputStreamWriter(new FileOutputStream(new File("fileForWrite.txt")));
+//
+//         os.write("hello");
+//         os.close();
+//
+//      } catch (FileNotFoundException e) {
+//         e.printStackTrace();  // TODO: Customise this generated block
+//      } catch (IOException e) {
+//         e.printStackTrace();  // TODO: Customise this generated block
+//      }
+
+
+      // WHAT TO DO WITH JSON?
+//      System.out.println("USER DIR!");
+//      System.out.println(System.getProperty("user.dir"));
+//
+//
+//      // in = textEntity
+////      InputStream in = clientResponse.getEntityInputStream();
+//      InputStream in = null;
+//      try {
+//         in = new FileInputStream("examplejson.txt");
+//      } catch (FileNotFoundException e) {
+//         e.printStackTrace();  // TODO: Customise this generated block
+//      }
+//
+//      BufferedReader streamReader = null;
+//      try {
+//         streamReader = new BufferedReader(new InputStreamReader(in, "UTF-8"));
+//      } catch (UnsupportedEncodingException e) {
+//         e.printStackTrace();
+//      }
+//      StringBuilder responseStrBuilder = new StringBuilder();
+//
+//      String inputStr;
+//      try {
+//         while ((inputStr = streamReader.readLine()) != null)
+//            responseStrBuilder.append(inputStr);
+//      } catch (IOException e) {
+//         e.printStackTrace();
+//      }
+//
+//      try {
+//         JSONObject o = new JSONObject(responseStrBuilder.toString());
+//         System.out.println("\n\n\n JSON OBJECT -- constructed from file !!!!!!!!!! ");
+//         System.out.println(o);
+//         System.out.println(o.sortedKeys().toString());
+//      } catch (JSONException e) {
+//         System.out.println("EXCEPTION");
+//         e.printStackTrace();
+//      }
+
 
       // </editor-fold>
 

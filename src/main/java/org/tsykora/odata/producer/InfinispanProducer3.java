@@ -51,7 +51,7 @@ import java.util.logging.Logger;
  */
 public class InfinispanProducer3 implements ODataProducer {
 
-   private static final boolean DUMP = true;
+   private static final boolean DUMP = false;
    private final Logger log = Logger.getLogger(InfinispanProducer3.class.getName());
 
    private static void dump(Object msg) {
