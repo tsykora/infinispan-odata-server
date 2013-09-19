@@ -342,6 +342,8 @@ public class InfinispanProducer3 implements ODataProducer {
    @Override
    public BaseResponse callFunction(ODataContext context, EdmFunctionImport function, Map<String, OFunctionParameter> params, QueryInfo queryInfo) {
 
+      long startCallFunctionProducerInside = System.currentTimeMillis();
+
       OEntityKey oentityKey = null;
       CacheObjectSerializationAble keyObject = null;
       CacheObjectSerializationAble valueObject = null;
@@ -434,7 +436,14 @@ public class InfinispanProducer3 implements ODataProducer {
          System.out.println("Get from " + setNameWhichIsCacheName + " took: " + (end-start) + " millis.");
 
          byte[] serializedValue = Utils.serialize(value);
-         response = Responses.simple(EdmSimpleType.BINARY, "valueBinary", serializedValue);
+
+         BaseResponse baseResponse = Responses.simple(EdmSimpleType.BINARY, "valueBinary", serializedValue);
+
+         long stopCallFunctionProducerInside = System.currentTimeMillis();
+         System.out.println("Whole inside of CallFunction in producer before response took: " +
+                                  (startCallFunctionProducerInside-stopCallFunctionProducerInside) + " millis.");
+
+         response = baseResponse;
       }
 
       if (function.getName().endsWith("_getString")) {
@@ -443,7 +452,13 @@ public class InfinispanProducer3 implements ODataProducer {
          long end = System.currentTimeMillis();
          System.out.println("Get from " + setNameWhichIsCacheName + " took: " + (end-start) + " millis.");
 
-         response = Responses.simple(EdmSimpleType.STRING, "valueString", value);
+         BaseResponse baseResponse = Responses.simple(EdmSimpleType.STRING, "valueString", value);
+
+         long stopCallFunctionProducerInside = System.currentTimeMillis();
+         System.out.println("Whole inside of CallFunction in producer before response took: " +
+                                  (startCallFunctionProducerInside-stopCallFunctionProducerInside) + " millis.");
+
+         response = baseResponse;
       }
 
 
