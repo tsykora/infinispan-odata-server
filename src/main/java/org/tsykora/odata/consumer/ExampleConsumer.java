@@ -1,9 +1,16 @@
 package org.tsykora.odata.consumer;
 
+import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStream;
-import java.util.Scanner;
+import java.io.InputStreamReader;
+import java.net.MalformedURLException;
 
 import com.sun.jersey.api.client.ClientResponse;
+import org.apache.http.HttpResponse;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.DefaultHttpClient;
 import org.core4j.Enumerable;
 import org.odata4j.consumer.ODataConsumer;
 import org.odata4j.core.OObject;
@@ -39,13 +46,13 @@ public class ExampleConsumer extends AbstractExample {
         // To dump all the HTTP trafic
         // Sends http request and/or response information to standard out.  Useful for debugging.
         // TODO: enable it for producer as well? Is it even possible?
-        ODataConsumer.dump.all(false);
+        ODataConsumer.dump.all(true);
 
         // CONSUME IT
         // format null - ATOM by default?, method to tunnel null (maybe needs change in the future)
         System.out.println("Creating instance of ExampleConsumer, initializing oDataConsumer...");
-//      ODataConsumer consumer = this.rtFacde.create(endpointUri, FormatType.JSON, null);
-        ODataConsumer consumer = this.rtFacde.create(endpointUri, FormatType.ATOM, null);
+        ODataConsumer consumer = this.rtFacde.create(endpointUri, FormatType.JSON, null);
+//        ODataConsumer consumer = this.rtFacde.create(endpointUri, FormatType.ATOM, null);
 //      ODataConsumer consumer2 = this.rtFacde.create(endpointUri2, null, null);
 
         System.out.println("\n\n\n\n");
@@ -175,31 +182,35 @@ public class ExampleConsumer extends AbstractExample {
 
         // mySpecialNamedCache - SIMPLE BASED
 
-        entitySetNameCacheName = "mySpecialNamedCache";
+        boolean runBasic = false;
+        if (runBasic) {
+
+            entitySetNameCacheName = "mySpecialNamedCache";
 
 
-        // working with cache entry simple class (String, String)
+            // working with cache entry simple class (String, String)
 //      OEntity createdEntity2 = consumer.createEntity(entitySetNameCacheName).
 //            properties(OProperties.string("simpleStringKey", "key7777simple" + appendix)).
 //            properties(OProperties.string("simpleStringValue", "value7777simple" + appendix)).execute();
 
-        String simpleKey = "simpleKey1" + appendix;
-        String simpleValue = "simpleValue1" + appendix;
+            String simpleKey = "simpleKey1" + appendix;
+            String simpleValue = "simpleValue1" + appendix;
 
-        // ispn_put is defined (in addFunctions) to have NO return type so results are null here
-        Enumerable<OObject> results_put_empty2 = consumer.callFunction(entitySetNameCacheName + "_putString")
+            // ispn_put is defined (in addFunctions) to have NO return type so results are null here
+            Enumerable<OObject> results_put_empty2 = consumer.callFunction(entitySetNameCacheName + "_putString")
 //            .bind(entitySetNameCacheName)
-                // Note: when there is no definition of parameter, parameter is simply null
-                .pString("keyString", simpleKey)
-                .pString("valueString", simpleValue)
-                .execute();
+                    // Note: when there is no definition of parameter, parameter is simply null
+                    .pString("keyString", simpleKey)
+                    .pString("valueString", simpleValue)
+                    .execute();
 
-        Enumerable<OObject> results_get = consumer.callFunction(entitySetNameCacheName + "_getString")
+            Enumerable<OObject> results_get = consumer.callFunction(entitySetNameCacheName + "_getString")
 //            .bind("mySpecialNamedCache")
-                .pString("keyString", "simpleKey1" + appendix)
-                .execute();
+                    .pString("keyString", "simpleKey1" + appendix)
+                    .execute();
 
-        // old with parsing client
+
+            // old with parsing client
 //      for (OObject o : results_get) {
 //         System.out.println("\n\n\n");
 //         System.out.println("Some results here of type: " + o.getType());
@@ -207,21 +218,31 @@ public class ExampleConsumer extends AbstractExample {
 //         System.out.println();
 //      }
 
-        for (Object o : results_get) {
+            for (Object o : results_get) {
 
-            System.out.println("\n\n\n EXPEEEEEEEEEEEEEEEEERIMENTS ");
-            System.out.println(o);
-            JerseyClientResponse jcr = (JerseyClientResponse) o;
-            System.out.println(jcr.toString());
-            System.out.println(jcr.getHeaders().toString());
-            System.out.println(jcr.getClientResponse().getType());
-            ClientResponse clientResponse = jcr.getClientResponse();
-            String textEntity = clientResponse.getEntity(String.class);
-            System.out.println(textEntity);
-            // textEntity is JSON
+                System.out.println("\n\n\n EXPEEEEEEEEEEEEEEEEERIMENTS ");
+                JerseyClientResponse jcr = (JerseyClientResponse) o;
+                System.out.println("jcr.toString() " + jcr.toString());
+                System.out.println("jcr.getHeaders().toString() " + jcr.getHeaders().toString());
+                System.out.println("jcr.getClientResponse().getType() " + jcr.getClientResponse().getType());
+                ClientResponse clientResponse = jcr.getClientResponse();
+
+                long startExperiment = System.currentTimeMillis();
+
+                // this is BOTTLENECK expensive operation --> because this read it as a String from text/plain MediaType
+                String textEntity = clientResponse.getEntity(String.class);
+                System.out.println("\n\ntextEntity: " + textEntity);
+                // textEntity is JSON
+
+                long stopExperiment = System.currentTimeMillis();
+                System.out.println("THE FIRST EXPERIMENT put/get String textEntity = " +
+                        "clientResponse.getEntityInputStream(); duration (diff) millis:" + (stopExperiment - startExperiment));
+
 
 //         dumpResponseBody(textEntity, clientResponse.getType());
-        }
+            }
+
+        } // end runBasic
 
 
 //      String key = "simpleKey1";
@@ -260,7 +281,7 @@ public class ExampleConsumer extends AbstractExample {
         // TODO: prepare serialized object into MAP, mapped to number
         // and in benchmark don't serialize, but only set requests and get them back
 
-        boolean runBenchmark = true;
+        boolean runBenchmark = false;
 
         if (runBenchmark) {
 
@@ -381,8 +402,19 @@ public class ExampleConsumer extends AbstractExample {
 
                     long st = System.currentTimeMillis();
 
+
+//                    try {
+//                        HttpResponse resp = (HttpResponse) jcr.getClientResponse().getEntityInputStream();
+//                        Ensures that the entity content is fully consumed and the content stream, if exists, is closed.
+//                        EntityUtils.consume(resp.getEntity());
+//                    } catch (IOException e) {
+//                        e.printStackTrace();
+//                    }
+
+
                     // PERFORMANCE BOTTLENECK!!! 40 milliseconds
-//                  String textEntity = clientResponse.getEntity(String.class);
+                    String textEntity = clientResponse.getEntity(String.class);
+                    System.out.println("\n\nclientResponse.getEntity(String.class); BOTTLENECK place now: " + textEntity);
 
                     InputStream responseEntityInputStream = clientResponse.getEntityInputStream(); // TODO: one line
 
@@ -400,12 +432,13 @@ public class ExampleConsumer extends AbstractExample {
 //
 //                        System.out.println("\n\nREAD INPUTSTREAM and watch time after it: " + sb.toString());
 
-                    // need proper coding
-                    String inputStreamString = new Scanner(responseEntityInputStream,"UTF-8").useDelimiter("\\A").next();
-                    System.out.println("InputStreamString using scanner: " + inputStreamString);
+                    // Scaner experiments -- need proper coding
+//                    String inputStreamString = new Scanner(responseEntityInputStream,"UTF-8").useDelimiter("\\A").next();
+//                    System.out.println("InputStreamString using scanner: " + inputStreamString);
 
                     long sp = System.currentTimeMillis();
                     System.out.println("String textEntity = clientResponse.getEntityInputStream(); duration (diff) millis:" + (sp - st));
+
 
 //               System.out.println(textEntity);
 
@@ -504,6 +537,85 @@ public class ExampleConsumer extends AbstractExample {
 
 
         // </editor-fold>
+
+
+        boolean runSimpleHttpBenchmark = true;
+        if (runSimpleHttpBenchmark) {
+            for (int i = 0; i < 2; i++) {
+
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();  // TODO: Customise this generated block
+                }
+
+                HttpClient httpClient = new DefaultHttpClient();
+                String testUrl = "http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_getString?keyString=%27simpleKey1%27";
+
+                long errors = 0;
+                final HttpGet httpGet = new HttpGet(testUrl);
+
+              httpGet.setHeader("Content-Type", "application/json");
+//                httpGet.setHeader("Content-Type", "text/plain");
+              httpGet.setHeader("Accept", "application/json");
+//                httpGet.setHeader("Accept", "text/plain");
+
+
+//              httpGet.setHeader("Content-Type", "application/atom+xml");
+                // I also need to setup Accept header -- otherwise I will get back ATOM+XML as Accept header is set to */* by default
+
+
+//            while (true) {
+                try {
+                    final long startNanoTime = System.nanoTime();
+
+                    // this take so looooooong -- why? So I need the right content type?
+                    final HttpResponse httpResponse = httpClient.execute(httpGet);
+
+                    // Elapsed time measured here
+                    final long elapsed = System.nanoTime() - startNanoTime;
+
+
+                    System.out.println(" HEADERS from apache client : ");
+                    System.out.println(" Response content type: " + httpResponse.getFirstHeader("Content-Type").toString());
+
+                    final InputStream inputStream = httpResponse.getEntity().getContent();
+
+                    StringBuilder responseBuilder = new StringBuilder();
+                    BufferedReader responseReader = new BufferedReader(new InputStreamReader(inputStream));
+                    String line = null;
+                    while ((line = responseReader.readLine()) != null) {
+                        responseBuilder.append(line);
+                    }
+                    System.out.println("RESPONSE BUILDER: toString " + responseBuilder.toString());
+
+
+
+
+//                    final byte[] buffer = new byte[8192];
+//                    int size = inputStream.read(buffer);
+//                    while (size > 0) {
+//                        size = inputStream.rd(buffer);
+//                    }
+
+                    inputStream.close();
+                    System.out.println("HttpSimple benchmark ELAPSED TIME nanos: " + elapsed + " = " + elapsed / 1000000 + " milliseconds.");
+
+                } catch (MalformedURLException e) {
+                    // Should never happen
+                    throw new RuntimeException(e);
+                } catch (IOException e) {
+                    // Count
+                    errors++;
+                    throw new RuntimeException(e);
+                }
+//            }
+
+
+                System.out.println("HttpSimple benchmark -- errors: " + errors);
+            }
+        }
+
 
     }
 }

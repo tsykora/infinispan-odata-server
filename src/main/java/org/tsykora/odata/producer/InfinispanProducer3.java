@@ -1,5 +1,18 @@
 package org.tsykora.odata.producer;
 
+import java.io.IOException;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.logging.Logger;
+
 import org.core4j.Enumerable;
 import org.core4j.Func;
 import org.core4j.Func1;
@@ -13,12 +26,32 @@ import org.odata4j.core.OExtension;
 import org.odata4j.core.OFunctionParameter;
 import org.odata4j.core.OSimpleObject;
 import org.odata4j.core.OStructuralObject;
-import org.odata4j.edm.*;
+import org.odata4j.edm.EdmComplexType;
+import org.odata4j.edm.EdmDataServices;
+import org.odata4j.edm.EdmDecorator;
+import org.odata4j.edm.EdmEntityContainer;
+import org.odata4j.edm.EdmEntitySet;
+import org.odata4j.edm.EdmEntityType;
+import org.odata4j.edm.EdmFunctionImport;
+import org.odata4j.edm.EdmFunctionParameter;
+import org.odata4j.edm.EdmGenerator;
+import org.odata4j.edm.EdmSchema;
+import org.odata4j.edm.EdmSimpleType;
+import org.odata4j.edm.EdmType;
 import org.odata4j.exceptions.NotImplementedException;
 import org.odata4j.expression.BoolCommonExpression;
 import org.odata4j.expression.OrderByExpression;
 import org.odata4j.expression.OrderByExpression.Direction;
-import org.odata4j.producer.*;
+import org.odata4j.producer.BaseResponse;
+import org.odata4j.producer.CountResponse;
+import org.odata4j.producer.EntitiesResponse;
+import org.odata4j.producer.EntityIdResponse;
+import org.odata4j.producer.EntityQueryInfo;
+import org.odata4j.producer.EntityResponse;
+import org.odata4j.producer.ODataContext;
+import org.odata4j.producer.ODataProducer;
+import org.odata4j.producer.QueryInfo;
+import org.odata4j.producer.Responses;
 import org.odata4j.producer.edm.MetadataProducer;
 import org.odata4j.producer.inmemory.BeanBasedPropertyModel;
 import org.odata4j.producer.inmemory.EnumsAsStringsPropertyModelDelegate;
@@ -28,19 +61,6 @@ import org.odata4j.producer.inmemory.InMemoryTypeMapping;
 import org.odata4j.producer.inmemory.PropertyModel;
 import org.tsykora.odata.common.CacheObjectSerializationAble;
 import org.tsykora.odata.common.Utils;
-
-import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.logging.Logger;
 
 //import org.odata4j.producer.inmemory.InMemoryProducer.RequestContext.RequestType;
 
@@ -174,7 +194,7 @@ public class InfinispanProducer3 implements ODataProducer {
          defaultCacheManager.startCache(cacheName);
 
          Cache cache = defaultCacheManager.getCache(cacheName);
-         cache.put("key1", "value1");
+         cache.put("simpleKey1", "simpleValue1"); // starts cache
          dump("Cache " + cacheName + " status: " + cache.getStatus());
 
              this.caches.put(cacheName, cache);
