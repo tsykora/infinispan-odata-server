@@ -539,7 +539,7 @@ public class ExampleConsumer extends AbstractExample {
         // </editor-fold>
 
 
-        boolean runSimpleHttpBenchmark = true;
+        boolean runSimpleHttpBenchmark = false;
         if (runSimpleHttpBenchmark) {
             for (int i = 0; i < 2; i++) {
 

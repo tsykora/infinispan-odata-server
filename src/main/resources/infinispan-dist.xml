@@ -20,14 +20,14 @@
             since the transport is created and initialized lazily. -->
 
 
-            <!-- Note that the JGroups transport uses sensible defaults if no configuration
-                property is defined. See the JGroupsTransport javadocs for more flags -->
+        <!-- Note that the JGroups transport uses sensible defaults if no configuration
+            property is defined. See the JGroupsTransport javadocs for more flags -->
         <!--<transport clusterName="OData-Cluster" >-->
         <!--</transport>-->
 
         <transport clusterName="OData-Cluster" transportClass="org.infinispan.remoting.transport.jgroups.JGroupsTransport">
             <properties>
-                <property name="configurationFile" value="jgroups-tcp.xml" />
+                <property name="configurationFile" value="jgroups-tcp.xml"/>
             </properties>
         </transport>
 
@@ -58,11 +58,30 @@
 
         <jmxStatistics enabled="true"/>
         <!--<eviction-->
-                <!--maxEntries="-1"-->
-                <!--strategy="NONE"/>-->
+        <!--maxEntries="-1"-->
+        <!--strategy="NONE"/>-->
         <!--<expiration-->
-                <!--maxIdle="-1"-->
-                <!--reaperEnabled="false"/>-->
+        <!--maxIdle="-1"-->
+        <!--reaperEnabled="false"/>-->
+
+        <indexing enabled="true" indexLocalOnly="true">
+            <properties>
+
+                <!--as simple as possible? -->
+                <!--<property name="default.directory_provider" value="ram" />-->
+
+                <!-- Use our custom IndexManager; TODO autoinject by default? -->
+                <property name="hibernate.search.default.indexmanager"
+                          value="org.infinispan.query.indexmanager.InfinispanIndexManager"/>
+                <!-- specify the managed index is to be shared across the nodes -->
+                <property name="hibernate.search.default.directory_provider" value="infinispan"/>
+                <!-- Supporting exclusive index usage will require lock cleanup on crashed nodes to be implemented -->
+                <property name="hibernate.search.default.exclusive_index_use" value="false"/>
+                <!-- Use latest Lucene version -->
+                <property name="hibernate.search.lucene_version" value="LUCENE_36"/>
+            </properties>
+        </indexing>
+
     </default>
 
     <namedCache name="defaultCache">
@@ -80,6 +99,5 @@
             <!--<hash numOwners="2"/>-->
         </clustering>
     </namedCache>
-
 
 </infinispan>
