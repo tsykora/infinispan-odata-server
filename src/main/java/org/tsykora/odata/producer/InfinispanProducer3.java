@@ -6,7 +6,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
@@ -18,9 +17,11 @@ import org.core4j.Enumerable;
 import org.core4j.Func;
 import org.core4j.Func1;
 import org.core4j.Predicate1;
+import org.hibernate.search.annotations.Analyze;
 import org.hibernate.search.annotations.Field;
+import org.hibernate.search.annotations.FieldBridge;
 import org.hibernate.search.annotations.Indexed;
-import org.hibernate.search.annotations.IndexedEmbedded;
+import org.hibernate.search.annotations.Store;
 import org.hibernate.search.query.dsl.QueryBuilder;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
@@ -202,21 +203,28 @@ public class InfinispanProducer3 implements ODataProducer {
         } else {
 
             try {
-                dump("Starting cache with name " + cacheName + " on defaultCacheManager...");
+                System.out.println("Starting cache with name " + cacheName + " on defaultCacheManager...");
                 defaultCacheManager.startCache(cacheName);
-
+                System.out.println("Cache started!....");
                 Cache cache = defaultCacheManager.getCache(cacheName);
                 cache.put("simpleKey1", "simpleValue1"); // starts cache
                 dump("Cache " + cacheName + " status: " + cache.getStatus());
 
+                System.out.println(" simpleKey1\", \"simpleValue1 ------ PUTTED INTO CACHE, now book.");
+
                 // try query stuff here
-                Book book1 = new Book("Pes baskervilsky", "Povidka o velkem havakovi.");
-                Book book2 = new Book("Obraz Doryana Graye", "Povidka o trosku narcisistickem Dorianovi.");
+                Book book1 = new Book("Pes baskervilsky", "Povidka o velkem havakovi.", "Toto je dany JSON string.");
+//                Book book2 = new Book("Obraz Doryana Graye", "Povidka o trosku narcisistickem Dorianovi.");
                 cache.put("b1", book1);
-                cache.put("b2", book2);
+//                cache.put("b2", book2);
 
                 // get the search manager from the cache:
+                // TODO: I probably need to implement inside of infinispan cache manager lifecycle to hook my JsonFieldBridge
                 SearchManager searchManager = org.infinispan.query.Search.getSearchManager(cache);
+
+
+
+
 
                 // you could make the queries via Lucene APIs, or use some helpers:
                 QueryBuilder queryBuilder = searchManager.buildQueryBuilderForClass(Book.class).get();
@@ -243,6 +251,29 @@ public class InfinispanProducer3 implements ODataProducer {
                 }
 
 
+                // FIELD BRIDGE EXPERIMENTS
+                // FIELD BRIDGE EXPERIMENTS
+                // FIELD BRIDGE EXPERIMENTS
+
+                // or on filed "json" but there is registered that bridge...
+                luceneQuery = queryBuilder.phrase()
+                        .onField("jsonFieldName1")
+                        .sentence("jsonIndexedString1")
+                        .createQuery();
+
+                query = searchManager.getQuery(luceneQuery, Book.class);
+
+                // and there are your results!
+                objectList = query.list();
+
+                System.out.println(" \n\n SEARCH RESULTS FROM EXPERIMENTAL JSON FIELD BRIDGE HERE: size:" + objectList.size() + ":");
+                for (Object b : objectList) {
+                    System.out.println(b);
+                }
+
+
+
+
 //                OR
 //                // create any standard Lucene query, via Lucene's QueryParser or any other means:
 //                org.apache.lucene.search.Query fullTextQuery = //any Apache Lucene Query
@@ -255,6 +286,7 @@ public class InfinispanProducer3 implements ODataProducer {
                 this.caches.put(cacheName, cache);
                 return cache;
             } catch (Exception e) {
+                System.out.println(" \n\n ***** ERROR DURING STARTING CACHE __ DURING EXPERIMENTS WITH INDEXING ***** \n\n");
                 e.printStackTrace();
             }
         }
@@ -1055,23 +1087,34 @@ public class InfinispanProducer3 implements ODataProducer {
         }
     }
 
+
+
+
+
+
     @Indexed
     public class Book {
         @Field
         String title;
         @Field
         String description;
-        @IndexedEmbedded
-        Set<Author> authors = new HashSet<Author>();
 
-        public Book(String title, String description) {
+        @Field(analyze= Analyze.YES, store= Store.YES)
+        @FieldBridge(impl = JsonValueWrapperFieldBridge.class)
+        JsonValueWrapper json;
+
+//        @IndexedEmbedded
+//        Set<Author> authors = new HashSet<Author>();
+
+        public Book(String title, String description, String json) {
             this.title = title;
             this.description = description;
+            this.json = new JsonValueWrapper(json);
         }
 
-        public void setAuthors(Set<Author> authors) {
-            this.authors = authors;
-        }
+//        public void setAuthors(Set<Author> authors) {
+//            this.authors = authors;
+//        }
 
         @Override
         public boolean equals(Object o) {
@@ -1098,42 +1141,43 @@ public class InfinispanProducer3 implements ODataProducer {
             return "Book{" +
                     "title='" + title + '\'' +
                     ", description='" + description + '\'' +
-                    (authors != null ? ", authors=" + authors + " " : "") +
+                    ", json='" + json + '\'' +
+//                    (authors != null ? ", authors=" + authors + " " : "") +
                     '}';
         }
     }
 
-    public class Author {
-        @Field
-        String name;
-        @Field
-        String surname;
-
-        public Author(String name, String surname) {
-            this.name = name;
-            this.surname = surname;
-        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            Author author = (Author) o;
-
-            if (name != null ? !name.equals(author.name) : author.name != null) return false;
-            if (surname != null ? !surname.equals(author.surname) : author.surname != null) return false;
-
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int result = name != null ? name.hashCode() : 0;
-            result = 31 * result + (surname != null ? surname.hashCode() : 0);
-            return result;
-        }
-    }
+//    public class Author {
+//        @Field
+//        String name;
+//        @Field
+//        String surname;
+//
+//        public Author(String name, String surname) {
+//            this.name = name;
+//            this.surname = surname;
+//        }
+//
+//        @Override
+//        public boolean equals(Object o) {
+//            if (this == o) return true;
+//            if (o == null || getClass() != o.getClass()) return false;
+//
+//            Author author = (Author) o;
+//
+//            if (name != null ? !name.equals(author.name) : author.name != null) return false;
+//            if (surname != null ? !surname.equals(author.surname) : author.surname != null) return false;
+//
+//            return true;
+//        }
+//
+//        @Override
+//        public int hashCode() {
+//            int result = name != null ? name.hashCode() : 0;
+//            result = 31 * result + (surname != null ? surname.hashCode() : 0);
+//            return result;
+//        }
+//    }
 
 }
 
