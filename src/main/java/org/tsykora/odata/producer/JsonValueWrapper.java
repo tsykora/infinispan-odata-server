@@ -1,17 +1,14 @@
 package org.tsykora.odata.producer;
 
 /**
- * This is used to wrap JSON values. JsonValueWrapperFieldBridge is used as
- * a class bridge to allow indexing of the JSON payload.
+ * Class is used to wrap JSON values coming from clients (OData consumers). JsonValueWrapperFieldBridge is used as
+ * a bridge which allows indexing of the JSON payload.
  *
  * @author tsykora@redhat.com
- * @since 4.0
  */
 public final class JsonValueWrapper {
 
-    // The JSON payload
     private final String json;
-
     private int hashCode = 0;
 
     public JsonValueWrapper(String json) {
@@ -44,35 +41,6 @@ public final class JsonValueWrapper {
 
     @Override
     public String toString() {
-        return "JsonValueWrapper(" + json + ')';
+        return "JsonValueWrapper(" + json + ")";
     }
-
-
-    // Do we need to adjust this to JSON (There is no serialization/deserialization needed)
-//    public static final class Externalizer extends AbstractExternalizer<ProtobufValueWrapper> {
-//
-//        @Override
-//        public void writeObject(ObjectOutput output, ProtobufValueWrapper protobufValueWrapper) throws IOException {
-//            UnsignedNumeric.writeUnsignedInt(output, protobufValueWrapper.getBinary().length);
-//            output.write(protobufValueWrapper.getBinary());
-//        }
-//
-//        @Override
-//        public ProtobufValueWrapper readObject(ObjectInput input) throws IOException {
-//            int length = UnsignedNumeric.readUnsignedInt(input);
-//            byte[] binary = new byte[length];
-//            input.readFully(binary);
-//            return new ProtobufValueWrapper(binary);
-//        }
-//
-//        @Override
-//        public Integer getId() {
-//            return ExternalizerIds.PROTOBUF_VALUE_WRAPPER;
-//        }
-//
-//        @Override
-//        public Set<Class<? extends ProtobufValueWrapper>> getTypeClasses() {
-//            return Collections.<Class<? extends ProtobufValueWrapper>>singleton(ProtobufValueWrapper.class);
-//        }
-//    }
 }

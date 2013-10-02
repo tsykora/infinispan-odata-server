@@ -1,8 +1,6 @@
 package org.tsykora.odata.producer;
 
 import java.io.IOException;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -33,7 +31,6 @@ import org.odata4j.core.OEntityKey;
 import org.odata4j.core.OExtension;
 import org.odata4j.core.OFunctionParameter;
 import org.odata4j.core.OSimpleObject;
-import org.odata4j.core.OStructuralObject;
 import org.odata4j.edm.EdmComplexType;
 import org.odata4j.edm.EdmDataServices;
 import org.odata4j.edm.EdmDecorator;
@@ -73,12 +70,8 @@ import org.odata4j.producer.inmemory.PropertyModel;
 import org.tsykora.odata.common.CacheObjectSerializationAble;
 import org.tsykora.odata.common.Utils;
 
-//import org.odata4j.producer.inmemory.InMemoryProducer.RequestContext.RequestType;
-
 /**
- * InMemoryProducer with implemented direct access to Infinispan Cache.
- * <p/>
- * Let's cut big producer to the smallest one
+ * ODataProducer with implemented direct access to Infinispan Cache.
  */
 public class InfinispanProducer3 implements ODataProducer {
 
@@ -212,8 +205,17 @@ public class InfinispanProducer3 implements ODataProducer {
 
                 System.out.println(" simpleKey1\", \"simpleValue1 ------ PUTTED INTO CACHE, now book.");
 
+                // TODO: how about that -- "d" : { -- // and these rules for OData (input, output)
+                String json = "{\n" +
+                        "  \"name\" : { \"first\" : \"Joe\", \"last\" : \"Sixpack\" },\n" +
+                        "  \"gender\" : \"MALE\",\n" +
+                        "  \"verified\" : false,\n" +
+                        "  \"age\" : 24,\n" +
+                        "  \"firstname\" : \"Joe\",\n" +
+                        "  \"lastname\" : \"Sixpack\"" +
+                        "}";
                 // try query stuff here
-                Book book1 = new Book("Pes baskervilsky", "Povidka o velkem havakovi.", "Toto je dany JSON string.");
+                Book book1 = new Book("Pes baskervilsky", "Povidka o velkem havakovi obsahujici json.", json);
 //                Book book2 = new Book("Obraz Doryana Graye", "Povidka o trosku narcisistickem Dorianovi.");
                 cache.put("b1", book1);
 //                cache.put("b2", book2);
@@ -257,8 +259,8 @@ public class InfinispanProducer3 implements ODataProducer {
 
                 // or on filed "json" but there is registered that bridge...
                 luceneQuery = queryBuilder.phrase()
-                        .onField("jsonFieldName1")
-                        .sentence("jsonIndexedString1")
+                        .onField("gender")
+                        .sentence("MALE")
                         .createQuery();
 
                 query = searchManager.getQuery(luceneQuery, Book.class);
@@ -267,6 +269,26 @@ public class InfinispanProducer3 implements ODataProducer {
                 objectList = query.list();
 
                 System.out.println(" \n\n SEARCH RESULTS FROM EXPERIMENTAL JSON FIELD BRIDGE HERE: size:" + objectList.size() + ":");
+                for (Object b : objectList) {
+                    System.out.println(b);
+                }
+
+                // FIELD BRIDGE NUMERIC EXPERIMENTS
+
+                // TODO: how to index numeric fields? how to index enums, bools and other "strange" types?
+//                luceneQuery = queryBuilder.range()
+//                        .onField("age").below(Integer.getInteger("25"))
+//                        .createQuery();
+
+
+
+
+                query = searchManager.getQuery(luceneQuery, Book.class);
+
+                // and there are your results!
+                objectList = query.list();
+
+                System.out.println(" \n\n SEARCH RESULTS FROM NUMBER QUERY!! EXPERIMENTAL JSON FIELD BRIDGE HERE: size:" + objectList.size() + ":");
                 for (Object b : objectList) {
                     System.out.println(b);
                 }
@@ -627,98 +649,9 @@ public class InfinispanProducer3 implements ODataProducer {
         return null;
     }
 
-
-//   /**
-//    * TODO - document THIS PROPERLY? Change in the future? Given an entity set and an entity key, returns the pojo that
-//    * is that entity instance. The default implementation iterates over the entire set of pojos to find the desired
-//    * instance.
-//    *
-//    * @param rc the current ReqeustContext, may be valuable to the ei.getWithContext impl
-//    * @return the pojo
-//    */
-//   @SuppressWarnings("unchecked")
-//   protected Object getEntityPojo(final RequestContext rc) {
-//
-//      // I need to transfer cache entry to MyInternalCacheEntry
-//      // because this is Entity and I have EntityInfo about this class
-//      // RequestContext is my internal class here and it has rc.getEntityKey()
-//
-//      // Citation EntityKey DOC: "The string representation of an entity-key is wrapped with parentheses" ('foo')
-//
-//      MyInternalCacheEntry mice = null;
-//      MyInternalCacheEntrySimple miceSimple = null;
-//
-//      // entry exists?
-//
-//      System.out.println("\n\n\n");
-//      System.out.println("rc.getIspnCacheKey (have to be the same as the first entry later: " + rc.getIspnCacheKey());
-//      System.out.println("Cache KEYSET before creating MICE object in getEntityPojo!!! " + getCache(rc.getEntitySetName()).keySet().toString());
-//      System.out.println("Cache KEYSET before creating MICE object in getEntityPojo the first entry " +
-//                               getCache(rc.getEntitySetName()).keySet().toArray()[0]);
-//      System.out.println(" rc.getIspnCacheKey class " + rc.getIspnCacheKey().getClass());
-//      System.out.println(" key from keyset class: " + getCache(rc.getEntitySetName()).keySet().toArray()[0].getClass());
-//
-//      System.out.println("EQUALS???: " + getCache(rc.getEntitySetName()).keySet().toArray()[0].equals(rc.getIspnCacheKey()));
-//
-////        Object value = getCache(rc.getEntitySetName()).get(getCache(rc.getEntitySetName()).keySet().toArray()[0]);
-//      Object value = getCache(rc.getEntitySetName()).get(rc.getIspnCacheKey()); // I need this to work
-//
-//
-//      System.out.println("value: " + value + " toString: " + value.toString());
-//      System.out.println("\n\n\n");
-//
-//      if (value != null) {
-//         dump("Found value : " + value + " for key: " + rc.getIspnCacheKey() + " in cache: " + rc.getEntitySetName());
-//
-//         if (rc.isSimpleStringKeyValue()) {
-//            dump("getEntityPojo(): NO serialization of response. Simple String value key only.");
-//            // Calling (String, String) constructor here, so response is OK, no need of serialization
-//            // setting of Simple attributes in MyInternalCacheEntry is ok a supposed to be filled by String values
-//            miceSimple = new MyInternalCacheEntrySimple(rc.getIspnCacheKey().toString(), value.toString());
-//         } else {
-//            // we are dealing with complex objects, do proper serialization
-//
-//            // IMPORTANT
-//            // now I have OBJECTS here -- (which are strings for example)
-//            // but they can't be cast to byte[]
-//            // this mice is put into OEntity and I need to put there properties in byte[] => in edm.binary format
-//            // so I need to serialize these objects here
-//
-//            // NOPE: NEW!!! approach
-//            // rc.IspnCacheKey is OBJECT here. No serialization needed
-//
-//            dump("getEntityPojo(): Serializing response.");
-//            mice = new MyInternalCacheEntry(Utils.serialize(rc.getIspnCacheKey()), Utils.serialize(value));
-//         }
-//
-//      } else {
-//         dump("Value NOT FOUND for key: " + rc.getIspnCacheKey() + " in cache: " + rc.getEntitySetName());
-//      }
-//
-//      if (mice == null) {
-//         return miceSimple;
-//      } else {
-//         return mice;
-//      }
-//   }
-
     private enum TriggerType {
         Before, After
-    }
-
-    ;
-
-    protected void fireUnmarshalEvent(Object pojo, OStructuralObject sobj, TriggerType ttype)
-            throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-        try {
-            Method m = pojo.getClass().getMethod(ttype == TriggerType.Before ? "beforeOEntityUnmarshal" :
-                    "afterOEntityUnmarshal", OStructuralObject.class);
-            if (m != null) {
-                m.invoke(pojo, sobj);
-            }
-        } catch (NoSuchMethodException ex) {
-        }
-    }
+    };
 
 
     public class InMemoryEntityInfo<TEntity> {
@@ -1099,7 +1032,7 @@ public class InfinispanProducer3 implements ODataProducer {
         @Field
         String description;
 
-        @Field(analyze= Analyze.YES, store= Store.YES)
+        @Field(analyze = Analyze.YES, store = Store.YES)
         @FieldBridge(impl = JsonValueWrapperFieldBridge.class)
         JsonValueWrapper json;
 
@@ -1147,37 +1080,6 @@ public class InfinispanProducer3 implements ODataProducer {
         }
     }
 
-//    public class Author {
-//        @Field
-//        String name;
-//        @Field
-//        String surname;
-//
-//        public Author(String name, String surname) {
-//            this.name = name;
-//            this.surname = surname;
-//        }
-//
-//        @Override
-//        public boolean equals(Object o) {
-//            if (this == o) return true;
-//            if (o == null || getClass() != o.getClass()) return false;
-//
-//            Author author = (Author) o;
-//
-//            if (name != null ? !name.equals(author.name) : author.name != null) return false;
-//            if (surname != null ? !surname.equals(author.surname) : author.surname != null) return false;
-//
-//            return true;
-//        }
-//
-//        @Override
-//        public int hashCode() {
-//            int result = name != null ? name.hashCode() : 0;
-//            result = 31 * result + (surname != null ? surname.hashCode() : 0);
-//            return result;
-//        }
-//    }
 
 }
 
