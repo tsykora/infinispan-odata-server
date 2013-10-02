@@ -4,7 +4,11 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.UnsupportedEncodingException;
 import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
 
 import com.sun.jersey.api.client.ClientResponse;
 import org.apache.http.HttpResponse;
@@ -541,24 +545,91 @@ public class ExampleConsumer extends AbstractExample {
 
         boolean runSimpleHttpBenchmark = false;
         if (runSimpleHttpBenchmark) {
-            for (int i = 0; i < 2; i++) {
-
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();  // TODO: Customise this generated block
-                }
+            for (int i = 0; i < 1; i++) {
 
                 HttpClient httpClient = new DefaultHttpClient();
                 String testUrl = "http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_getString?keyString=%27simpleKey1%27";
 
-                long errors = 0;
-                final HttpGet httpGet = new HttpGet(testUrl);
 
-              httpGet.setHeader("Content-Type", "application/json");
+                String exampleJsonString = "{\n" +
+                        "  \"name\" : { \"first\" : \"Neo\", \"last\" : \"Matrix McMaster\" },\n" +
+                        "  \"gender\" : \"MALE\",\n" +
+                        "  \"verified\" : false,\n" +
+                        "  \"age\" : 24,\n" +
+                        "  \"firstname\" : \"Neo\",\n" +
+                        "  \"lastname\" : \"Matrix McMaster\"" +
+                        "}";
+
+                String putUrl = "http://localhost:8887/ODataInfinispanEndpoint.svc/" +
+                        "mySpecialNamedCache_putString?keyString=%27exampleJson1%27&valueJsonString=%27" + exampleJsonString + "%27";
+
+
+
+
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
+                URI uri = null;
+                try {
+                    uri = new URI(URLEncoder.encode(exampleJsonString, "UTF8"));
+                } catch (URISyntaxException e) {
+                    e.printStackTrace();
+                } catch (UnsupportedEncodingException e) {
+                    e.printStackTrace();
+                }
+                String theRightUrl = "http://localhost:8887/ODataInfinispanEndpoint.svc/" +
+                        "mySpecialNamedCache_putString?keyString=%27exampleJson1%27&valueString=%27" + uri + "%27";
+
+                System.out.println("Encoded json stuff: " + uri);
+                System.out.println("the right url: " + theRightUrl);
+
+
+                long errors = 0;
+                final HttpGet httpGet = new HttpGet(theRightUrl);
+
+                httpGet.setHeader("Content-Type", "application/json");
 //                httpGet.setHeader("Content-Type", "text/plain");
-              httpGet.setHeader("Accept", "application/json");
+                httpGet.setHeader("Accept", "application/json");
 //                httpGet.setHeader("Accept", "text/plain");
+
+
+//                // put JSON entry "under" the key -- "jsonKey1"
+//                String testUrlPost = "http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_put?keyString=%27jsonKey1%27";
+//                // The way how to create entry -- POST request containing JSON
+//                HttpPost httpPost = new HttpPost(testUrlPost);
+//                httpPost.setHeader("Content-Type", "application/json");
+//                httpPost.setHeader("Accept", "application/json");
+//
+//                BasicHttpEntity httpEntity = new BasicHttpEntity();
+//
+//                InputStream inStream = null;
+//                try {
+//                    inStream = new ByteArrayInputStream(exampleJsonString.getBytes("UTF-8"));
+//                } catch (UnsupportedEncodingException e) {
+//                    e.printStackTrace();
+//                }
+//
+//                httpEntity.setContent(inStream);
+//                httpPost.setEntity(httpEntity);
+//
+//                try {
+//                    Thread.sleep(1000);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
+//
+//                try {
+//
+//                    // sending http POST response to producer to create entity
+//                    System.out.println("About to send HTTP POST...");
+//                    final HttpResponse httpPutResponse = httpClient.execute(httpPost);
+//                    inStream.close();
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
 
 
 //              httpGet.setHeader("Content-Type", "application/atom+xml");
@@ -570,7 +641,14 @@ public class ExampleConsumer extends AbstractExample {
                     final long startNanoTime = System.nanoTime();
 
                     // this take so looooooong -- why? So I need the right content type?
-                    final HttpResponse httpResponse = httpClient.execute(httpGet);
+
+                    String urlGetSimpleJson = "http://localhost:8887/ODataInfinispanEndpoint.svc/" +
+                            "mySpecialNamedCache_getString?keyString=%27exampleJson1%27";
+
+                    final HttpGet httpGet2 = new HttpGet(urlGetSimpleJson);
+                    httpGet2.setHeader("Content-Type", "application/json");
+                    httpGet2.setHeader("Accept", "application/json");
+                    final HttpResponse httpResponse = httpClient.execute(httpGet2);
 
                     // Elapsed time measured here
                     final long elapsed = System.nanoTime() - startNanoTime;
@@ -588,8 +666,6 @@ public class ExampleConsumer extends AbstractExample {
                         responseBuilder.append(line);
                     }
                     System.out.println("RESPONSE BUILDER: toString " + responseBuilder.toString());
-
-
 
 
 //                    final byte[] buffer = new byte[8192];

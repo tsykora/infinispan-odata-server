@@ -25,9 +25,6 @@ public final class JsonValueWrapperFieldBridge implements FieldBridge {
         JsonValueWrapper valueWrapper = (JsonValueWrapper) value;
         String json = valueWrapper.getJson();
 
-//        String fieldName = "jsonFieldName1";
-//        String indexedString = "jsonIndexedString1";
-
 //       fieldName - The field name
 //       indexedString - The value to index
 //       document - the document to which to add the the new field

@@ -1,5 +1,8 @@
 package org.tsykora.odata.facades;
 
+import javax.ws.rs.core.MediaType;
+import javax.ws.rs.ext.RuntimeDelegate;
+
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.container.filter.LoggingFilter;
@@ -13,9 +16,6 @@ import org.odata4j.jersey.producer.server.ODataJerseyServer;
 import org.odata4j.producer.resources.DefaultODataApplication;
 import org.odata4j.producer.resources.RootApplication;
 import org.odata4j.producer.server.ODataServer;
-
-import javax.ws.rs.core.MediaType;
-import javax.ws.rs.ext.RuntimeDelegate;
 
 public class JerseyRuntimeFacade implements RuntimeFacade {
 
@@ -31,11 +31,8 @@ public class JerseyRuntimeFacade implements RuntimeFacade {
 //    try {
       ODataServer server = startODataServer(baseUri);
 
-
-
-//       server.setHttpAuthenticator (need added classes + improvements later)
-
-      System.out.println("Press any key to exit");
+//      server.setHttpAuthenticator (need added classes + improvements later)
+//      System.out.println("Press any key to exit");
 //      new BufferedReader(new InputStreamReader(System.in)).readLine();
 //      server.stop();
 //    } catch (IOException e) {

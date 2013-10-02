@@ -2,7 +2,6 @@ package org.tsykora.odata.producer;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedList;
@@ -11,15 +10,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
-import org.core4j.Enumerable;
+import org.apache.lucene.search.Query;
 import org.core4j.Func;
 import org.core4j.Func1;
-import org.core4j.Predicate1;
-import org.hibernate.search.annotations.Analyze;
-import org.hibernate.search.annotations.Field;
-import org.hibernate.search.annotations.FieldBridge;
-import org.hibernate.search.annotations.Indexed;
-import org.hibernate.search.annotations.Store;
 import org.hibernate.search.query.dsl.QueryBuilder;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
@@ -44,11 +37,8 @@ import org.odata4j.edm.EdmSchema;
 import org.odata4j.edm.EdmSimpleType;
 import org.odata4j.edm.EdmType;
 import org.odata4j.exceptions.NotImplementedException;
-import org.odata4j.expression.BoolCommonExpression;
 import org.odata4j.expression.EntitySimpleProperty;
 import org.odata4j.expression.EqExpression;
-import org.odata4j.expression.OrderByExpression;
-import org.odata4j.expression.OrderByExpression.Direction;
 import org.odata4j.expression.StringLiteral;
 import org.odata4j.producer.BaseResponse;
 import org.odata4j.producer.CountResponse;
@@ -64,7 +54,6 @@ import org.odata4j.producer.edm.MetadataProducer;
 import org.odata4j.producer.inmemory.BeanBasedPropertyModel;
 import org.odata4j.producer.inmemory.EnumsAsStringsPropertyModelDelegate;
 import org.odata4j.producer.inmemory.InMemoryComplexTypeInfo;
-import org.odata4j.producer.inmemory.InMemoryEvaluation;
 import org.odata4j.producer.inmemory.InMemoryTypeMapping;
 import org.odata4j.producer.inmemory.PropertyModel;
 import org.tsykora.odata.common.CacheObjectSerializationAble;
@@ -200,109 +189,42 @@ public class InfinispanProducer3 implements ODataProducer {
                 defaultCacheManager.startCache(cacheName);
                 System.out.println("Cache started!....");
                 Cache cache = defaultCacheManager.getCache(cacheName);
+
                 cache.put("simpleKey1", "simpleValue1"); // starts cache
                 dump("Cache " + cacheName + " status: " + cache.getStatus());
 
-                System.out.println(" simpleKey1\", \"simpleValue1 ------ PUTTED INTO CACHE, now book.");
-
-                // TODO: how about that -- "d" : { -- // and these rules for OData (input, output)
-                String json = "{\n" +
-                        "  \"name\" : { \"first\" : \"Joe\", \"last\" : \"Sixpack\" },\n" +
-                        "  \"gender\" : \"MALE\",\n" +
-                        "  \"verified\" : false,\n" +
-                        "  \"age\" : 24,\n" +
-                        "  \"firstname\" : \"Joe\",\n" +
-                        "  \"lastname\" : \"Sixpack\"" +
-                        "}";
-                // try query stuff here
-                Book book1 = new Book("Pes baskervilsky", "Povidka o velkem havakovi obsahujici json.", json);
-//                Book book2 = new Book("Obraz Doryana Graye", "Povidka o trosku narcisistickem Dorianovi.");
-                cache.put("b1", book1);
-//                cache.put("b2", book2);
-
-                // get the search manager from the cache:
-                // TODO: I probably need to implement inside of infinispan cache manager lifecycle to hook my JsonFieldBridge
-                SearchManager searchManager = org.infinispan.query.Search.getSearchManager(cache);
+                System.out.println(" simpleKey1\", \"simpleValue1 ------ PUTTED INTO CACHE, now some json stuff:");
 
 
-
-
-
-                // you could make the queries via Lucene APIs, or use some helpers:
-                QueryBuilder queryBuilder = searchManager.buildQueryBuilderForClass(Book.class).get();
-
-                // the queryBuilder has a nice fluent API which guides you through all options.
-                // this has some knowledge about your object, for example which Analyzers
-                // need to be applied, but the output is a failry standard Lucene Query.
-                org.apache.lucene.search.Query luceneQuery = queryBuilder.phrase()
-                        .onField("description")
-//                        .andField("title")
-                        .sentence("Povidka o velkem havakovi.")
-                        .createQuery();
-
-                // the query API itself accepts any Lucene Query, and on top of that
-                // you can restrict the result to selected class types:
-                CacheQuery query = searchManager.getQuery(luceneQuery, Book.class);
-
-                // and there are your results!
-                List objectList = query.list();
-
-                System.out.println(" \n\n SEARCH RESULTS HERE: size:" + objectList.size() + ":");
-                for (Object b : objectList) {
-                    System.out.println(b);
-                }
-
-
-                // FIELD BRIDGE EXPERIMENTS
-                // FIELD BRIDGE EXPERIMENTS
-                // FIELD BRIDGE EXPERIMENTS
-
-                // or on filed "json" but there is registered that bridge...
-                luceneQuery = queryBuilder.phrase()
-                        .onField("gender")
-                        .sentence("MALE")
-                        .createQuery();
-
-                query = searchManager.getQuery(luceneQuery, Book.class);
-
-                // and there are your results!
-                objectList = query.list();
-
-                System.out.println(" \n\n SEARCH RESULTS FROM EXPERIMENTAL JSON FIELD BRIDGE HERE: size:" + objectList.size() + ":");
-                for (Object b : objectList) {
-                    System.out.println(b);
-                }
-
-                // FIELD BRIDGE NUMERIC EXPERIMENTS
-
-                // TODO: how to index numeric fields? how to index enums, bools and other "strange" types?
-//                luceneQuery = queryBuilder.range()
-//                        .onField("age").below(Integer.getInteger("25"))
+//                // put this into the cache
+//                // TODO: how about that -- "d" : { -- // and these rules for OData (input, output)
+//                String json = "{\n" +
+//                        "  \"name\" : { \"first\" : \"Neo\", \"last\" : \"Matrix McMaster\" },\n" +
+//                        "  \"gender\" : \"MALE\",\n" +
+//                        "  \"verified\" : false,\n" +
+//                        "  \"age\" : 24,\n" +
+//                        "  \"firstname\" : \"Neo\",\n" +
+//                        "  \"lastname\" : \"Matrix McMaster\"" +
+//                        "}";
+//                // try query stuff here
+//                CachedValue neo = new CachedValue(json);
+//                // all entries are "under" simple String key (that's similar to REST)
+//                cache.put("theFirst", neo);
+//
+//
+//                // get the search manager from the cache:
+//                SearchManager searchManager = org.infinispan.query.Search.getSearchManager(cache);
+//                QueryBuilder queryBuilder = searchManager.buildQueryBuilderForClass(CachedValue.class).get();
+//                Query luceneQuery = queryBuilder.phrase()
+//                        .onField("gender")
+//                        .sentence("MALE")
 //                        .createQuery();
-
-
-
-
-                query = searchManager.getQuery(luceneQuery, Book.class);
-
-                // and there are your results!
-                objectList = query.list();
-
-                System.out.println(" \n\n SEARCH RESULTS FROM NUMBER QUERY!! EXPERIMENTAL JSON FIELD BRIDGE HERE: size:" + objectList.size() + ":");
-                for (Object b : objectList) {
-                    System.out.println(b);
-                }
-
-
-
-
-//                OR
-//                // create any standard Lucene query, via Lucene's QueryParser or any other means:
-//                org.apache.lucene.search.Query fullTextQuery = //any Apache Lucene Query
-//                // convert the Lucene query to a CacheQuery:
-//                CacheQuery cacheQuery = searchManager.getQuery( fullTextQuery );
-//                // get the results:
-//                List<Object> found = cacheQuery.list();
+//                CacheQuery query = searchManager.getQuery(luceneQuery, CachedValue.class);
+//                List<Object> objectList = query.list();
+//                System.out.println(" \n\n SEARCH RESULTS: size:" + objectList.size() + ":");
+//                for (Object b : objectList) {
+//                    System.out.println(b);
+//                }
 
 
                 this.caches.put(cacheName, cache);
@@ -323,10 +245,6 @@ public class InfinispanProducer3 implements ODataProducer {
         return metadata;
     }
 
-    public String getContainerName() {
-        return containerName;
-    }
-
     protected InMemoryEdmGenerator newEdmGenerator(String namespace, InMemoryTypeMapping typeMapping, String idPropName, Map<String, InMemoryEntityInfo<?>> eis,
                                                    Map<String, InMemoryComplexTypeInfo<?>> complexTypesInfo) {
         return new InMemoryEdmGenerator(namespace, containerName, typeMapping, ID_PROPNAME, eis, complexTypesInfo, this.flattenEdm);
@@ -342,16 +260,9 @@ public class InfinispanProducer3 implements ODataProducer {
     }
 
 
-    private static Predicate1<Object> filterToPredicate(final BoolCommonExpression filter, final PropertyModel properties) {
-        return new Predicate1<Object>() {
-            public boolean apply(Object input) {
-                return InMemoryEvaluation.evaluate(filter, input, properties);
-            }
-        };
-    }
-
     /**
      * Is returning all entries from local cache.
+     * TODO:? Really? Performance bottleneck? cache.values() --> into looong JSON (restrict number of returned entries)
      *
      * @param entitySetName - cache name
      * @param queryInfo     - other special restrictions??
@@ -359,59 +270,72 @@ public class InfinispanProducer3 implements ODataProducer {
      */
     @Override
     public EntitiesResponse getEntities(ODataContext context, String entitySetName, final QueryInfo queryInfo) {
-
-//        // go f
-
         throw new NotImplementedException();
     }
 
 
+    /**
+     * TODO: Easy - support this. Return JSON. (details: return SimpleResponse --> INT --> goes to JSON)
+     *
+     * @param context
+     * @param entitySetName
+     * @param queryInfo
+     * @return
+     */
     @Override
     public CountResponse getEntitiesCount(ODataContext context, String entitySetName, final QueryInfo queryInfo) {
-
         throw new NotImplementedException();
-    }
-
-    private Enumerable<Object> orderBy(Enumerable<Object> iter, List<OrderByExpression> orderBys, final PropertyModel properties) {
-        for (final OrderByExpression orderBy : Enumerable.create(orderBys).reverse()) {
-            iter = iter.orderBy(new Comparator<Object>() {
-                @SuppressWarnings({"unchecked", "rawtypes"})
-                public int compare(Object o1, Object o2) {
-                    Comparable lhs = (Comparable) InMemoryEvaluation.evaluate(orderBy.getExpression(), o1, properties);
-                    Comparable rhs = (Comparable) InMemoryEvaluation.evaluate(orderBy.getExpression(), o2, properties);
-                    return (orderBy.getDirection() == Direction.ASCENDING ? 1 : -1) * lhs.compareTo(rhs);
-                }
-            });
-        }
-        return iter;
     }
 
     /**
-     * This will probably need performance tunning!!
+     * I need probably need to support this as it is HTTP GET for a particular cache entry.
+     * Key should be simple String and CacheValue's JSON should be returned to the client.
      * <p/>
-     * If there is a getEntity() call on consumer then this getEntity() method on producer is called
+     * This should EDM.String SimpleResponse with application/json setting.
      * <p/>
-     * entityKey corresponds with Key of entry in the cache. entityKey expects deserialized object (so it can directly
-     * access ispn cache)
+     * TODO? make entityKey corresponds with Key of entry in the cache?
      */
     @Override
     public EntityResponse getEntity(ODataContext context, final String entitySetName, final OEntityKey entityKey, final EntityQueryInfo queryInfo) {
-
         throw new NotImplementedException();
     }
 
+    /**
+     * TODO - find ISPN equivalent support for it or decide about not supporting this operation at all.
+     */
     @Override
     public void mergeEntity(ODataContext context, String entitySetName, OEntity entity) {
         // merge - what is equal to merge in ISPN?
         throw new NotImplementedException();
     }
 
+    /**
+     * Simple update of cached entry.
+     * This is HTTP UPDATE call. (It has to contain "the load" as well as POST for create entity.)
+     * <p/>
+     * TODO: we definitely need to support this.
+     *
+     * @param context
+     * @param entitySetName
+     * @param entity
+     */
     @Override
     public void updateEntity(ODataContext context, String entitySetName, OEntity entity) {
         // simple update entry and re-call
         throw new NotImplementedException();
     }
 
+
+    /**
+     * Simple delete of cached entry.
+     * This is HTTP DELETE call, based only on cached entry related simple String key.
+     * <p/>
+     * TODO: we definitely need to support this.
+     *
+     * @param context
+     * @param entitySetName
+     * @param entityKey
+     */
     @Override
     public void deleteEntity(ODataContext context, String entitySetName, OEntityKey entityKey) {
         // simple remove entry and re-call
@@ -419,55 +343,84 @@ public class InfinispanProducer3 implements ODataProducer {
     }
 
     /**
-     * Puts entry given in entity into the Infinispan (in-memory) cache specified by entitySetName
+     * TODO: support this!
+     * <p/>
+     * This is HTTP POST with given "load". The "load" is JSON format.
+     * Given JSON is encapsulated into CachedValue under JsonValueWrapper field and the whole entry
+     * is putted into the Infinispan cache "under" given simple String key.
      *
-     * @param entitySetName
+     * @param entitySetName - cache name identifier
      * @param entity
      * @return
      */
     @Override
     public EntityResponse createEntity(ODataContext context, String entitySetName, final OEntity entity) {
-        throw new NotImplementedException();
+
+        System.out.println(" \n\n CREATE ENTITY ECHO: ");
+        System.out.println("context: " + context);
+        System.out.println("entitySetName: " + context);
+        System.out.println(" OEntity: " + entity);
+
+        BaseResponse baseResponse = Responses.simple(EdmSimpleType.STRING,
+                "Status of entity creation", "Entry was put into the cache");
+        return (EntityResponse) baseResponse;
     }
 
+    // Not supported
     @Override
     public EntityResponse createEntity(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, OEntity entity) {
-        dump("THIS IS SECOND createEntity METHOD CALL -- NOT IMPLEMENTED YET!!!");
         throw new NotImplementedException();
     }
 
+    // Not supported (How to navigate entities inside NOSQL, schema-less store?)
     @Override
     public BaseResponse getNavProperty(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, QueryInfo queryInfo) {
-
-
         throw new NotImplementedException();
     }
 
+    // Not supported (How to navigate entities inside NOSQL, schema-less store?)
     @Override
     public CountResponse getNavPropertyCount(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, QueryInfo queryInfo) {
         throw new NotImplementedException();
     }
 
+    // Not supported (How to navigate entities inside NOSQL, schema-less store? Any links here? Check OData and confirm.)
     @Override
     public EntityIdResponse getLinks(ODataContext context, OEntityId sourceEntity, String targetNavProp) {
         throw new NotImplementedException();
     }
 
+    // Not supported (How to navigate entities inside NOSQL, schema-less store? Any links here? Check OData and confirm.)
     @Override
     public void createLink(ODataContext context, OEntityId sourceEntity, String targetNavProp, OEntityId targetEntity) {
         throw new NotImplementedException();
     }
 
+    // Not supported (How to navigate entities inside NOSQL, schema-less store? Any links here? Check OData and confirm.)
     @Override
     public void updateLink(ODataContext context, OEntityId sourceEntity, String targetNavProp, OEntityKey oldTargetEntityKey, OEntityId newTargetEntity) {
         throw new NotImplementedException();
     }
 
+    // Not supported (How to navigate entities inside NOSQL, schema-less store? Any links here? Check OData and confirm.)
     @Override
     public void deleteLink(ODataContext context, OEntityId sourceEntity, String targetNavProp, OEntityKey targetEntityKey) {
         throw new NotImplementedException();
     }
 
+    /**
+     * The heart of our producer.
+     * We can go the way of having cacheName_get/put/delete/update and call particular aforementioned methods
+     * (i.e. create, delete, update, get entity)
+     * <p/>
+     * TODO: implement real - cache related functions like: Start, Stop etc.
+     *
+     * @param context
+     * @param function
+     * @param params
+     * @param queryInfo
+     * @return
+     */
     @Override
     public BaseResponse callFunction(ODataContext context, EdmFunctionImport function, Map<String, OFunctionParameter> params, QueryInfo queryInfo) {
 
@@ -548,11 +501,26 @@ public class InfinispanProducer3 implements ODataProducer {
         if (function.getName().endsWith("_putString")) {
             dump("Putting into " + setNameWhichIsCacheName + " cache....... ");
 
-            simpleValue = params.get("valueString").getValue().toString();
-            long start = System.currentTimeMillis();
-            getCache(setNameWhichIsCacheName).put(simpleKey, simpleValue);
-            long end = System.currentTimeMillis();
-            System.out.println("Put into " + setNameWhichIsCacheName + " took: " + (end - start) + " millis.");
+//            simpleValue = params.get("valueString").getValue().toString();
+
+            // since now, we are getting whole JSON stuff from there
+            try {
+                String jsonValue = params.get("valueString").getValue().toString();
+                CachedValue cachedValue = new CachedValue(jsonValue);
+
+                long start = System.currentTimeMillis();
+//              getCache(setNameWhichIsCacheName).put(simpleKey, simpleValue);
+
+                // put wrapped json into the cache and let Lucene to index its fields
+                getCache(setNameWhichIsCacheName).put(simpleKey, cachedValue);
+                System.out.println(cachedValue + " was put into cache.");
+
+                long end = System.currentTimeMillis();
+                System.out.println("Put into " + setNameWhichIsCacheName + " took: " + (end - start) + " millis.");
+
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
 
             response = null;
         }
@@ -576,8 +544,14 @@ public class InfinispanProducer3 implements ODataProducer {
         }
 
         if (function.getName().endsWith("_getString")) {
+
             long start = System.currentTimeMillis();
-            String value = (String) getCache(setNameWhichIsCacheName).get(simpleKey);
+
+            CachedValue value = (CachedValue) getCache(setNameWhichIsCacheName).get(simpleKey);
+
+            System.out.println("getCache(setNameWhichIsCacheName).get(simpleKey) ... value.getJsonValueWrapper(): " +
+                   value.getJsonValueWrapper());
+
             long end = System.currentTimeMillis();
             System.out.println("Get from " + setNameWhichIsCacheName + " took: " + (end - start) + " millis.");
 
@@ -588,12 +562,29 @@ public class InfinispanProducer3 implements ODataProducer {
                 // pass infinispan query options here
                 try {
 
+                    // TODO: how to detect AND OData query properly?
+
                     System.out.println("Query report for $filter " + queryInfo.filter.toString());
                     EqExpression eqExpression = (EqExpression) queryInfo.filter;
                     EntitySimpleProperty espLhs = (EntitySimpleProperty) eqExpression.getLHS();
                     System.out.println("eqExpression.getLHS() getPropertyName(): " + espLhs.getPropertyName());
                     StringLiteral espRhs = (StringLiteral) eqExpression.getRHS();
                     System.out.println("eqExpression.getRHS() getValue(): " + espRhs.getValue());
+
+
+//                    get the search manager from the cache:
+                SearchManager searchManager = org.infinispan.query.Search.getSearchManager(getCache(setNameWhichIsCacheName));
+                QueryBuilder queryBuilder = searchManager.buildQueryBuilderForClass(CachedValue.class).get();
+                Query luceneQuery = queryBuilder.phrase()
+                        .onField(espLhs.getPropertyName())
+                        .sentence(espRhs.getValue())
+                        .createQuery();
+                CacheQuery query = searchManager.getQuery(luceneQuery, CachedValue.class);
+                List<Object> objectList = query.list();
+                System.out.println(" \n\n SEARCH RESULTS: size:" + objectList.size() + ":");
+                for (Object b : objectList) {
+                    System.out.println(b);
+                }
 
                 } catch (Exception e) {
                     // any problems with casting to different types
@@ -616,11 +607,19 @@ public class InfinispanProducer3 implements ODataProducer {
             }
 
 
-            BaseResponse baseResponse = Responses.simple(EdmSimpleType.STRING, "valueString", value);
+            long startBuildResponse = System.currentTimeMillis();
+
+            BaseResponse baseResponse = Responses.simple(EdmSimpleType.STRING, "valueString", value.getJsonValueWrapper().getJson());
+
+            long stopBuildResponse = System.currentTimeMillis();
+            System.out.println("Building base response in the end of call function took: " +
+                    (stopBuildResponse - startBuildResponse) + " millis.");
+
+
 
             long stopCallFunctionProducerInside = System.currentTimeMillis();
             System.out.println("Whole inside of CallFunction in producer before response took: " +
-                    (startCallFunctionProducerInside - stopCallFunctionProducerInside) + " millis.");
+                    (stopCallFunctionProducerInside - startCallFunctionProducerInside) + " millis.");
 
             response = baseResponse;
         }
@@ -649,11 +648,12 @@ public class InfinispanProducer3 implements ODataProducer {
         return null;
     }
 
-    private enum TriggerType {
-        Before, After
-    };
 
-
+    /**
+     * TODO: Do we really need this? Can we find another (more simple) way of registering entities and drop this?
+     *
+     * @param <TEntity>
+     */
     public class InMemoryEntityInfo<TEntity> {
 
         // we are maintaining collection of these entities - they are mapped to EntitySetName in [eis] hash map
@@ -706,6 +706,8 @@ public class InfinispanProducer3 implements ODataProducer {
 
 
     /**
+     * TODO: Can we simplify this even more?
+     * <p/>
      * There is a workaround in method toEdmProperties(). Key and Value entity properties are directly considered as
      * byte[].class.
      */
@@ -908,7 +910,7 @@ public class InfinispanProducer3 implements ODataProducer {
          * <p/>
          * Define functions: ispn_get, ispn_put, ispn_remove, ispn_update
          * <p/>
-         * Define cache operations: stop, start etc.
+         * TODO: Define cache operations: stop, start etc. (we need to support this) We will support operations with caches.
          * <p/>
          * provides an override point for applications to add application specific EdmFunctions to their producer.
          * <p/>
@@ -1019,67 +1021,5 @@ public class InfinispanProducer3 implements ODataProducer {
             container.addFunctionImports(funcImports);
         }
     }
-
-
-
-
-
-
-    @Indexed
-    public class Book {
-        @Field
-        String title;
-        @Field
-        String description;
-
-        @Field(analyze = Analyze.YES, store = Store.YES)
-        @FieldBridge(impl = JsonValueWrapperFieldBridge.class)
-        JsonValueWrapper json;
-
-//        @IndexedEmbedded
-//        Set<Author> authors = new HashSet<Author>();
-
-        public Book(String title, String description, String json) {
-            this.title = title;
-            this.description = description;
-            this.json = new JsonValueWrapper(json);
-        }
-
-//        public void setAuthors(Set<Author> authors) {
-//            this.authors = authors;
-//        }
-
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-
-            Book book = (Book) o;
-
-            if (description != null ? !description.equals(book.description) : book.description != null) return false;
-            if (title != null ? !title.equals(book.title) : book.title != null) return false;
-
-            return true;
-        }
-
-        @Override
-        public int hashCode() {
-            int result = title != null ? title.hashCode() : 0;
-            result = 31 * result + (description != null ? description.hashCode() : 0);
-            return result;
-        }
-
-        @Override
-        public String toString() {
-            return "Book{" +
-                    "title='" + title + '\'' +
-                    ", description='" + description + '\'' +
-                    ", json='" + json + '\'' +
-//                    (authors != null ? ", authors=" + authors + " " : "") +
-                    '}';
-        }
-    }
-
-
 }
 
