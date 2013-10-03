@@ -37,6 +37,7 @@ import org.odata4j.edm.EdmSchema;
 import org.odata4j.edm.EdmSimpleType;
 import org.odata4j.edm.EdmType;
 import org.odata4j.exceptions.NotImplementedException;
+import org.odata4j.expression.AndExpression;
 import org.odata4j.expression.EntitySimpleProperty;
 import org.odata4j.expression.EqExpression;
 import org.odata4j.expression.StringLiteral;
@@ -550,7 +551,7 @@ public class InfinispanProducer3 implements ODataProducer {
             CachedValue value = (CachedValue) getCache(setNameWhichIsCacheName).get(simpleKey);
 
             System.out.println("getCache(setNameWhichIsCacheName).get(simpleKey) ... value.getJsonValueWrapper(): " +
-                   value.getJsonValueWrapper());
+                    value.getJsonValueWrapper());
 
             long end = System.currentTimeMillis();
             System.out.println("Get from " + setNameWhichIsCacheName + " took: " + (end - start) + " millis.");
@@ -565,26 +566,60 @@ public class InfinispanProducer3 implements ODataProducer {
                     // TODO: how to detect AND OData query properly?
 
                     System.out.println("Query report for $filter " + queryInfo.filter.toString());
-                    EqExpression eqExpression = (EqExpression) queryInfo.filter;
-                    EntitySimpleProperty espLhs = (EntitySimpleProperty) eqExpression.getLHS();
-                    System.out.println("eqExpression.getLHS() getPropertyName(): " + espLhs.getPropertyName());
-                    StringLiteral espRhs = (StringLiteral) eqExpression.getRHS();
-                    System.out.println("eqExpression.getRHS() getValue(): " + espRhs.getValue());
+
+
+                    AndExpression andExpression = (AndExpression) queryInfo.filter;
+//                    EqExpression eqExpressionLeft = (EqExpression) andExpression.getLHS();
+//                    EqExpression eqExpressionRight = (EqExpression) andExpression.getRHS();
+
+//                    eqExpressionLeft AND eqExpressionRight -- solve this like serial or maybe parallel
+                    // call some "child" builder... AND expressions are build from eqExpressions and other kinds of expressions
+
+                    // do this dynamically.... I mean - dynamic query type detection and the build infinispan/lucene/hibernate search query according to it
+
+                    // This works only for one "eq" expression
+//                    EqExpression eqExpression = (EqExpression) queryInfo.filter;
+                    EqExpression eqExpressionL = (EqExpression) andExpression.getLHS();
+                    EntitySimpleProperty espLhsL = (EntitySimpleProperty) eqExpressionL.getLHS();
+                    System.out.println("eqExpression.getLHS() getPropertyName(): " + espLhsL.getPropertyName());
+                    StringLiteral slRhsL = (StringLiteral) eqExpressionL.getRHS();
+                    System.out.println("eqExpression.getRHS() getValue(): " + slRhsL.getValue());
+
+//                    EqExpression eqExpression = (EqExpression) queryInfo.filter;
+                    EqExpression eqExpressionR = (EqExpression) andExpression.getRHS();
+                    EntitySimpleProperty espLhsR = (EntitySimpleProperty) eqExpressionR.getLHS();
+                    System.out.println("eqExpression.getLHS() getPropertyName(): " + espLhsR.getPropertyName());
+                    StringLiteral slRhsR = (StringLiteral) eqExpressionR.getRHS();
+                    System.out.println("eqExpression.getRHS() getValue(): " + slRhsR.getValue());
+
+
+                    // iterate through something?
 
 
 //                    get the search manager from the cache:
-                SearchManager searchManager = org.infinispan.query.Search.getSearchManager(getCache(setNameWhichIsCacheName));
-                QueryBuilder queryBuilder = searchManager.buildQueryBuilderForClass(CachedValue.class).get();
-                Query luceneQuery = queryBuilder.phrase()
-                        .onField(espLhs.getPropertyName())
-                        .sentence(espRhs.getValue())
-                        .createQuery();
-                CacheQuery query = searchManager.getQuery(luceneQuery, CachedValue.class);
-                List<Object> objectList = query.list();
-                System.out.println(" \n\n SEARCH RESULTS: size:" + objectList.size() + ":");
-                for (Object b : objectList) {
-                    System.out.println(b);
-                }
+                    SearchManager searchManager = org.infinispan.query.Search.getSearchManager(getCache(setNameWhichIsCacheName));
+                    QueryBuilder queryBuilder = searchManager.buildQueryBuilderForClass(CachedValue.class).get();
+
+                    Query subQueryLeft = queryBuilder.phrase()
+                            .onField(espLhsL.getPropertyName())
+                            .sentence(slRhsL.getValue())
+                            .createQuery();
+
+                    Query subQueryRight = queryBuilder.phrase()
+                            .onField(espLhsR.getPropertyName())
+                            .sentence(slRhsR.getValue())
+                            .createQuery();
+
+                    //build bool query -- query LEFT AND query RIGHT
+                    Query luceneQuery = queryBuilder.bool().should(subQueryLeft).should(subQueryRight).createQuery();
+
+
+                    CacheQuery query = searchManager.getQuery(luceneQuery, CachedValue.class);
+                    List<Object> objectList = query.list();
+                    System.out.println(" \n\n SEARCH RESULTS: size:" + objectList.size() + ":");
+                    for (Object b : objectList) {
+                        System.out.println(b);
+                    }
 
                 } catch (Exception e) {
                     // any problems with casting to different types
@@ -614,7 +649,6 @@ public class InfinispanProducer3 implements ODataProducer {
             long stopBuildResponse = System.currentTimeMillis();
             System.out.println("Building base response in the end of call function took: " +
                     (stopBuildResponse - startBuildResponse) + " millis.");
-
 
 
             long stopCallFunctionProducerInside = System.currentTimeMillis();
