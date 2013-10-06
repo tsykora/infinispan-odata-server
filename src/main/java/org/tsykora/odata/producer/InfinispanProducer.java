@@ -34,10 +34,10 @@
 ////import org.odata4j.producer.inmemory.InMemoryProducer.RequestContext.RequestType;
 //
 ///**
-// * An in-memory implementation of an ODATA Producer.  Uses the standard Java bean and property model to access
-// * information within entities.
-// */
-//public class InfinispanProducer implements ODataProducer {
+//* An in-memory implementation of an ODATA Producer.  Uses the standard Java bean and property model to access
+//* information within entities.
+//*/
+//public abstract class InfinispanProducer implements ODataProducer {
 //   private static final boolean DUMP = false;
 //
 //   private static void dump(String msg) {
@@ -97,7 +97,7 @@
 //      this(namespace, containerName, maxResults, decorator, typeMapping,
 //           true); // legacy: flatten edm
 //   }
-//   
+//
 //   public InfinispanProducer(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
 //                             boolean flattenEdm) {
 //      this.namespace = namespace;

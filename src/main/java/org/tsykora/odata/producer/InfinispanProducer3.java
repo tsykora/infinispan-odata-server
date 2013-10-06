@@ -10,7 +10,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.logging.Logger;
 
-import org.apache.lucene.search.Query;
 import org.core4j.Func;
 import org.core4j.Func1;
 import org.hibernate.search.query.dsl.QueryBuilder;
@@ -37,10 +36,6 @@ import org.odata4j.edm.EdmSchema;
 import org.odata4j.edm.EdmSimpleType;
 import org.odata4j.edm.EdmType;
 import org.odata4j.exceptions.NotImplementedException;
-import org.odata4j.expression.AndExpression;
-import org.odata4j.expression.EntitySimpleProperty;
-import org.odata4j.expression.EqExpression;
-import org.odata4j.expression.StringLiteral;
 import org.odata4j.producer.BaseResponse;
 import org.odata4j.producer.CountResponse;
 import org.odata4j.producer.EntitiesResponse;
@@ -563,34 +558,36 @@ public class InfinispanProducer3 implements ODataProducer {
                 // pass infinispan query options here
                 try {
 
-                    // TODO: how to detect AND OData query properly?
+
 
                     System.out.println("Query report for $filter " + queryInfo.filter.toString());
 
 
-                    AndExpression andExpression = (AndExpression) queryInfo.filter;
-//                    EqExpression eqExpressionLeft = (EqExpression) andExpression.getLHS();
-//                    EqExpression eqExpressionRight = (EqExpression) andExpression.getRHS();
-
-//                    eqExpressionLeft AND eqExpressionRight -- solve this like serial or maybe parallel
-                    // call some "child" builder... AND expressions are build from eqExpressions and other kinds of expressions
-
-                    // do this dynamically.... I mean - dynamic query type detection and the build infinispan/lucene/hibernate search query according to it
-
-                    // This works only for one "eq" expression
-//                    EqExpression eqExpression = (EqExpression) queryInfo.filter;
-                    EqExpression eqExpressionL = (EqExpression) andExpression.getLHS();
-                    EntitySimpleProperty espLhsL = (EntitySimpleProperty) eqExpressionL.getLHS();
-                    System.out.println("eqExpression.getLHS() getPropertyName(): " + espLhsL.getPropertyName());
-                    StringLiteral slRhsL = (StringLiteral) eqExpressionL.getRHS();
-                    System.out.println("eqExpression.getRHS() getValue(): " + slRhsL.getValue());
-
-//                    EqExpression eqExpression = (EqExpression) queryInfo.filter;
-                    EqExpression eqExpressionR = (EqExpression) andExpression.getRHS();
-                    EntitySimpleProperty espLhsR = (EntitySimpleProperty) eqExpressionR.getLHS();
-                    System.out.println("eqExpression.getLHS() getPropertyName(): " + espLhsR.getPropertyName());
-                    StringLiteral slRhsR = (StringLiteral) eqExpressionR.getRHS();
-                    System.out.println("eqExpression.getRHS() getValue(): " + slRhsR.getValue());
+//                    AndExpression andExpression = (AndExpression) queryInfo.filter;
+////                    EqExpression eqExpressionLeft = (EqExpression) andExpression.getLHS();
+////                    EqExpression eqExpressionRight = (EqExpression) andExpression.getRHS();
+//
+////                    eqExpressionLeft AND eqExpressionRight -- solve this like serial or maybe parallel
+//                    // call some "child" builder... AND expressions are build from eqExpressions and other kinds of expressions
+//
+//                    // do this dynamically.... I mean - dynamic query type detection and the build infinispan/lucene/hibernate search query according to it
+//
+//                    // This works only for one "eq" expression
+////                    EqExpression eqExpression = (EqExpression) queryInfo.filter;
+//                    EqExpression eqExpressionL = (EqExpression) andExpression.getLHS();
+//                    EntitySimpleProperty espLhsL = (EntitySimpleProperty) eqExpressionL.getLHS();
+//                    System.out.println("eqExpression.getLHS() getPropertyName(): " + espLhsL.getPropertyName());
+//                    StringLiteral slRhsL = (StringLiteral) eqExpressionL.getRHS();
+//                    System.out.println("eqExpression.getRHS() getValue(): " + slRhsL.getValue());
+//
+//
+//
+////                    EqExpression eqExpression = (EqExpression) queryInfo.filter;
+//                    EqExpression eqExpressionR = (EqExpression) andExpression.getRHS();
+//                    EntitySimpleProperty espLhsR = (EntitySimpleProperty) eqExpressionR.getLHS();
+//                    System.out.println("eqExpression.getLHS() getPropertyName(): " + espLhsR.getPropertyName());
+//                    StringLiteral slRhsR = (StringLiteral) eqExpressionR.getRHS();
+//                    System.out.println("eqExpression.getRHS() getValue(): " + slRhsR.getValue());
 
 
                     // iterate through something?
@@ -600,26 +597,54 @@ public class InfinispanProducer3 implements ODataProducer {
                     SearchManager searchManager = org.infinispan.query.Search.getSearchManager(getCache(setNameWhichIsCacheName));
                     QueryBuilder queryBuilder = searchManager.buildQueryBuilderForClass(CachedValue.class).get();
 
-                    Query subQueryLeft = queryBuilder.phrase()
-                            .onField(espLhsL.getPropertyName())
-                            .sentence(slRhsL.getValue())
-                            .createQuery();
 
-                    Query subQueryRight = queryBuilder.phrase()
-                            .onField(espLhsR.getPropertyName())
-                            .sentence(slRhsR.getValue())
-                            .createQuery();
+//                    Query subQueryLeft = queryBuilder.phrase()
+//                            .onField(espLhsL.getPropertyName())
+//                            .sentence(slRhsL.getValue())
+//                            .createQuery();
+//
+//                    Query subQueryRight = queryBuilder.phrase()
+//                            .onField(espLhsR.getPropertyName())
+//                            .sentence(slRhsR.getValue())
+//                            .createQuery();
+//
+//                    // this probably does not work exactly as we need
+////                    Query luceneQuery = queryBuilder.bool().should(subQueryLeft).should(subQueryRight).createQuery();
+//
+//                    //build bool query -- query LEFT AND query RIGHT
+//                    BooleanQuery booleanQuery = new BooleanQuery();
+//                    booleanQuery.add(subQueryLeft, BooleanClause.Occur.MUST);
+//                    booleanQuery.add(subQueryRight, BooleanClause.Occur.MUST);
+//
+//                    // HARD APPROACH
+//                    CacheQuery query = searchManager.getQuery(booleanQuery, CachedValue.class);
+//                    List<Object> objectList = query.list();
+//                    System.out.println(" \n\n SEARCH RESULTS GOT BY HARD APPROACH: size:" + objectList.size() + ":");
+//                    for (Object b : objectList) {
+//                        System.out.println(b);
+//                    }
 
-                    //build bool query -- query LEFT AND query RIGHT
-                    Query luceneQuery = queryBuilder.bool().should(subQueryLeft).should(subQueryRight).createQuery();
 
+                    //////////////////////
+                    // VISITOR APPROACH //
+                    //////////////////////
 
-                    CacheQuery query = searchManager.getQuery(luceneQuery, CachedValue.class);
-                    List<Object> objectList = query.list();
-                    System.out.println(" \n\n SEARCH RESULTS: size:" + objectList.size() + ":");
-                    for (Object b : objectList) {
+                    MapQueryExpressionVisitor mapQueryExpressionVisitor =
+                            new MapQueryExpressionVisitor(searchManager.buildQueryBuilderForClass(CachedValue.class).get());
+
+                    mapQueryExpressionVisitor.visit(queryInfo.filter);
+
+                    CacheQuery queryFromVisitor = searchManager.getQuery(mapQueryExpressionVisitor.getBuiltLuceneQuery(),
+                            CachedValue.class);
+//                    CacheQuery queryFromVisitor = mapQueryExpressionVisitor.getFinalCacheQuery();
+                    List<Object> objectList2 = queryFromVisitor.list();
+                    System.out.println(" \n\n SEARCH RESULTS GOT BY VISITOR!!! APPROACH: size:" + objectList2.size() + ":");
+                    for (Object b : objectList2) {
                         System.out.println(b);
                     }
+
+
+
 
                 } catch (Exception e) {
                     // any problems with casting to different types
