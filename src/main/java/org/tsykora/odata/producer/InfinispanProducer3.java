@@ -1,6 +1,9 @@
 package org.tsykora.odata.producer;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -12,7 +15,6 @@ import java.util.logging.Logger;
 
 import org.core4j.Func;
 import org.core4j.Func1;
-import org.hibernate.search.query.dsl.QueryBuilder;
 import org.infinispan.Cache;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.query.CacheQuery;
@@ -352,10 +354,12 @@ public class InfinispanProducer3 implements ODataProducer {
     @Override
     public EntityResponse createEntity(ODataContext context, String entitySetName, final OEntity entity) {
 
-        System.out.println(" \n\n CREATE ENTITY ECHO: ");
+        System.out.println(" \n\n !!!!!!!!!!!!! CREATE ENTITY ECHO: ");
         System.out.println("context: " + context);
         System.out.println("entitySetName: " + context);
         System.out.println(" OEntity: " + entity);
+
+        // whats carried inside of entity?
 
         BaseResponse baseResponse = Responses.simple(EdmSimpleType.STRING,
                 "Status of entity creation", "Entry was put into the cache");
@@ -365,7 +369,17 @@ public class InfinispanProducer3 implements ODataProducer {
     // Not supported
     @Override
     public EntityResponse createEntity(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, OEntity entity) {
-        throw new NotImplementedException();
+
+        System.out.println(" \n\n CREATE ENTITY INCLUDING ENTITY KEY ECHO: ");
+        System.out.println("context: " + context);
+        System.out.println("entitySetName: " + context);
+        System.out.println(" OEntity: " + entity);
+
+        // whats carried inside of entity?
+
+        BaseResponse baseResponse = Responses.simple(EdmSimpleType.STRING,
+                "Status of entity creation", "Entry was put into the cache");
+        return (EntityResponse) baseResponse;
     }
 
     // Not supported (How to navigate entities inside NOSQL, schema-less store?)
@@ -418,7 +432,10 @@ public class InfinispanProducer3 implements ODataProducer {
      * @return
      */
     @Override
-    public BaseResponse callFunction(ODataContext context, EdmFunctionImport function, Map<String, OFunctionParameter> params, QueryInfo queryInfo) {
+    public BaseResponse callFunction(ODataContext context, EdmFunctionImport function, Map<String, OFunctionParameter> params,
+                                     QueryInfo queryInfo) {
+
+        System.out.println(" Echo from callFunction() in InfinispanProducer... Yup, I'm here... ");
 
         long startCallFunctionProducerInside = System.currentTimeMillis();
 
@@ -439,6 +456,78 @@ public class InfinispanProducer3 implements ODataProducer {
                 dump(paramKey + "=" + params.get(paramKey) + " is null");
             }
         }
+
+
+        // TODO HERE!
+        // THIS IS POST REQUEST TO URI: http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache?key=%27jsonKey1%27"
+        // and we need to extract body/content/entity of POST, containing JSON
+        // why is this JSON encoded into some bytes?
+        if (params.get("key") != null) {
+
+            // Now I have passed directly ByteArrayInputStream payload in function parameter
+            // FunctionResources were trying to parse it (TODO: disable it later for perf. not do this redundant!!)
+            // and parse it here...
+
+            // or avoid encoding into ByteArrayInputStream?
+            // or check JSON format...
+
+            System.out.println("Parameter key is not null -- this looks like POST http request. " +
+                    "Process it in callFunction inside of IspnProducer3...");
+
+            String fakeJson = "{fakeJson}";
+
+            OSimpleObject payloadOSimpleObject = (OSimpleObject) params.get("payload").getValue();
+            if (payloadOSimpleObject.getType() != EdmSimpleType.BINARY) {
+                System.out.println(" ERROR !!! I expected BINARY stuff here in payload !!! ");
+            }
+
+
+            // decode it for a string and store it into the cache
+            try {
+
+
+                ByteArrayInputStream inputStream = (ByteArrayInputStream) payloadOSimpleObject.getValue();
+
+                BufferedReader rd = new BufferedReader(new InputStreamReader(inputStream));
+                String result = "";
+                String line;
+                while ((line = rd.readLine()) != null) {
+                    result += line;
+                }
+                System.out.println("I'VE JUST READ payload in CALL FUNCTION in PRODUCER.... it is payload from HTTP POST request ");
+                System.out.println(result);
+                rd.close();
+
+
+
+//                BufferedReader streamReader = null;
+//                try {
+//                    streamReader = new BufferedReader(new InputStreamReader(inputStream, "UTF-8"));
+//                } catch (UnsupportedEncodingException e) {
+//                    e.printStackTrace();
+//                }
+//                StringBuilder responseStrBuilder = new StringBuilder();
+//                String inputStr;
+//                try {
+//                    while ((inputStr = streamReader.readLine()) != null)
+//                        responseStrBuilder.append(inputStr);
+//                } catch (IOException e) {
+//                    e.printStackTrace();
+//                }
+//
+//                System.out.println(" STRING BUILDER FOR inputStream in callFunction (producer3)");
+//                System.out.println(responseStrBuilder);
+
+            } catch (Exception e) {
+                System.out.println(" ERROR !!! Exception " + e.getMessage());
+                e.printStackTrace();
+            }
+
+
+            BaseResponse baseResponse = Responses.simple(EdmSimpleType.STRING, "value", fakeJson);
+            return baseResponse;
+        }
+
 
         if (params.get("keyBinary") != null || params.get("valueBinary") != null) {
 //         dump("Working with SERIALIZED OBJECT KEY and VALUE");
@@ -471,8 +560,17 @@ public class InfinispanProducer3 implements ODataProducer {
         } else {
 
             // Working with only simple String KEY and VALUE
+
+            // keyString param can be ommited and only $filter parameters passed
+
             dump("Working with only simple String KEY and VALUE");
-            simpleKey = params.get("keyString").getValue().toString();
+            if (params.get("keyString") != null) {
+                simpleKey = params.get("keyString").getValue().toString();
+                System.out.println("params.get(\"keyString\") is NOT null. keyString passed. GET from cache directly.");
+            } else {
+                System.out.println("params.get(\"keyString\") is null. No keyString passed. Query cache based on $filter query.");
+            }
+
             // set simpleValue later because when calling _get valueSimpleString is not defined
         }
 
@@ -509,7 +607,7 @@ public class InfinispanProducer3 implements ODataProducer {
 
                 // put wrapped json into the cache and let Lucene to index its fields
                 getCache(setNameWhichIsCacheName).put(simpleKey, cachedValue);
-                System.out.println(cachedValue + " was put into cache.");
+                System.out.println(cachedValue + " was put into cache. (from _putString function call)");
 
                 long end = System.currentTimeMillis();
                 System.out.println("Put into " + setNameWhichIsCacheName + " took: " + (end - start) + " millis.");
@@ -539,165 +637,104 @@ public class InfinispanProducer3 implements ODataProducer {
             response = baseResponse;
         }
 
+
         if (function.getName().endsWith("_getString")) {
 
-            long start = System.currentTimeMillis();
+            CachedValue value = null;
+            List<Object> queryResult = null;
 
-            CachedValue value = (CachedValue) getCache(setNameWhichIsCacheName).get(simpleKey);
+            if (simpleKey != null) {
 
-            System.out.println("getCache(setNameWhichIsCacheName).get(simpleKey) ... value.getJsonValueWrapper(): " +
-                    value.getJsonValueWrapper());
+                long start = System.currentTimeMillis();
 
-            long end = System.currentTimeMillis();
-            System.out.println("Get from " + setNameWhichIsCacheName + " took: " + (end - start) + " millis.");
+                value = (CachedValue) getCache(setNameWhichIsCacheName).get(simpleKey);
 
-            // TODO: don't process filters when cache is not Queryable
+                long end = System.currentTimeMillis();
+                System.out.println("Direct get from " + setNameWhichIsCacheName + " according to simpleKey took: "
+                        + (end - start) + " millis.");
 
-            if (queryInfo.filter != null) {
-                // client wants to filter response
-                // pass infinispan query options here
-                try {
-
-
+            } else {
+                // I need some filter
+                // TODO: don't process filters when cache is not Queryable
+                if (queryInfo.filter != null) {
 
                     System.out.println("Query report for $filter " + queryInfo.filter.toString());
 
-
-//                    AndExpression andExpression = (AndExpression) queryInfo.filter;
-////                    EqExpression eqExpressionLeft = (EqExpression) andExpression.getLHS();
-////                    EqExpression eqExpressionRight = (EqExpression) andExpression.getRHS();
-//
-////                    eqExpressionLeft AND eqExpressionRight -- solve this like serial or maybe parallel
-//                    // call some "child" builder... AND expressions are build from eqExpressions and other kinds of expressions
-//
-//                    // do this dynamically.... I mean - dynamic query type detection and the build infinispan/lucene/hibernate search query according to it
-//
-//                    // This works only for one "eq" expression
-////                    EqExpression eqExpression = (EqExpression) queryInfo.filter;
-//                    EqExpression eqExpressionL = (EqExpression) andExpression.getLHS();
-//                    EntitySimpleProperty espLhsL = (EntitySimpleProperty) eqExpressionL.getLHS();
-//                    System.out.println("eqExpression.getLHS() getPropertyName(): " + espLhsL.getPropertyName());
-//                    StringLiteral slRhsL = (StringLiteral) eqExpressionL.getRHS();
-//                    System.out.println("eqExpression.getRHS() getValue(): " + slRhsL.getValue());
-//
-//
-//
-////                    EqExpression eqExpression = (EqExpression) queryInfo.filter;
-//                    EqExpression eqExpressionR = (EqExpression) andExpression.getRHS();
-//                    EntitySimpleProperty espLhsR = (EntitySimpleProperty) eqExpressionR.getLHS();
-//                    System.out.println("eqExpression.getLHS() getPropertyName(): " + espLhsR.getPropertyName());
-//                    StringLiteral slRhsR = (StringLiteral) eqExpressionR.getRHS();
-//                    System.out.println("eqExpression.getRHS() getValue(): " + slRhsR.getValue());
-
-
-                    // iterate through something?
-
-
-//                    get the search manager from the cache:
                     SearchManager searchManager = org.infinispan.query.Search.getSearchManager(getCache(setNameWhichIsCacheName));
-                    QueryBuilder queryBuilder = searchManager.buildQueryBuilderForClass(CachedValue.class).get();
-
-
-//                    Query subQueryLeft = queryBuilder.phrase()
-//                            .onField(espLhsL.getPropertyName())
-//                            .sentence(slRhsL.getValue())
-//                            .createQuery();
-//
-//                    Query subQueryRight = queryBuilder.phrase()
-//                            .onField(espLhsR.getPropertyName())
-//                            .sentence(slRhsR.getValue())
-//                            .createQuery();
-//
-//                    // this probably does not work exactly as we need
-////                    Query luceneQuery = queryBuilder.bool().should(subQueryLeft).should(subQueryRight).createQuery();
-//
-//                    //build bool query -- query LEFT AND query RIGHT
-//                    BooleanQuery booleanQuery = new BooleanQuery();
-//                    booleanQuery.add(subQueryLeft, BooleanClause.Occur.MUST);
-//                    booleanQuery.add(subQueryRight, BooleanClause.Occur.MUST);
-//
-//                    // HARD APPROACH
-//                    CacheQuery query = searchManager.getQuery(booleanQuery, CachedValue.class);
-//                    List<Object> objectList = query.list();
-//                    System.out.println(" \n\n SEARCH RESULTS GOT BY HARD APPROACH: size:" + objectList.size() + ":");
-//                    for (Object b : objectList) {
-//                        System.out.println(b);
-//                    }
-
-
-                    //////////////////////
-                    // VISITOR APPROACH //
-                    //////////////////////
 
                     MapQueryExpressionVisitor mapQueryExpressionVisitor =
                             new MapQueryExpressionVisitor(searchManager.buildQueryBuilderForClass(CachedValue.class).get());
 
                     mapQueryExpressionVisitor.visit(queryInfo.filter);
 
+                    // Query cache here adn get results based on constructed Lucene query
                     CacheQuery queryFromVisitor = searchManager.getQuery(mapQueryExpressionVisitor.getBuiltLuceneQuery(),
                             CachedValue.class);
-//                    CacheQuery queryFromVisitor = mapQueryExpressionVisitor.getFinalCacheQuery();
-                    List<Object> objectList2 = queryFromVisitor.list();
-                    System.out.println(" \n\n SEARCH RESULTS GOT BY VISITOR!!! APPROACH: size:" + objectList2.size() + ":");
-                    for (Object b : objectList2) {
-                        System.out.println(b);
+
+                    // pass query result to the function final response
+                    queryResult = queryFromVisitor.list();
+
+                    System.out.println(" \n\n SEARCH RESULTS GOT BY VISITOR!!! APPROACH: size:" + queryResult.size() + ":");
+                    for (Object one_result : queryResult) {
+                        System.out.println(one_result);
                     }
 
-
-
-
-                } catch (Exception e) {
-                    // any problems with casting to different types
-                    e.printStackTrace();
+                } else {
+                    System.out.println("WARNING -- INCONSISTENT STATE: simpleKey NOR queryInfo.filter is not defined!!! ");
                 }
 
-                // We have a query Address = Florida here...
-                // We can query infinispan by this and return possible results
-                // We will probably NOT be returning only SimpleResponse, but also Complex containing collections (returned by ispn query)
+                // *********************************************************************************
+                // We have set queryResult object containing list of results from querying the cache
+                // Now apply other filters/order by/top/skip etc. requests
 
-                // Call query applied to specific class
-                // In EDM provide necessary information for clients being able and decide how and against what to create query
+                if (queryInfo.top != null) {
+                    // client wants to only a specified count of first "top" results
+                    // use it for collections of objects??
+                }
 
-            }
+                if (queryInfo.skip != null) {
+                    // client wants to skip particular number of results -- skip them and return only what's requested
+                    // use it for collections of objects??
+                }
 
-
-            if (queryInfo.top != null) {
-                // client wants to only a specified count of first "top" results
-                // use it for collections of objects
             }
 
 
             long startBuildResponse = System.currentTimeMillis();
 
-            BaseResponse baseResponse = Responses.simple(EdmSimpleType.STRING, "valueString", value.getJsonValueWrapper().getJson());
+            // TODO: redundant -- don't create base responses here, create them immediately and return them once decided ^
+            BaseResponse baseResponse = null;
+            if (value != null) {
+                // it was requested by key directly
+                baseResponse = Responses.simple(EdmSimpleType.STRING, "valueString", value.getJsonValueWrapper().getJson());
+            } else {
+                if (queryResult != null) {
+                    StringBuilder sb = new StringBuilder();
+                    // build response
+                    for (Object one_result : queryResult) {
+                        CachedValue cv = (CachedValue) one_result;
+                        sb.append(cv.getJsonValueWrapper().getJson());
+                        sb.append("\n");
+                    }
+                    // stack more json strings responses
+                    baseResponse = Responses.simple(EdmSimpleType.STRING, "valueString", sb.toString());
+                }
+            }
+
 
             long stopBuildResponse = System.currentTimeMillis();
             System.out.println("Building base response in the end of call function took: " +
                     (stopBuildResponse - startBuildResponse) + " millis.");
 
 
+            // Whole callFunction time measurement:
             long stopCallFunctionProducerInside = System.currentTimeMillis();
             System.out.println("Whole inside of CallFunction in producer before response took: " +
                     (stopCallFunctionProducerInside - startCallFunctionProducerInside) + " millis.");
 
+            // TODO: remove this redundancy (see ^)
             response = baseResponse;
         }
-
-
-//           need to pass the right parameters
-//           try {
-//              Method m = c.getClass().getMethod("put", null);
-//              try {
-//                 m.invoke(c, new Object());
-//              } catch (IllegalAccessException e) {
-//                 e.printStackTrace();
-//              } catch (InvocationTargetException e) {
-//                 e.printStackTrace();
-//              }
-//           } catch (NoSuchMethodException e) {
-//              e.printStackTrace();
-//           }
-
 
         return response;
     }
@@ -883,14 +920,29 @@ public class InfinispanProducer3 implements ODataProducer {
 
 //            InfinispanProducer3.InMemoryEntityInfo<?> entityInfo = eis.get(entitySetName);
 //
-//            // do we have this type yet?
+//          // do we have this type yet? -- yes we need this for decision in EntitiesRequestResource
+                // (Boolean.TRUE.equals(entitySet.getType().getHasStream())) getType can't be null here!!
+
+//                TODO: SOLVE THIS!!! I need set entity type.... do I need to register it somehow.
+//                TODO: register it as CachedValue? Or so? Like former?
+
 //            EdmEntityType.Builder eet = entityTypesByName.get(entityInfo.entityTypeName);
+//            EdmEntityType.Builder eet = entityTypesByName.get("String");
 //            if (eet == null) {
 //               eet = createStructuralType(decorator, entityInfo);
 //            }
 
+                // workaround for complex registration? does it work?
+//                EdmEntityType.Builder eet = EdmEntityType.newBuilder().setNamespace(namespace).
+//                        setName("CachedEntry").setHasStream(false);
+//                List<String> keys = new LinkedList<String>();
+//                keys.add("CacheEntryKey");
+//                eet.addKeys(keys);
+
                 // I don't need EntityType now
-//            EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName).setEntityType(eet);
+                // Correction: I need entitySetType for EntitiesRequestResource
+
+//                EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName).setEntityType(eet);
                 EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName);
                 entitySetsByName.put(ees.getName(), ees);
             }
@@ -987,23 +1039,28 @@ public class InfinispanProducer3 implements ODataProducer {
 
                 List<EdmFunctionParameter.Builder> funcParametersBinary = new LinkedList<EdmFunctionParameter.Builder>();
                 List<EdmFunctionParameter.Builder> funcParametersSimpleString = new LinkedList<EdmFunctionParameter.Builder>();
+                List<EdmFunctionParameter.Builder> funcParametersOnlyCacheName = new LinkedList<EdmFunctionParameter.Builder>();
 
                 EdmFunctionParameter.Builder pb = new EdmFunctionParameter.Builder();
                 EdmFunctionParameter.Builder pb2 = new EdmFunctionParameter.Builder();
                 EdmFunctionParameter.Builder pb3 = new EdmFunctionParameter.Builder();
                 EdmFunctionParameter.Builder pb4 = new EdmFunctionParameter.Builder();
-
+                EdmFunctionParameter.Builder pb5 = new EdmFunctionParameter.Builder();
 
                 // setMode(IN)
                 pb.setName("keyBinary").setType(EdmType.getSimple("Binary")).setNullable(true).build();
                 pb2.setName("valueBinary").setType(EdmType.getSimple("Binary")).setNullable(true).build();
                 pb3.setName("keyString").setType(EdmType.getSimple("String")).setNullable(true).build();
                 pb4.setName("valueString").setType(EdmType.getSimple("String")).setNullable(true).build();
+                // for POST method
+                pb4.setName("key").setType(EdmType.getSimple("String")).setNullable(true).build();
 
                 funcParametersBinary.add(pb);
                 funcParametersBinary.add(pb2);
                 funcParametersSimpleString.add(pb3);
                 funcParametersSimpleString.add(pb4);
+                funcParametersOnlyCacheName.add(pb5);
+
 
                 String entitySetNameCacheName = container.getEntitySets().get(i).getName();
 
@@ -1013,6 +1070,9 @@ public class InfinispanProducer3 implements ODataProducer {
                 // simple string
                 EdmFunctionImport.Builder fb3 = new EdmFunctionImport.Builder();
                 EdmFunctionImport.Builder fb4 = new EdmFunctionImport.Builder();
+
+                // only cache name function for method POST requests
+                EdmFunctionImport.Builder fb5 = new EdmFunctionImport.Builder();
 
                 // HINT
 //          IsBindable - 'true' indicates that the first parameter is the binding parameter
@@ -1067,12 +1127,27 @@ public class InfinispanProducer3 implements ODataProducer {
                         .addParameters(funcParametersSimpleString).build();
 
 
+                // for HTTP POST (gather and emulates POST request for createEntity)
+                fb5.setName(entitySetNameCacheName)
+                        .setEntitySet(container.getEntitySets().get(i))
+                        .setEntitySetName(entitySetNameCacheName)
+                                // let return type to null to be able to directly access response
+                        .setReturnType(EdmSimpleType.STRING)
+                        .setHttpMethod("POST")
+                        .setBindable(false)
+                        .setSideEffecting(false)  // true for Action (POST)
+                        .setAlwaysBindable(false)
+                        .addParameters(funcParametersSimpleString).build();
+
                 // complex
                 funcImports.add(fb);
                 funcImports.add(fb2);
                 // simple
                 funcImports.add(fb3);
                 funcImports.add(fb4);
+
+                // only cacheName for POST
+                funcImports.add(fb5);
                 i++;
             }
 

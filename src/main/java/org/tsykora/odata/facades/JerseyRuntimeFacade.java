@@ -63,8 +63,8 @@ public class JerseyRuntimeFacade implements RuntimeFacade {
   private ODataServer createODataServer(String baseUri) {
 
     return new ODataJerseyServer(baseUri, DefaultODataApplication.class, RootApplication.class)
-//        .addJerseyRequestFilter(LoggingFilter.class).setJerseyTrace(true) // log all requests
-        .addJerseyRequestFilter(LoggingFilter.class) // log all requests
+        .addJerseyRequestFilter(LoggingFilter.class).setJerseyTrace(true) // log all requests
+//        .addJerseyRequestFilter(LoggingFilter.class) // log all requests
     //      .addHttpServerFilter(new WhitelistFilter("127.0.0.1","0:0:0:0:0:0:0:1%0")) // only allow local requests
     ;
   }
