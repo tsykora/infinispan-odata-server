@@ -10,8 +10,10 @@ import java.net.MalformedURLException;
 import com.sun.jersey.api.client.ClientResponse;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicHeader;
@@ -553,13 +555,12 @@ public class ExampleConsumer extends AbstractExample {
 
 
                 HttpClient httpClient = new DefaultHttpClient();
-//                String testUrl = "http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_getString?keyString=%27simpleKey1%27";
-
 
                 // TODO: deal with that { "d" : { later... this is OData JSON standard
 //                String exampleJsonString = "{ \"d\" : {\n" +
                 String exampleJsonString = "{\n" +
 //                        "  \"name\" : { \"first\" : \"Neo\", \"last\" : \"Matrix McMaster\" },\n" +
+                        "  \"entityClass\" : \"org.my.domain.person\",\n" +
                         "  \"gender\" : \"MALE\",\n" +
                         "  \"verified\" : false,\n" +
                         "  \"age\" : 24,\n" +
@@ -568,54 +569,22 @@ public class ExampleConsumer extends AbstractExample {
 //                        "} }"; // for { "d" : { format
                         "}";
 
-
-//                try {
-//                    Thread.sleep(1000);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
-
-//              ***************************************************************************
-//              ********** working http get (for putting entries using functions) *********
-//              ***************************************************************************
-
-//                URI uri = null;
-//                try {
-//                    // encode JSON into URI
-//                    // TODO: do it (put entry) by POST HTTP method and set content of that POST request
-//                    uri = new URI(URLEncoder.encode(exampleJsonString, "UTF8"));
-//                } catch (URISyntaxException e) {
-//                    e.printStackTrace();
-//                } catch (UnsupportedEncodingException e) {
-//                    e.printStackTrace();
-//                }
-//                String theRightUrl = "http://localhost:8887/ODataInfinispanEndpoint.svc/" +
-//                        "mySpecialNamedCache_putString?keyString=%27exampleJson1%27&valueString=%27" + uri + "%27";
-//
-//                System.out.println("Encoded json stuff using UTF8: " + uri);
-//                System.out.println("The right url for putting entry into the cache: " + theRightUrl);
-//
-//
-//
-//                final HttpGet httpGet = new HttpGet(theRightUrl);
-//
-//                httpGet.setHeader("Content-Type", "application/json");
-////                httpGet.setHeader("Content-Type", "text/plain");
-//                httpGet.setHeader("Accept", "application/json");
-////                httpGet.setHeader("Accept", "text/plain");
-//
-//                try {
-//                    final HttpResponse httpPutResponse = httpClient.execute(httpGet);
-//                } catch (IOException e) {
-//                    e.printStackTrace();
-//                }
+                String jsonPerson2 = "{\n" +
+//                        "  \"name\" : { \"first\" : \"Neo\", \"last\" : \"Matrix McMaster\" },\n" +
+                        "  \"entityClass\" : \"org.my.domain.person\",\n" +
+                        "  \"gender\" : \"FEMALE\",\n" +
+                        "  \"verified\" : false,\n" +
+                        "  \"age\" : 24,\n" +
+                        "  \"firstname\" : \"Meo\",\n" +
+                        "  \"lastname\" : \"Natrix NcNaster\"" +
+//                        "} }"; // for { "d" : { format
+                        "}";
 
 
-                // put JSON entry "under" the key -- "jsonKey1"
 
                 // Don't call function, call normal url for creating entity
                 // TODO: Q: DO WE NEED TO PREPARE $metadata for accepting this?
-                String testUrlPost = "http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache?key=%27jsonKey1%27";
+                String testUrlPost = "http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_put?key=%27person1%27";
                 // The way how to create entry -- POST request containing JSON
                 HttpPost httpPost = new HttpPost(testUrlPost);
 //                httpPost.setHeader("Content-Type", "application/json,application/octet-stream");
@@ -623,42 +592,17 @@ public class ExampleConsumer extends AbstractExample {
 //                httpPost.setHeader("Accept", "application/json,application/octet-stream");
                 httpPost.setHeader("Accept", "application/json");
 
-
-
-//                BasicHttpEntity httpEntity = new BasicHttpEntity();
-
-//                InputStream inStream = null;
-//                try {
-//                    inStream = new ByteArrayInputStream(exampleJsonString.getBytes("UTF-8"));
-//                    httpEntity.setContent(inStream);
-//                    httpPost.setEntity(httpEntity);
-//                } catch (UnsupportedEncodingException e) {
-//                    e.printStackTrace();
-//                }
-
-//                httpEntity.setContent(inStream);
-
                 try {
-                    // maybe I need to encode that JSON string?
                     StringEntity se = new StringEntity(exampleJsonString.toString(), HTTP.UTF_8);
                     se.setContentEncoding(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
                     se.setContentType("application/json; charset=UTF-8");
-
                     httpPost.setEntity(se);
                 } catch (UnsupportedEncodingException e) {
                     e.printStackTrace();
                 }
 
 
-
                 try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-
-                try {
-
                     // sending http POST response to producer to create entity
                     System.out.println("About to send HTTP POST...");
                     final HttpResponse httpPutResponse = httpClient.execute(httpPost);
@@ -689,9 +633,6 @@ public class ExampleConsumer extends AbstractExample {
                 }
 
 
-//              httpGet.setHeader("Content-Type", "application/atom+xml");
-                // I also need to setup Accept header -- otherwise I will get back ATOM+XML as Accept header is set to */* by default
-
 
 //            while (true) {
                 try {
@@ -701,54 +642,90 @@ public class ExampleConsumer extends AbstractExample {
                     // this take so looooooong -- why? So I need the right content type?
 
                     String urlGetSimpleJson = "http://localhost:8887/ODataInfinispanEndpoint.svc/" +
-                            "mySpecialNamedCache_getString?keyString=%27exampleJson1%27";
+                            "mySpecialNamedCache_get?key=%27person1%27";
 
                     String urlGetQueriedJson = "http://localhost:8887/ODataInfinispanEndpoint.svc/" +
-                            "mySpecialNamedCache_getString?$filter=gender%20eq%20%27MALE%27";
+                            "mySpecialNamedCache_get?$filter=gender%20eq%20%27MALE%27";
 
 //                    final HttpGet httpGet2 = new HttpGet(urlGetSimpleJson);
                     final HttpGet httpGet2 = new HttpGet(urlGetQueriedJson);
 
-                    httpGet2.setHeader("Content-Type", "application/json");
+                    httpGet2.setHeader("Content-Type", "application/json; charset=UTF-8");
                     httpGet2.setHeader("Accept", "application/json");
 
                     // NEED TO REALLOCATE THIS as we using only DefaultHttpClient and it uses BasicClientConnectionManager
                     // or EntityUtils.consumeQuietly(httpResponse.getEntity());
 //                    httpClient = new DefaultHttpClient();
 
+//                    httpClient = new DefaultHttpClient();
                     final HttpResponse httpResponse = httpClient.execute(httpGet2);
 
                     // to avoid problems with connections
                     System.out.println("Consuming http response quietly - can it be bottleneck?");
                     EntityUtils.consumeQuietly(httpResponse.getEntity());
 
-
                     // Elapsed time measured here
                     final long elapsed = System.nanoTime() - startNanoTime;
 
-
-                    System.out.println(" HEADERS from apache client : ");
-                    System.out.println(" Response content type: " + httpResponse.getFirstHeader("Content-Type").toString());
-
-                    final InputStream inputStream = httpResponse.getEntity().getContent();
-
-                    StringBuilder responseBuilder = new StringBuilder();
-                    BufferedReader responseReader = new BufferedReader(new InputStreamReader(inputStream));
-                    String line = null;
-                    while ((line = responseReader.readLine()) != null) {
-                        responseBuilder.append(line);
-                    }
-                    System.out.println("RESPONSE BUILDER: toString " + responseBuilder.toString());
-
-
-//                    final byte[] buffer = new byte[8192];
-//                    int size = inputStream.read(buffer);
-//                    while (size > 0) {
-//                        size = inputStream.rd(buffer);
-//                    }
-
-                    inputStream.close();
                     System.out.println("HttpSimple benchmark ELAPSED TIME nanos: " + elapsed + " = " + elapsed / 1000000 + " milliseconds.");
+
+
+
+
+                    // PUT = replace
+                    String urlPutJson = "http://localhost:8887/ODataInfinispanEndpoint.svc/" +
+                            "mySpecialNamedCache_replace?key=%27person1%27";
+
+                    final HttpPut httpPut = new HttpPut(urlPutJson);
+                    httpPut.setHeader("Content-Type", "application/json; charset=UTF-8");
+                    httpPut.setHeader("Accept", "application/json");
+
+                    try {
+                        StringEntity se = new StringEntity(jsonPerson2.toString(), HTTP.UTF_8);
+                        se.setContentEncoding(new BasicHeader(HTTP.CONTENT_TYPE, "application/json"));
+                        se.setContentType("application/json; charset=UTF-8");
+                        httpPut.setEntity(se);
+                    } catch (UnsupportedEncodingException e) {
+                        e.printStackTrace();
+                    }
+
+                    final HttpResponse httpResponsePut = httpClient.execute(httpPut);
+
+                    BufferedReader rd = new BufferedReader(new InputStreamReader(httpResponsePut.getEntity().getContent()));
+                    String result = "";
+                    String line;
+                    while ((line = rd.readLine()) != null) {
+                        result += line;
+                    }
+                    System.out.println("RESULT OF HTTP PUT = replace!!!");
+                    System.out.println(result);
+                    rd.close();
+
+                    EntityUtils.consumeQuietly(httpResponsePut.getEntity());
+
+
+
+                    // DELETE
+                    String urlDeleteJson = "http://localhost:8887/ODataInfinispanEndpoint.svc/" +
+                            "mySpecialNamedCache_remove?key=%27person1%27";
+
+                    final HttpDelete httpDelete = new HttpDelete(urlDeleteJson);
+                    httpDelete.setHeader("Content-Type", "application/json; charset=UTF-8");
+                    httpDelete.setHeader("Accept", "application/json");
+
+//                    httpClient = new DefaultHttpClient();
+                    final HttpResponse httpResponseDelete = httpClient.execute(httpDelete);
+
+                    rd = new BufferedReader(new InputStreamReader(httpResponseDelete.getEntity().getContent()));
+                    result = "";
+                    while ((line = rd.readLine()) != null) {
+                        result += line;
+                    }
+                    System.out.println("RESULT OF HTTP DELETE!!!");
+                    System.out.println(result);
+                    rd.close();
+
+                    EntityUtils.consumeQuietly(httpResponseDelete.getEntity());
 
                 } catch (MalformedURLException e) {
                     // Should never happen
@@ -759,7 +736,6 @@ public class ExampleConsumer extends AbstractExample {
                     throw new RuntimeException(e);
                 }
 //            }
-
 
                 System.out.println("HttpSimple benchmark -- errors: " + errors);
             }
