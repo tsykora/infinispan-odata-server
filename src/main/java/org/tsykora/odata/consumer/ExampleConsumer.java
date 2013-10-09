@@ -553,17 +553,20 @@ public class ExampleConsumer extends AbstractExample {
 
 
                 HttpClient httpClient = new DefaultHttpClient();
-                String testUrl = "http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_getString?keyString=%27simpleKey1%27";
+//                String testUrl = "http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_getString?keyString=%27simpleKey1%27";
 
 
-                String exampleJsonString = "{ \"d\" : {\n" +
+                // TODO: deal with that { "d" : { later... this is OData JSON standard
+//                String exampleJsonString = "{ \"d\" : {\n" +
+                String exampleJsonString = "{\n" +
 //                        "  \"name\" : { \"first\" : \"Neo\", \"last\" : \"Matrix McMaster\" },\n" +
                         "  \"gender\" : \"MALE\",\n" +
                         "  \"verified\" : false,\n" +
                         "  \"age\" : 24,\n" +
                         "  \"firstname\" : \"Neo\",\n" +
                         "  \"lastname\" : \"Matrix McMaster\"" +
-                        "} }";
+//                        "} }"; // for { "d" : { format
+                        "}";
 
 
 //                try {
@@ -665,6 +668,7 @@ public class ExampleConsumer extends AbstractExample {
                     System.out.println("httpPutResponse: getEntity: " + httpPutResponse.getEntity().toString());
                     System.out.println("Consuming http response quietly - can it be bottleneck?");
 
+
                     BufferedReader rd = new BufferedReader(new InputStreamReader(httpPutResponse.getEntity().getContent()));
                     String result = "";
                     String line;
@@ -678,8 +682,6 @@ public class ExampleConsumer extends AbstractExample {
 
                     // OR CONSUME IT!!!! - when commenting
                     EntityUtils.consumeQuietly(httpPutResponse.getEntity());
-
-
 
 //                    inStream.close();
                 } catch (IOException e) {
