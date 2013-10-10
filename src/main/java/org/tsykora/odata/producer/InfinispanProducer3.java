@@ -54,7 +54,6 @@ import org.odata4j.producer.inmemory.EnumsAsStringsPropertyModelDelegate;
 import org.odata4j.producer.inmemory.InMemoryComplexTypeInfo;
 import org.odata4j.producer.inmemory.InMemoryTypeMapping;
 import org.odata4j.producer.inmemory.PropertyModel;
-import org.tsykora.odata.common.CacheObjectSerializationAble;
 
 /**
  * ODataProducer with implemented direct access to Infinispan Cache.
@@ -192,38 +191,6 @@ public class InfinispanProducer3 implements ODataProducer {
 
                 System.out.println(" simpleKey1\", \"simpleValue1 ------ PUTTED INTO CACHE, now some json stuff:");
 
-
-//                // put this into the cache
-//                // TODO: how about that -- "d" : { -- // and these rules for OData (input, output)
-//                String json = "{\n" +
-//                        "  \"name\" : { \"first\" : \"Neo\", \"last\" : \"Matrix McMaster\" },\n" +
-//                        "  \"gender\" : \"MALE\",\n" +
-//                        "  \"verified\" : false,\n" +
-//                        "  \"age\" : 24,\n" +
-//                        "  \"firstname\" : \"Neo\",\n" +
-//                        "  \"lastname\" : \"Matrix McMaster\"" +
-//                        "}";
-//                // try query stuff here
-//                CachedValue neo = new CachedValue(json);
-//                // all entries are "under" simple String key (that's similar to REST)
-//                cache.put("theFirst", neo);
-//
-//
-//                // get the search manager from the cache:
-//                SearchManager searchManager = org.infinispan.query.Search.getSearchManager(cache);
-//                QueryBuilder queryBuilder = searchManager.buildQueryBuilderForClass(CachedValue.class).get();
-//                Query luceneQuery = queryBuilder.phrase()
-//                        .onField("gender")
-//                        .sentence("MALE")
-//                        .createQuery();
-//                CacheQuery query = searchManager.getQuery(luceneQuery, CachedValue.class);
-//                List<Object> objectList = query.list();
-//                System.out.println(" \n\n SEARCH RESULTS: size:" + objectList.size() + ":");
-//                for (Object b : objectList) {
-//                    System.out.println(b);
-//                }
-
-
                 this.caches.put(cacheName, cache);
                 return cache;
             } catch (Exception e) {
@@ -257,128 +224,54 @@ public class InfinispanProducer3 implements ODataProducer {
     }
 
 
-    /**
-     * Is returning all entries from local cache.
-     * TODO:? Really? Performance bottleneck? cache.values() --> into looong JSON (restrict number of returned entries)
-     *
-     * @param entitySetName - cache name
-     * @param queryInfo     - other special restrictions??
-     * @return
-     */
+    // Not supported -- use defined OData functions
     @Override
     public EntitiesResponse getEntities(ODataContext context, String entitySetName, final QueryInfo queryInfo) {
         throw new NotImplementedException();
     }
 
 
-    /**
-     * TODO: Easy - support this. Return JSON. (details: return SimpleResponse --> INT --> goes to JSON)
-     *
-     * @param context
-     * @param entitySetName
-     * @param queryInfo
-     * @return
-     */
+    // Not supported -- use defined OData functions
     @Override
     public CountResponse getEntitiesCount(ODataContext context, String entitySetName, final QueryInfo queryInfo) {
         throw new NotImplementedException();
     }
 
-    /**
-     * I need probably need to support this as it is HTTP GET for a particular cache entry.
-     * Key should be simple String and CacheValue's JSON should be returned to the client.
-     * <p/>
-     * This should EDM.String SimpleResponse with application/json setting.
-     * <p/>
-     * TODO? make entityKey corresponds with Key of entry in the cache?
-     */
+    // Not supported -- use defined OData functions
     @Override
     public EntityResponse getEntity(ODataContext context, final String entitySetName, final OEntityKey entityKey, final EntityQueryInfo queryInfo) {
         throw new NotImplementedException();
     }
 
-    /**
-     * TODO - find ISPN equivalent support for it or decide about not supporting this operation at all.
-     */
+    // Not supported -- use defined OData functions
     @Override
     public void mergeEntity(ODataContext context, String entitySetName, OEntity entity) {
-        // merge - what is equal to merge in ISPN?
         throw new NotImplementedException();
     }
 
-    /**
-     * Simple update of cached entry.
-     * This is HTTP UPDATE call. (It has to contain "the load" as well as POST for create entity.)
-     * <p/>
-     * TODO: we definitely need to support this.
-     *
-     * @param context
-     * @param entitySetName
-     * @param entity
-     */
+    // Not supported -- use defined OData functions
     @Override
     public void updateEntity(ODataContext context, String entitySetName, OEntity entity) {
-        // simple update entry and re-call
         throw new NotImplementedException();
     }
 
 
-    /**
-     * Simple delete of cached entry.
-     * This is HTTP DELETE call, based only on cached entry related simple String key.
-     * <p/>
-     * TODO: we definitely need to support this.
-     *
-     * @param context
-     * @param entitySetName
-     * @param entityKey
-     */
+    // Not supported -- use defined OData functions
     @Override
     public void deleteEntity(ODataContext context, String entitySetName, OEntityKey entityKey) {
-        // simple remove entry and re-call
         throw new NotImplementedException();
     }
 
-    /**
-     * TODO: support this!
-     * <p/>
-     * This is HTTP POST with given "load". The "load" is JSON format.
-     * Given JSON is encapsulated into CachedValue under JsonValueWrapper field and the whole entry
-     * is putted into the Infinispan cache "under" given simple String key.
-     *
-     * @param entitySetName - cache name identifier
-     * @param entity
-     * @return
-     */
+    // Not supported -- use defined OData functions
     @Override
     public EntityResponse createEntity(ODataContext context, String entitySetName, final OEntity entity) {
-
-        System.out.println(" \n\n !!!!!!!!!!!!! CREATE ENTITY ECHO: ");
-        System.out.println("context: " + context);
-        System.out.println("entitySetName: " + context);
-        System.out.println(" OEntity: " + entity);
-
-        // whats carried inside of entity?
-
-        BaseResponse baseResponse = Responses.simple(EdmSimpleType.STRING,
-                "Status of entity creation", "Entry was put into the cache");
-        return (EntityResponse) baseResponse;
+        throw new NotImplementedException();
     }
 
-    // Not supported
+    // Not supported -- use defined OData functions
     @Override
     public EntityResponse createEntity(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, OEntity entity) {
-
-        System.out.println(" \n\n CREATE ENTITY INCLUDING ENTITY KEY ECHO: ");
-        System.out.println("context: " + context);
-        System.out.println("entitySetName: " + context);
-        System.out.println(" OEntity: " + entity);
-
-        // whats carried inside of entity?
-
-        BaseResponse baseResponse = Responses.simple(EdmSimpleType.STRING,
-                "Status of entity creation", "Entry was put into the cache");
-        return (EntityResponse) baseResponse;
+        throw new NotImplementedException();
     }
 
     // Not supported (How to navigate entities inside NOSQL, schema-less store?)
@@ -438,35 +331,12 @@ public class InfinispanProducer3 implements ODataProducer {
     public BaseResponse callFunction(ODataContext context, EdmFunctionImport function, Map<String, OFunctionParameter> params,
                                      QueryInfo queryInfo) {
 
-        System.out.println(" Echo from callFunction() in InfinispanProducer... Yup, I'm here... ");
 
         long startCallFunctionProducerInside = System.currentTimeMillis();
 
-        OEntityKey oentityKey = null;
-        CacheObjectSerializationAble keyObject = null;
-        CacheObjectSerializationAble valueObject = null;
-        String simpleKey = null;
-        String simpleValue = null;
-
         String setNameWhichIsCacheName = function.getEntitySet().getName();
 
-        // for getting cache name (function is bindable to this entity set (which is collection type))
-        // function.getEntitySet();
 
-        dump("Params passed into callFunction method in Producer:");
-        for (String paramKey : params.keySet()) {
-            if (params.get(paramKey) != null) {
-                dump(paramKey + "=" + params.get(paramKey).getValue() + " of type: " + params.get(paramKey).getType());
-            } else {
-                dump(paramKey + "=" + params.get(paramKey) + " is null");
-            }
-        }
-
-
-        // TODO HERE!
-        // THIS IS POST REQUEST TO URI: http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache?key=%27jsonKey1%27"
-        // and we need to extract body/content/entity of POST, containing JSON
-        // why is this JSON encoded into some bytes?
         if (params.get("key") != null || queryInfo.filter != null) {
 
 
@@ -489,6 +359,7 @@ public class InfinispanProducer3 implements ODataProducer {
                         "Process it in callFunction inside of IspnProducer3...");
 
 
+                // TODO: Q: why is that JSON encoded into ByteArrayStream?
                 OSimpleObject payloadOSimpleObject = (OSimpleObject) params.get("payload").getValue();
                 if (payloadOSimpleObject.getType() != EdmSimpleType.BINARY) {
                     System.out.println(" ERROR !!! I expected BINARY stuff here in payload !!! ");
@@ -500,7 +371,6 @@ public class InfinispanProducer3 implements ODataProducer {
 
                 // decode it for a string and store it into the cache
                 try {
-
 
                     ByteArrayInputStream inputStream = (ByteArrayInputStream) payloadOSimpleObject.getValue();
 
@@ -539,7 +409,6 @@ public class InfinispanProducer3 implements ODataProducer {
 
                 return baseResponse;
             }
-
 
 
             // ***************** GET *******************
@@ -659,10 +528,6 @@ public class InfinispanProducer3 implements ODataProducer {
             }
 
 
-
-
-
-
             // ***************** DELETE *******************
             // ***************** DELETE *******************
             // ***************** DELETE *******************
@@ -693,7 +558,6 @@ public class InfinispanProducer3 implements ODataProducer {
                 }
 
             }
-
 
 
             // **************** PUT - UPDATE ***************
@@ -888,7 +752,6 @@ public class InfinispanProducer3 implements ODataProducer {
 //            createNavigationProperties(associations, associationSets,
 //                    entityTypesByName, entitySetsByName, entitySetNameByClass);
 
-
             EdmEntityContainer.Builder container = EdmEntityContainer.newBuilder().
                     setName(containerName).setIsDefault(true).
                     addEntitySets(entitySetsByName.values());
@@ -901,8 +764,8 @@ public class InfinispanProducer3 implements ODataProducer {
 
             // fictional entity type to satisfy EdmxFormatWriter & EdmxFormatParser
 //         EdmEntityType.Builder d = EdmEntityType.newBuilder().setBaseType("java.lang.String");
-            EdmEntityType.Builder eet = EdmEntityType.newBuilder().setNamespace(namespace).
-                    setName("java.lang.String").setHasStream(false);
+//            EdmEntityType.Builder eet = EdmEntityType.newBuilder().setNamespace(namespace).
+//                    setName("java.lang.String").setHasStream(false);
             // java.lang.IllegalArgumentException: Root types must have keys
 //         at org.odata4j.edm.EdmEntityType.<init>(EdmEntityType.java:54)
 
@@ -936,34 +799,8 @@ public class InfinispanProducer3 implements ODataProducer {
 
         // TODO: use decorator in other way if needed
         private void createStructuralEntities(EdmDecorator decorator) {
-
             // eis contains all of the registered entity sets.
             for (String entitySetName : eis.keySet()) {
-
-//            InfinispanProducer3.InMemoryEntityInfo<?> entityInfo = eis.get(entitySetName);
-//
-//          // do we have this type yet? -- yes we need this for decision in EntitiesRequestResource
-                // (Boolean.TRUE.equals(entitySet.getType().getHasStream())) getType can't be null here!!
-
-//                TODO: SOLVE THIS!!! I need set entity type.... do I need to register it somehow.
-//                TODO: register it as CachedValue? Or so? Like former?
-
-//            EdmEntityType.Builder eet = entityTypesByName.get(entityInfo.entityTypeName);
-//            EdmEntityType.Builder eet = entityTypesByName.get("String");
-//            if (eet == null) {
-//               eet = createStructuralType(decorator, entityInfo);
-//            }
-
-                // workaround for complex registration? does it work?
-//                EdmEntityType.Builder eet = EdmEntityType.newBuilder().setNamespace(namespace).
-//                        setName("CachedEntry").setHasStream(false);
-//                List<String> keys = new LinkedList<String>();
-//                keys.add("CacheEntryKey");
-//                eet.addKeys(keys);
-
-                // I don't need EntityType now
-                // Correction: I need entitySetType for EntitiesRequestResource
-
 //                EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName).setEntityType(eet);
                 EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName);
                 entitySetsByName.put(ees.getName(), ees);
@@ -1040,8 +877,7 @@ public class InfinispanProducer3 implements ODataProducer {
         /**
          * Function definitions it defines and add functions into EDM Schema these functions are callable as GET HTTP
          * operations
-         * <p/>
-         * Define functions: ispn_get, ispn_put, ispn_remove, ispn_update
+         *
          * <p/>
          * TODO: Define cache operations: stop, start etc. (we need to support this) We will support operations with caches.
          * <p/>
@@ -1059,42 +895,15 @@ public class InfinispanProducer3 implements ODataProducer {
             while (i < container.getEntitySets().size()) {
                 // define functions for each entity set (each cache)
 
-                List<EdmFunctionParameter.Builder> funcParametersBinary = new LinkedList<EdmFunctionParameter.Builder>();
-                List<EdmFunctionParameter.Builder> funcParametersSimpleString = new LinkedList<EdmFunctionParameter.Builder>();
-                List<EdmFunctionParameter.Builder> funcParametersOnlyCacheName = new LinkedList<EdmFunctionParameter.Builder>();
+                String entitySetNameCacheName = container.getEntitySets().get(i).getName();
+                List<EdmFunctionParameter.Builder> funcParameters = new LinkedList<EdmFunctionParameter.Builder>();
 
-                EdmFunctionParameter.Builder pb = new EdmFunctionParameter.Builder();
-                EdmFunctionParameter.Builder pb2 = new EdmFunctionParameter.Builder();
-                EdmFunctionParameter.Builder pb3 = new EdmFunctionParameter.Builder();
-                EdmFunctionParameter.Builder pb4 = new EdmFunctionParameter.Builder();
                 EdmFunctionParameter.Builder pbKey = new EdmFunctionParameter.Builder();
-
-                // setMode(IN)
-                pb.setName("keyBinary").setType(EdmType.getSimple("Binary")).setNullable(true).build();
-                pb2.setName("valueBinary").setType(EdmType.getSimple("Binary")).setNullable(true).build();
-                pb3.setName("keyString").setType(EdmType.getSimple("String")).setNullable(true).build();
-                pb4.setName("valueString").setType(EdmType.getSimple("String")).setNullable(true).build();
 
                 // for POST, GET, DELETE and PUT method
                 pbKey.setName("key").setType(EdmType.getSimple("String")).setNullable(true).build();
+                funcParameters.add(pbKey);
 
-                funcParametersBinary.add(pb);
-                funcParametersBinary.add(pb2);
-                funcParametersSimpleString.add(pb3);
-                funcParametersSimpleString.add(pb4);
-
-
-                funcParametersOnlyCacheName.add(pbKey);
-
-
-                String entitySetNameCacheName = container.getEntitySets().get(i).getName();
-
-                // binary
-                EdmFunctionImport.Builder fb = new EdmFunctionImport.Builder();
-                EdmFunctionImport.Builder fb2 = new EdmFunctionImport.Builder();
-                // simple string
-                EdmFunctionImport.Builder fb3 = new EdmFunctionImport.Builder();
-                EdmFunctionImport.Builder fb4 = new EdmFunctionImport.Builder();
 
                 // only cache name function for method POST requests
                 EdmFunctionImport.Builder fb5 = new EdmFunctionImport.Builder();
@@ -1102,60 +911,10 @@ public class InfinispanProducer3 implements ODataProducer {
                 EdmFunctionImport.Builder fb7 = new EdmFunctionImport.Builder();
                 EdmFunctionImport.Builder fb8 = new EdmFunctionImport.Builder();
 
-                // HINT
-//          IsBindable - 'true' indicates that the first parameter is the binding parameter
-//          IsSideEffecting - 'true' defines an action rather than a function
-//          m:IsAlwaysBindable - 'false' defines that the binding can be conditioned to the entity state.
-
-//                fb.setName(entitySetNameCacheName + "_put")
-//                        .setEntitySet(container.getEntitySets().get(i))
-//                        .setEntitySetName(entitySetNameCacheName)
-////                 .setReturnType(null)
-////                 .setHttpMethod("GET")
-////                  .setBindable(true)
-//                        .setBindable(false)
-//                        .setSideEffecting(false)  // true for Action (POST)
-//                        .setAlwaysBindable(false)
-//                        .addParameters(funcParametersBinary).build();
-//
-//                fb2.setName(entitySetNameCacheName + "_get")
-//                        .setEntitySet(container.getEntitySets().get(i))
-//                        .setEntitySetName(entitySetNameCacheName)
-//                                // let return type to null to be able to directly access response
-//                        .setReturnType(EdmSimpleType.BINARY)
-////                 .setHttpMethod("GET")
-////                  .setBindable(true)
-//                        .setBindable(false)
-//                        .setSideEffecting(false)  // true for Action (POST)
-//                        .setAlwaysBindable(false)
-//                        .addParameters(funcParametersBinary).build();
-//
-//
-//                fb3.setName(entitySetNameCacheName + "_putString")
-//                        .setEntitySet(container.getEntitySets().get(i))
-//                        .setEntitySetName(entitySetNameCacheName)
-////                 .setReturnType(null)
-////                 .setHttpMethod("GET")
-////                  .setBindable(true)
-//                        .setBindable(false)
-//                        .setSideEffecting(false)  // true for Action (POST)
-//                        .setAlwaysBindable(false)
-//                        .addParameters(funcParametersSimpleString).build();
-//
-//                fb4.setName(entitySetNameCacheName + "_getString")
-//                        .setEntitySet(container.getEntitySets().get(i))
-//                        .setEntitySetName(entitySetNameCacheName)
-//                                // let return type to null to be able to directly access response
-//                        .setReturnType(EdmSimpleType.STRING)
-////                 .setHttpMethod("GET")
-////                  .setBindable(true)
-//                        .setBindable(false)
-//                        .setSideEffecting(false)  // true for Action (POST)
-//                        .setAlwaysBindable(false)
-//                        .addParameters(funcParametersSimpleString).build();
-
-
-
+                // OData spec. HINT
+//                IsBindable - 'true' indicates that the first parameter is the binding parameter
+//                IsSideEffecting - 'true' defines an action rather than a function
+//                IsAlwaysBindable - 'false' defines that the binding can be conditioned to the entity state.
 
                 // IMPORTANT TASK perf+
                 // Parent TODO: implement also async variants + maybe do it with advanced cache
@@ -1168,14 +927,14 @@ public class InfinispanProducer3 implements ODataProducer {
                 fb5.setName(entitySetNameCacheName + "_put")
                         .setEntitySet(container.getEntitySets().get(i))
                         .setEntitySetName(entitySetNameCacheName)
-                        // let return type to null to be able to directly access response
+                                // let return type to null to be able to directly access response
                         .setReturnType(EdmSimpleType.STRING)
-                        // by specifying http method, we make from this "function" a SERVICE OPERATION kind of a "function"
+                                // by specifying http method, we make from this "function" a SERVICE OPERATION kind of a "function"
                         .setHttpMethod("POST")
                         .setBindable(false)
                         .setSideEffecting(false)  // true for Action (POST)
                         .setAlwaysBindable(false)
-                        .addParameters(funcParametersOnlyCacheName).build();
+                        .addParameters(funcParameters).build();
 
                 // TODO: maybe change return type to something like JSON VALUE
                 // TODO: so we can avoid some ByteArrayInputStream -> string,json transformations (possible?)
@@ -1188,7 +947,7 @@ public class InfinispanProducer3 implements ODataProducer {
                         .setBindable(false)
                         .setSideEffecting(false)  // true for Action (POST)
                         .setAlwaysBindable(false)
-                        .addParameters(funcParametersOnlyCacheName).build();
+                        .addParameters(funcParameters).build();
 
                 fb7.setName(entitySetNameCacheName + "_remove")
                         .setEntitySet(container.getEntitySets().get(i))
@@ -1199,7 +958,7 @@ public class InfinispanProducer3 implements ODataProducer {
                         .setBindable(false)
                         .setSideEffecting(false)  // true for Action (POST)
                         .setAlwaysBindable(false)
-                        .addParameters(funcParametersOnlyCacheName).build();
+                        .addParameters(funcParameters).build();
 
                 fb8.setName(entitySetNameCacheName + "_replace")
                         .setEntitySet(container.getEntitySets().get(i))
@@ -1210,17 +969,7 @@ public class InfinispanProducer3 implements ODataProducer {
                         .setBindable(false)
                         .setSideEffecting(false)  // true for Action (POST)
                         .setAlwaysBindable(false)
-                        .addParameters(funcParametersOnlyCacheName).build();
-
-                // complex
-//                funcImports.add(fb);
-//                funcImports.add(fb2);
-                // simple
-//                funcImports.add(fb3);
-//                funcImports.add(fb4);
-
-
-                // only cacheName for POST
+                        .addParameters(funcParameters).build();
 
                 funcImports.add(fb5);
                 funcImports.add(fb6);
