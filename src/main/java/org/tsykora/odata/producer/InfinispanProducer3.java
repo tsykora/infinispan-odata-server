@@ -310,6 +310,122 @@ public class InfinispanProducer3 implements ODataProducer {
         throw new NotImplementedException();
     }
 
+
+    /**
+     * HTTP POST request accepted, issued on service/cacheName_put?params...&$filter=... URI
+     *
+     * @return
+     */
+    private BaseResponse callFunctionPut(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue) {
+
+        System.out.println("Putting into " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
+        getCache(setNameWhichIsCacheName).put(entryKey, cachedValue);
+
+        // TODO: avoid this when FLAG don't return when put = true
+//        if (flag) {
+//            TODO: prepare BaseResponse? and FunctionResource.java for it!
+//            return null; // clients will get NO_CONTENT response (It is successful kind of response!)
+//        }
+        return callFunctionGet(setNameWhichIsCacheName, entryKey, null);
+    }
+
+
+    public BaseResponse callFunctionGet(String setNameWhichIsCacheName, String entryKey,
+                                        QueryInfo queryInfo) {
+
+        List<Object> queryResult = null;
+
+        if (entryKey != null) {
+            // ignore query and return value directly
+            CachedValue value = (CachedValue) getCache(setNameWhichIsCacheName).get(entryKey);
+            // TODO: look closely at formatting this
+            return Responses.simple(EdmSimpleType.STRING, "jsonValue", value.getJsonValueWrapper().getJson());
+
+        } else {
+            // I need some filter
+            // TODO: don't process filters when cache is not Queryable (Log warning + serve only direct gets) !!! perf+
+
+            // Maybe remove this check?
+            if (queryInfo.filter == null) {
+                return Responses.error(new OErrorImpl("Parameter 'key' is not specified, therefore we want to get entries using query filter." +
+                        " \n However, $filter is not specified as well."));
+            }
+
+            System.out.println("Query report for $filter " + queryInfo.filter.toString());
+
+            SearchManager searchManager = org.infinispan.query.Search.getSearchManager(getCache(setNameWhichIsCacheName));
+            MapQueryExpressionVisitor mapQueryExpressionVisitor =
+                    new MapQueryExpressionVisitor(searchManager.buildQueryBuilderForClass(CachedValue.class).get());
+            mapQueryExpressionVisitor.visit(queryInfo.filter);
+
+            // Query cache here adn get results based on constructed Lucene query
+            CacheQuery queryFromVisitor = searchManager.getQuery(mapQueryExpressionVisitor.getBuiltLuceneQuery(),
+                    CachedValue.class);
+            // pass query result to the function final response
+            queryResult = queryFromVisitor.list();
+
+            System.out.println(" \n\n SEARCH RESULTS GOT BY VISITOR!!! APPROACH: size:" + queryResult.size() + ":");
+
+            for (Object one_result : queryResult) {
+                System.out.println(one_result);
+            }
+
+            // *********************************************************************************
+            // We have set queryResult object containing list of results from querying the cache
+            // Now apply other filters/order by/top/skip etc. requests
+
+            if (queryInfo.top != null) {
+                // client wants to only a specified count of first "top" results
+                // use it for collections of objects??
+            }
+
+            if (queryInfo.skip != null) {
+                // client wants to skip particular number of results -- skip them and return only what's requested
+                // use it for collections of objects??
+
+            }
+
+            if (queryInfo.orderBy != null) {
+                // TODO: I hope this can be definitely added into LUCENE QUERY builder and we can get back
+                // already ordered objects
+            }
+        }
+
+        if (queryResult != null) {
+            StringBuilder sb = new StringBuilder();
+            // build response
+            for (Object one_result : queryResult) {
+                CachedValue cv = (CachedValue) one_result;
+                sb.append(cv.getJsonValueWrapper().getJson());
+                sb.append("\n");
+            }
+            // stack more json strings responses
+            return Responses.simple(EdmSimpleType.STRING, "jsonValue", sb.toString());
+        } else {
+            // no results found, clients will get NO_CONTENT response
+            return null;
+        }
+    }
+
+    public BaseResponse callFunctionRemove(String setNameWhichIsCacheName, String entryKey) {
+            // TODO: later, avoid returning by using flag (or add option to call uri)
+            CachedValue removed = (CachedValue) getCache(setNameWhichIsCacheName).remove(entryKey);
+            return Responses.simple(EdmSimpleType.STRING, "jsonValue", removed.getJsonValueWrapper().getJson());
+    }
+
+    public BaseResponse callFunctionReplace(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue) {
+
+        System.out.println("Replacing in " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
+        getCache(setNameWhichIsCacheName).replace(entryKey, cachedValue);
+
+        // TODO: avoid this when FLAG don't return when put = true
+//        if (flag) {
+//            TODO: prepare BaseResponse? and FunctionResource.java for it!
+//            return null; // clients will get NO_CONTENT response (It is successful kind of response!)
+//        }
+        return callFunctionGet(setNameWhichIsCacheName, entryKey, null);
+    }
+
     /**
      * The heart of our producer.
      * We can go the way of having cacheName_get/put/delete/update and call particular aforementioned methods
@@ -318,7 +434,7 @@ public class InfinispanProducer3 implements ODataProducer {
      * TODO: implement real - cache related functions like: Start, Stop etc.
      * <p/>
      * <p/>
-     * Use it like: http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache?key=%27jsonKey1%27"
+     * Use it like: http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_get?key=%27jsonKey1%27"
      * Use HTTP POST for create / PUT entity into the cache
      *
      * @param context
@@ -332,297 +448,73 @@ public class InfinispanProducer3 implements ODataProducer {
                                      QueryInfo queryInfo) {
 
 
-        long startCallFunctionProducerInside = System.currentTimeMillis();
-
-        String setNameWhichIsCacheName = function.getEntitySet().getName();
+        // every function call need to have key or queryInfo specified
+        // TODO: modify condition to not only .filter (but also other constraints?) queryInfo != null is not enough
+        // TODO: it's not null for every case I think
 
 
         if (params.get("key") != null || queryInfo.filter != null) {
 
+            // TODO: what is mutual for all, at least 2 function should be here and pass as a parameter to child function call
 
-            // *********************** POST - PUT entry *******************
-            // *********************** POST - PUT entry *******************
-            // *********************** POST - PUT entry *******************
+            String setNameWhichIsCacheName = function.getEntitySet().getName();
+            CachedValue cachedValue = null;
+
+            String entryKey = null;
+            if (params.get("key") != null) {
+                entryKey = params.get("key").getValue().toString();
+            }
+
+            // Extract client payload in case of POST and PUT
+            boolean extractClientPayload = (function.getHttpMethod().equals("POST") && function.getName().endsWith("_put")) ||
+                    ((function.getHttpMethod().equals("PUT") && function.getName().endsWith("_replace")));
+
+            if (extractClientPayload) {
+                // TODO: Q: why is that JSON encoded into ByteArrayStream on server side? Can ve avoid this?
+                OSimpleObject payloadOSimpleObject = (OSimpleObject) params.get("payload").getValue();
+                try {
+                    ByteArrayInputStream inputStream = (ByteArrayInputStream) payloadOSimpleObject.getValue();
+                    BufferedReader rd = new BufferedReader(new InputStreamReader(inputStream));
+                    String result = "";
+                    String line;
+                    while ((line = rd.readLine()) != null) {
+                        result += line;
+                    }
+                    rd.close();
+                    dump("Extracted JSON from payload: " + result);
+                    cachedValue = new CachedValue(result);
+                } catch (Exception e) {
+                    return Responses.error(new OErrorImpl("Problems with extracting jsonValue from payload. " + e.getMessage()));
+                }
+            }
+
 
             if (function.getHttpMethod().equals("POST") && function.getName().endsWith("_put")) {
-                // need key + payload
-                String jsonValue = "";
-
-                // Now I have passed directly ByteArrayInputStream payload in function parameter
-                // FunctionResources were trying to parse it (TODO: disable it later for perf. not do this redundant!!)
-                // and parse it here...
-
-                // or avoid encoding into ByteArrayInputStream?
-                // or check JSON format...
-
-                System.out.println("Parameter key is not null -- this looks like POST http request. " +
-                        "Process it in callFunction inside of IspnProducer3...");
-
-
-                // TODO: Q: why is that JSON encoded into ByteArrayStream?
-                OSimpleObject payloadOSimpleObject = (OSimpleObject) params.get("payload").getValue();
-                if (payloadOSimpleObject.getType() != EdmSimpleType.BINARY) {
-                    System.out.println(" ERROR !!! I expected BINARY stuff here in payload !!! ");
-                    // TODO!! Error messages! Something like:
-                    // Implement ERROR INTERFACE!!! for returning respective error responses
-//                    return ErrorResponse;
-                }
-
-
-                // decode it for a string and store it into the cache
-                try {
-
-                    ByteArrayInputStream inputStream = (ByteArrayInputStream) payloadOSimpleObject.getValue();
-
-                    BufferedReader rd = new BufferedReader(new InputStreamReader(inputStream));
-                    String result = "";
-                    String line;
-                    while ((line = rd.readLine()) != null) {
-                        result += line;
-                    }
-                    System.out.println("I'VE JUST READ payload in CALL FUNCTION in PRODUCER.... it is payload from HTTP POST request ");
-                    System.out.println(result);
-                    rd.close();
-
-                    jsonValue = result;
-
-                    CachedValue cachedValue = new CachedValue(jsonValue);
-
-                    // put wrapped json into the cache and let Lucene to index its fields
-                    System.out.println(" THIS IS POST request, inside of callFunction() in producer: ");
-                    String entryKey = params.get("key").getValue().toString();
-                    System.out.println("Putting into " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
-                    getCache(setNameWhichIsCacheName).put(entryKey, cachedValue);
-
-
-                } catch (Exception e) {
-                    System.out.println(" ERROR !!! Exception " + e.getMessage());
-                    e.printStackTrace();
-                }
-
-                BaseResponse baseResponse = Responses.simple(EdmSimpleType.STRING, "jsonValue", jsonValue);
-
-                // Whole callFunction time measurement:
-                long stopCallFunctionProducerInside = System.currentTimeMillis();
-                System.out.println("Whole inside of CallFunction in producer before response took: " +
-                        (stopCallFunctionProducerInside - startCallFunctionProducerInside) + " millis.");
-
-                return baseResponse;
+                return callFunctionPut(setNameWhichIsCacheName, entryKey, cachedValue);
             }
-
-
-            // ***************** GET *******************
-            // ***************** GET *******************
-            // ***************** GET *******************
 
             if (function.getHttpMethod().equals("GET") && function.getName().endsWith("_get")) {
-                // need only key, return jsonValue
-
-                BaseResponse response = null;
-
-                CachedValue value = null;
-                List<Object> queryResult = null;
-
-                // parameter key was specified, ignore query and return value directly
-                String key = params.get("key").getValue().toString();
-                if (key != null) {
-
-                    long start = System.currentTimeMillis();
-
-                    value = (CachedValue) getCache(setNameWhichIsCacheName).get(key);
-
-                    long end = System.currentTimeMillis();
-                    System.out.println("Direct get from " + setNameWhichIsCacheName + " according to key parameter took: "
-                            + (end - start) + " millis.");
-
-                } else {
-                    // I need some filter
-                    // TODO: don't process filters when cache is not Queryable (Log warning + serve only direct gets) !!! perf+
-                    if (queryInfo.filter != null) {
-
-                        System.out.println("Query report for $filter " + queryInfo.filter.toString());
-
-                        SearchManager searchManager = org.infinispan.query.Search.getSearchManager(getCache(setNameWhichIsCacheName));
-
-                        MapQueryExpressionVisitor mapQueryExpressionVisitor =
-                                new MapQueryExpressionVisitor(searchManager.buildQueryBuilderForClass(CachedValue.class).get());
-
-                        mapQueryExpressionVisitor.visit(queryInfo.filter);
-
-                        // Query cache here adn get results based on constructed Lucene query
-                        CacheQuery queryFromVisitor = searchManager.getQuery(mapQueryExpressionVisitor.getBuiltLuceneQuery(),
-                                CachedValue.class);
-
-                        // pass query result to the function final response
-                        queryResult = queryFromVisitor.list();
-
-                        System.out.println(" \n\n SEARCH RESULTS GOT BY VISITOR!!! APPROACH: size:" + queryResult.size() + ":");
-                        for (Object one_result : queryResult) {
-                            System.out.println(one_result);
-                        }
-
-                    } else {
-                        System.out.println("WARNING -- INCONSISTENT STATE: simpleKey NOR queryInfo.filter is not defined!!! ");
-                    }
-
-                    // *********************************************************************************
-                    // We have set queryResult object containing list of results from querying the cache
-                    // Now apply other filters/order by/top/skip etc. requests
-
-                    if (queryInfo.top != null) {
-                        // client wants to only a specified count of first "top" results
-                        // use it for collections of objects??
-                    }
-
-                    if (queryInfo.skip != null) {
-                        // client wants to skip particular number of results -- skip them and return only what's requested
-                        // use it for collections of objects??
-
-                    }
-
-                    if (queryInfo.orderBy != null) {
-                        // TODO: I hope this can be definitely added into LUCENE QUERY builder and we can get back
-                        // already ordered objects
-                    }
-
-                }
-
-
-                long startBuildResponse = System.currentTimeMillis();
-
-                // TODO: redundant -- don't create base responses here, create them immediately and return them once decided ^
-                BaseResponse baseResponse = null;
-                if (value != null) {
-                    // it was requested by key directly
-                    baseResponse = Responses.simple(EdmSimpleType.STRING, "jsonValue", value.getJsonValueWrapper().getJson());
-                } else {
-                    if (queryResult != null) {
-                        StringBuilder sb = new StringBuilder();
-                        // build response
-                        for (Object one_result : queryResult) {
-                            CachedValue cv = (CachedValue) one_result;
-                            sb.append(cv.getJsonValueWrapper().getJson());
-                            sb.append("\n");
-                        }
-                        // stack more json strings responses
-                        baseResponse = Responses.simple(EdmSimpleType.STRING, "jsonValue", sb.toString());
-                    }
-                }
-
-
-                long stopBuildResponse = System.currentTimeMillis();
-                System.out.println("Building base response in the end of call function took: " +
-                        (stopBuildResponse - startBuildResponse) + " millis.");
-
-
-                // Whole callFunction time measurement:
-                long stopCallFunctionProducerInside = System.currentTimeMillis();
-                System.out.println("Whole inside of CallFunction in producer before response took: " +
-                        (stopCallFunctionProducerInside - startCallFunctionProducerInside) + " millis.");
-
-                // TODO: remove this redundancy (see ^)
-                response = baseResponse;
-
-
-                return response;
+                return callFunctionGet(setNameWhichIsCacheName, entryKey, queryInfo);
             }
-
-
-            // ***************** DELETE *******************
-            // ***************** DELETE *******************
-            // ***************** DELETE *******************
 
             if (function.getHttpMethod().equals("DELETE") && function.getName().endsWith("_remove")) {
-                // need only key, delete from cache
-
-                String key = params.get("key").getValue().toString();
-                if (key != null) {
-
-                    long start = System.currentTimeMillis();
-
-                    // TODO: later, avoid returning by using flag (or add option to call uri)
-                    getCache(setNameWhichIsCacheName).remove(key);
-
-                    long end = System.currentTimeMillis();
-                    System.out.println("Direct get from " + setNameWhichIsCacheName + " according to key parameter took: "
-                            + (end - start) + " millis.");
-
-                    // TODO: create some types of successful message responses
-                    return Responses.simple(EdmSimpleType.STRING, "SUCCESS",
-                            "Entry specified by key " + key + " was deleted from cache: " + setNameWhichIsCacheName);
-
-                } else {
-
-                    return Responses.simple(EdmSimpleType.STRING, "ERROR",
-                            "Parameter 'key' need to be specified for removing entry. HTTP DELETE method. ");
-                }
-
+                return callFunctionRemove(setNameWhichIsCacheName, entryKey);
             }
-
-
-            // **************** PUT - UPDATE ***************
-            // **************** PUT - UPDATE ***************
-            // **************** PUT - UPDATE ***************
 
             if (function.getHttpMethod().equals("PUT") && function.getName().endsWith("_replace")) {
-                String jsonValue = "";
-
-                OSimpleObject payloadOSimpleObject = (OSimpleObject) params.get("payload").getValue();
-                if (payloadOSimpleObject.getType() != EdmSimpleType.BINARY) {
-                    System.out.println(" ERROR !!! I expected BINARY stuff here in payload !!! ");
-                    // TODO!! Error messages! Something like:
-                    // Implement ERROR INTERFACE!!! for returning respective error responses
-//                    return ErrorResponse;
-                }
-
-                // decode it for a string and store it into the cache
-                try {
-
-                    ByteArrayInputStream inputStream = (ByteArrayInputStream) payloadOSimpleObject.getValue();
-
-                    BufferedReader rd = new BufferedReader(new InputStreamReader(inputStream));
-                    String result = "";
-                    String line;
-                    while ((line = rd.readLine()) != null) {
-                        result += line;
-                    }
-                    System.out.println("I'VE JUST READ payload in CALL FUNCTION in PRODUCER.... it is payload from HTTP PUT request ");
-                    System.out.println(result);
-                    rd.close();
-
-                    jsonValue = result;
-
-                    CachedValue cachedValue = new CachedValue(jsonValue);
-
-                    // put wrapped json into the cache and let Lucene to index its fields
-                    System.out.println(" THIS IS POST request, inside of callFunction() in producer: ");
-                    String entryKey = params.get("key").getValue().toString();
-                    System.out.println("Replacing in " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
-                    getCache(setNameWhichIsCacheName).replace(entryKey, cachedValue);
-
-
-                } catch (Exception e) {
-                    System.out.println(" ERROR !!! Exception " + e.getMessage());
-                    e.printStackTrace();
-                }
-
-                BaseResponse baseResponse = Responses.simple(EdmSimpleType.STRING, "jsonValue", jsonValue);
-
-                // Whole callFunction time measurement:
-                long stopCallFunctionProducerInside = System.currentTimeMillis();
-                System.out.println("Whole inside of CallFunction in producer before response took: " +
-                        (stopCallFunctionProducerInside - startCallFunctionProducerInside) + " millis.");
-
-                return baseResponse;
-
+                callFunctionReplace(setNameWhichIsCacheName, entryKey, cachedValue);
             }
+
+            return Responses.error(new OErrorImpl(
+                    " HTTP GET method AND cache method ending _get,\n" +
+                            " HTTP POST method AND cache method ending _put,\n" +
+                            " HTTP DELETE method AND cache method ending _remove\n" +
+                            " OR HTTP PUT method AND cache method ending _replace was expected.\n" +
+                            " Function name was: " + function.getName() + " HTTP method was: " + function.getHttpMethod()));
 
         }
 
-        // TODO: exceptions need improvements!
-        return Responses.simple(EdmSimpleType.STRING, "ERROR", "Error: GET, POST, DELETE or PUT Http method was expected. " +
-                " OR: parameter key or $filter needs to be specified. " +
-                "But it was: " + function.getHttpMethod());
+        return Responses.error(new OErrorImpl("Parameter 'key' or $filter needs to be specified."));
     }
 
     @Override
@@ -877,7 +769,7 @@ public class InfinispanProducer3 implements ODataProducer {
         /**
          * Function definitions it defines and add functions into EDM Schema these functions are callable as GET HTTP
          * operations
-         *
+         * <p/>
          * <p/>
          * TODO: Define cache operations: stop, start etc. (we need to support this) We will support operations with caches.
          * <p/>
@@ -984,4 +876,8 @@ public class InfinispanProducer3 implements ODataProducer {
         }
     }
 }
+
+
+
+
 
