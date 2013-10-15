@@ -53,8 +53,8 @@ public class InMemoryProducerExample extends AbstractExample {
 //      configFile = "infinispan-local.xml";
 
       // the first parameter is containerName
-      final InfinispanProducer3 producerBig =
-            new InfinispanProducer3(containerName, null, 100, new MyEdmDecorator(), null, configFile);
+      final InfinispanProducer producerBig =
+            new InfinispanProducer(containerName, null, 100, new MyEdmDecorator(), null, configFile);
 //        final LightweightInfinispanProducer producer = new LightweightInfinispanProducer("InMemoryProducerExample", null, 100, null, null);
 
 

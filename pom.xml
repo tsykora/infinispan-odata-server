@@ -58,26 +58,26 @@
             <artifactId>odata4j-dist</artifactId>
             <version>0.8.0-SNAPSHOT</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpclient</artifactId>
-            <version>4.2.5</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpcore</artifactId>
-            <version>4.2.4</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpcomponents-client</artifactId>
-            <version>4.2.5</version>
-        </dependency>
-        <dependency>
-            <groupId>org.apache.httpcomponents</groupId>
-            <artifactId>httpcomponents-core</artifactId>
-            <version>4.2.5</version>
-        </dependency>
+        <!--<dependency>-->
+            <!--<groupId>org.apache.httpcomponents</groupId>-->
+            <!--<artifactId>httpclient</artifactId>-->
+            <!--<version>4.2.5</version>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+            <!--<groupId>org.apache.httpcomponents</groupId>-->
+            <!--<artifactId>httpcore</artifactId>-->
+            <!--<version>4.2.4</version>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+            <!--<groupId>org.apache.httpcomponents</groupId>-->
+            <!--<artifactId>httpcomponents-client</artifactId>-->
+            <!--<version>4.2.5</version>-->
+        <!--</dependency>-->
+        <!--<dependency>-->
+            <!--<groupId>org.apache.httpcomponents</groupId>-->
+            <!--<artifactId>httpcomponents-core</artifactId>-->
+            <!--<version>4.2.5</version>-->
+        <!--</dependency>-->
         <dependency>
             <groupId>org.hibernate</groupId>
             <artifactId>hibernate-search-engine</artifactId>
@@ -123,10 +123,19 @@
             <artifactId>jackson-core-asl</artifactId>
             <version>1.9.13</version>
         </dependency>
+        <dependency>
+            <groupId>org.jboss.com.sun.httpserver</groupId>
+            <artifactId>httpserver</artifactId>
+            <version>1.0.1.Final</version>
+        </dependency>
 
     </dependencies>
     <build>
-        <finalName>odata_example</finalName>
+        <finalName>odata-infinispan-server</finalName>
+
+        <!--  mvn clean compile assembly:assembly !!! -->
+        <!-- java -jar odata-infinispan-server-jar-with-dependencies.jar -->
+
         <!--<plugins>-->
             <!--<plugin>-->
                 <!--<groupId>org.apache.maven.plugins</groupId>-->
@@ -152,13 +161,15 @@
             <!--</plugin>-->
         <!--</plugins>-->
 
+            <!-- mvn clean compile assembly:assembly !!! -->
+            <!-- java -jar odata-infinispan-server-jar-with-dependencies.jar -->
             <plugins>
                 <plugin>
                     <artifactId>maven-assembly-plugin</artifactId>
                     <configuration>
                         <archive>
                             <manifest>
-                                <mainClass>org.tsykora.odata.common.Runner</mainClass>
+                                <mainClass>org.tsykora.odata.producer.ODataInfinispanServerRunner</mainClass>
                             </manifest>
                         </archive>
                         <descriptorRefs>

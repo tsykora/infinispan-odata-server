@@ -1,1794 +1,940 @@
-//package org.tsykora.odata.producer;
-//
-//import org.core4j.Enumerable;
-//import org.core4j.Func;
-//import org.core4j.Func1;
-//import org.core4j.Funcs;
-//import org.core4j.Predicate1;
-//import org.infinispan.Cache;
-//import org.infinispan.manager.DefaultCacheManager;
-//import org.odata4j.core.*;
-//import org.odata4j.edm.*;
-//import org.odata4j.exceptions.NotFoundException;
-//import org.odata4j.exceptions.NotImplementedException;
-//import org.odata4j.expression.BoolCommonExpression;
-//import org.odata4j.expression.OrderByExpression;
-//import org.odata4j.expression.OrderByExpression.Direction;
-//import org.odata4j.producer.*;
-//import org.odata4j.producer.edm.MetadataProducer;
-//import org.odata4j.producer.inmemory.BeanBasedPropertyModel;
-//import org.odata4j.producer.inmemory.EntityIdFunctionPropertyModelDelegate;
-//import org.odata4j.producer.inmemory.EnumsAsStringsPropertyModelDelegate;
-//import org.odata4j.producer.inmemory.InMemoryComplexTypeInfo;
-//import org.odata4j.producer.inmemory.InMemoryEvaluation;
-//import org.odata4j.producer.inmemory.InMemoryTypeMapping;
-//import org.odata4j.producer.inmemory.PropertyModel;
-//import org.tsykora.odata.producer.InfinispanProducer.RequestContext.RequestType;
-//
-//import java.lang.reflect.InvocationTargetException;
-//import java.lang.reflect.Method;
-//import java.util.*;
-//import java.util.logging.Level;
-//import java.util.logging.Logger;
-//
-////import org.odata4j.producer.inmemory.InMemoryProducer.RequestContext.RequestType;
-//
-///**
-//* An in-memory implementation of an ODATA Producer.  Uses the standard Java bean and property model to access
-//* information within entities.
-//*/
-//public abstract class InfinispanProducer implements ODataProducer {
-//   private static final boolean DUMP = false;
-//
-//   private static void dump(String msg) {
-//      if (DUMP) System.out.println(msg);
-//   }
-//
-//   public static final String ID_PROPNAME = "EntityId";
-//
-//   private final String namespace;
-//   private final String containerName;
-//   private final int maxResults;
-//   // preserve the order of registration
-//   private final Map<String, InMemoryEntityInfo<?>> eis = new LinkedHashMap<String, InMemoryEntityInfo<?>>();
-//   private final Map<String, InMemoryComplexTypeInfo<?>> complexTypes = new LinkedHashMap<String, InMemoryComplexTypeInfo<?>>();
-//   private EdmDataServices metadata;
-//   private final EdmDecorator decorator;
-//   private final MetadataProducer metadataProducer;
-//   private final InMemoryTypeMapping typeMapping;
-//
-//   private boolean includeNullPropertyValues = true;
-//   private final boolean flattenEdm;
-//
-//   private static final int DEFAULT_MAX_RESULTS = 100;
-//
-//   // not static - cache instance is running with producer instance
-//   private Cache<String, String> ispnCache;
-//
-//   /**
-//    * Creates a new instance of an in-memory POJO producer.
-//    *
-//    * @param namespace the namespace of the schema registrations
-//    */
-//   public InfinispanProducer(String namespace) {
-//      this(namespace, DEFAULT_MAX_RESULTS);
-//   }
-//
-//   /**
-//    * Creates a new instance of an in-memory POJO producer.
-//    *
-//    * @param namespace  the namespace of the schema registrations
-//    * @param maxResults the maximum number of entities to return in a single call
-//    */
-//   public InfinispanProducer(String namespace, int maxResults) {
-//      this(namespace, null, maxResults, null, null);
-//   }
-//
-//   /**
-//    * Creates a new instance of an in-memory POJO producer.
-//    *
-//    * @param namespace     the namespace of the schema registrations
-//    * @param containerName the container name for generated metadata
-//    * @param maxResults    the maximum number of entities to return in a single call
-//    * @param decorator     a decorator to use for edm customizations
-//    * @param typeMapping   optional mapping between java types and edm types, null for default
-//    */
-//   public InfinispanProducer(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping) {
-//      this(namespace, containerName, maxResults, decorator, typeMapping,
-//           true); // legacy: flatten edm
-//   }
-//
-//   public InfinispanProducer(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
-//                             boolean flattenEdm) {
-//      this.namespace = namespace;
-//      this.containerName = containerName != null && !containerName.isEmpty() ? containerName : "Container";
-//      this.maxResults = maxResults;
-//      this.decorator = decorator;
-//      this.metadataProducer = new MetadataProducer(this, decorator);
-//      this.typeMapping = typeMapping == null ? InMemoryTypeMapping.DEFAULT : typeMapping;
-//      this.flattenEdm = flattenEdm;
-//
-//      // Creating ISPN layer in producer constructor
-//      ispnCache = new DefaultCacheManager().getCache();
-//   }
-//
-//   @Override
-//   public EdmDataServices getMetadata() {
-//      if (metadata == null) {
-//         metadata = newEdmGenerator(namespace, typeMapping, ID_PROPNAME, eis, complexTypes).generateEdm(decorator).build();
-//      }
-//      return metadata;
-//   }
-//
-//   public String getContainerName() {
-//      return containerName;
-//   }
-//
-//   protected InMemoryEdmGenerator newEdmGenerator(String namespace, InMemoryTypeMapping typeMapping, String idPropName, Map<String, InMemoryEntityInfo<?>> eis,
-//                                                  Map<String, InMemoryComplexTypeInfo<?>> complexTypesInfo) {
-//      return new InMemoryEdmGenerator(namespace, containerName, typeMapping, ID_PROPNAME, eis, complexTypesInfo, this.flattenEdm);
-//   }
-//
-//   @Override
-//   public MetadataProducer getMetadataProducer() {
-//      return metadataProducer;
-//   }
-//
-//   @Override
-//   public void close() {
-//
-//   }
-//
-//   public void setIncludeNullPropertyValues(boolean value) {
-//      this.includeNullPropertyValues = value;
-//   }
-//
-//   /**
-//    * Registers a POJO class as an EdmComplexType.
-//    *
-//    * @param complexTypeClass    The POJO Class
-//    * @param typeName            The name of the EdmComplexType
-//    */
-////   public <TEntity> void registerComplexType(Class<TEntity> complexTypeClass, String typeName) {
-////      registerComplexType(complexTypeClass, typeName,
-////                          new EnumsAsStringsPropertyModelDelegate(new BeanBasedPropertyModel(complexTypeClass, this.flattenEdm)));
-////   }
-//
-////   public <TEntity> void registerComplexType(Class<TEntity> complexTypeClass, String typeName, PropertyModel propertyModel) {
-////      InMemoryComplexTypeInfo<TEntity> i = new InMemoryComplexTypeInfo<TEntity>();
-////      i.typeName = (typeName == null) ? complexTypeClass.getSimpleName() : typeName;
-////      i.entityClass = complexTypeClass;
-////      i.propertyModel = propertyModel;
-////
-////      complexTypes.put(i.typeName, i);
-////      metadata = null;
-////   }
-//
-//   /**
-//    * Registers a new entity based on a POJO, with support for composite keys.
-//    *
-//    * @param entityClass   the class of the entities that are to be stored in the set
-//    * @param entitySetName the alias the set will be known by; this is what is used in the OData url
-//    * @param get           a function to iterate over the elements in the set
-//    * @param keys          one or more keys for the entity
-//    */
-//   public <TEntity> void register(Class<TEntity> entityClass, String entitySetName, Func<Iterable<TEntity>> get, String... keys) {
-//      register(entityClass, entitySetName, entitySetName, get, keys);
-//   }
-//
-//   /**
-//    * Registers a new entity based on a POJO, with support for composite keys.
-//    *
-//    * @param entityClass    the class of the entities that are to be stored in the set
-//    * @param entitySetName  the alias the set will be known by; this is what is used in the OData url
-//    * @param entityTypeName type name of the entity
-//    * @param get            a function to iterate over the elements in the set
-//    * @param keys           one or more keys for the entity
-//    */
-//   public <TEntity> void register(Class<TEntity> entityClass, String entitySetName, String entityTypeName, Func<Iterable<TEntity>> get, String... keys) {
-//      PropertyModel model = new BeanBasedPropertyModel(entityClass, this.flattenEdm);
-//      model = new EnumsAsStringsPropertyModelDelegate(model);
-//      register(entityClass, model, entitySetName, entityTypeName, get, keys);
-//   }
-//
-//   /**
-//    * Registers a new entity set based on a POJO type using the default property model.
-//    */
-//   public <TEntity, TKey> void register(Class<TEntity> entityClass, Class<TKey> keyClass, String entitySetName, Func<Iterable<TEntity>> get, Func1<TEntity, TKey> id) {
-//      PropertyModel model = new BeanBasedPropertyModel(entityClass, this.flattenEdm);
-//      model = new EnumsAsStringsPropertyModelDelegate(model);
-//      model = new EntityIdFunctionPropertyModelDelegate<TEntity, TKey>(model, ID_PROPNAME, keyClass, id);
-//      register(entityClass, model, entitySetName, get, ID_PROPNAME);
-//   }
-//
-//   /**
-//    * Registers a new entity set based on a POJO type and a property model.
-//    *
-//    * @param entityClass   the class of the entities that are to be stored in the set
-//    * @param propertyModel a way to get/set properties on the POJO
-//    * @param entitySetName the alias the set will be known by; this is what is used in the ODATA URL
-//    * @param get           a function to iterate over the elements in the set
-//    * @param keys          one or more keys for the entity
-//    */
-//   public <TEntity, TKey> void register(
-//         Class<TEntity> entityClass,
-//         PropertyModel propertyModel,
-//         String entitySetName,
-//         Func<Iterable<TEntity>> get,
-//         String... keys) {
-//      register(entityClass, propertyModel, entitySetName, entitySetName, get, keys);
-//   }
-//
-//   public <TEntity> void register(
-//         final Class<TEntity> entityClass,
-//         final PropertyModel propertyModel,
-//         final String entitySetName,
-//         final String entityTypeName,
-//         final Func<Iterable<TEntity>> get,
-//         final String... keys) {
-//      register(entityClass, propertyModel, entitySetName, entityTypeName,
-//               get, null, keys);
-//   }
-//
-//   public <TEntity> void register(
-//         final Class<TEntity> entityClass,
-//         final PropertyModel propertyModel,
-//         final String entitySetName,
-//         final String entityTypeName,
-//         final Func<Iterable<TEntity>> get,
-//         final Func1<RequestContext, Iterable<TEntity>> getWithContext,
-//         final String... keys) {
-//
-//      InMemoryEntityInfo<TEntity> ei = new InMemoryEntityInfo<TEntity>();
-//      ei.entitySetName = entitySetName;
-//      ei.entityTypeName = entityTypeName;
-//      ei.properties = propertyModel;
-//      ei.get = get;
-//      ei.getWithContext = getWithContext;
-//      ei.keys = keys;
-//      ei.entityClass = entityClass;
-//      ei.hasStream = OAtomStreamEntity.class.isAssignableFrom(entityClass);
-//
-//      ei.id = new Func1<Object, HashMap<String, Object>>() {
-//         @Override
-//         public HashMap<String, Object> apply(Object input) {
-//            HashMap<String, Object> values = new HashMap<String, Object>();
-//            for (String key : keys) {
-//               values.put(key, eis.get(entitySetName).properties.getPropertyValue(input, key));
-//            }
-//            return values;
-//         }
-//      };
-//
-//      eis.put(entitySetName, ei);
-//      metadata = null;
-//   }
-//
-//   protected InMemoryComplexTypeInfo<?> findComplexTypeInfoForClass(Class<?> clazz) {
-//      for (InMemoryComplexTypeInfo<?> typeInfo : this.complexTypes.values()) {
-//         if (typeInfo.getEntityClass().equals(clazz)) {
-//            return typeInfo;
-//         }
-//      }
-//
-//      return null;
-//   }
-//
-//   protected InMemoryEntityInfo<?> findEntityInfoForClass(Class<?> clazz) {
-//      for (InMemoryEntityInfo<?> typeInfo : this.eis.values()) {
-//         if (typeInfo.getEntityClass().equals(clazz)) {
-//            return typeInfo;
-//         }
-//      }
-//
-//      return null;
-//   }
-//
-//   protected InMemoryEntityInfo<?> findEntityInfoForEntitySet(String entitySetName) {
-//      for (InMemoryEntityInfo<?> typeInfo : this.eis.values()) {
-//         if (typeInfo.getEntitySetName().equals(entitySetName)) {
-//            return typeInfo;
-//         }
-//      }
-//
-//      return null;
-//   }
-//
-//   /**
-//    * Transforms a POJO into a list of OProperties based on a given EdmStructuralType.
-//    *
-//    * @param obj            the POJO to transform
-//    * @param propertyModel  the PropertyModel to use to access POJO class structure and values.
-//    * @param structuralType the EdmStructuralType
-//    * @param properties     put properties into this list.
-//    */
-//   protected void addPropertiesFromObject(Object obj, PropertyModel propertyModel, EdmStructuralType structuralType, List<OProperty<?>> properties, PropertyPathHelper pathHelper) {
-//      dump("addPropertiesFromObject: " + obj.getClass().getName());
-//      for (Iterator<EdmProperty> it = structuralType.getProperties().iterator(); it.hasNext(); ) {
-//         EdmProperty property = it.next();
-//
-//         // $select projections not allowed for complex types....hmmh...why?
-//         if (structuralType instanceof EdmEntityType && !pathHelper.isSelected(property.getName())) {
-//            continue;
-//         }
-//
-//         Object value = propertyModel.getPropertyValue(obj, property.getName());
-//         dump("  prop: " + property.getName() + " val: " + value);
-//         if (value == null && !this.includeNullPropertyValues) {
-//            // this is not permitted by the spec but makes debugging wide entity types
-//            // much easier.
-//            continue;
-//         }
-//
-//         if (property.getCollectionKind() == EdmProperty.CollectionKind.NONE) {
-//            if (property.getType().isSimple()) {
-//               properties.add(OProperties.simple(property.getName(), (EdmSimpleType) property.getType(), value));
-//            } else {
-//               // complex.
-//               if (value == null) {
-//                  properties.add(OProperties.complex(property.getName(), (EdmComplexType) property.getType(), null));
-//               } else {
-//                  Class<?> propType = propertyModel.getPropertyType(property.getName());
-//                  InMemoryComplexTypeInfo<?> typeInfo = findComplexTypeInfoForClass(propType);
-//                  if (typeInfo == null) {
-//                     continue;
-//                  }
-//                  List<OProperty<?>> cprops = new ArrayList<OProperty<?>>();
-//                  addPropertiesFromObject(value, typeInfo.getPropertyModel(), (EdmComplexType) property.getType(), cprops, pathHelper);
-//                  properties.add(OProperties.complex(property.getName(), (EdmComplexType) property.getType(), cprops));
-//               }
-//            }
-//         } else {
-//            // collection.
-//            Iterable<?> values = propertyModel.getCollectionValue(obj, property.getName());
-//            OCollection.Builder<OObject> b = OCollections.newBuilder(property.getType());
-//            if (values != null) {
-//               Class<?> propType = propertyModel.getCollectionElementType(property.getName());
-//               InMemoryComplexTypeInfo<?> typeInfo = property.getType().isSimple() ? null : findComplexTypeInfoForClass(propType);
-//               if ((!property.getType().isSimple()) && typeInfo == null) {
-//                  continue;
-//               }
-//               for (Object v : values) {
-//                  if (property.getType().isSimple()) {
-//                     b.add(OSimpleObjects.create((EdmSimpleType) property.getType(), v));
-//                  } else {
-//                     List<OProperty<?>> cprops = new ArrayList<OProperty<?>>();
-//                     addPropertiesFromObject(v, typeInfo.getPropertyModel(), (EdmComplexType) property.getType(), cprops, pathHelper);
-//                     b.add(OComplexObjects.create((EdmComplexType) property.getType(), cprops));
-//                  }
-//               }
-//            }
-//            properties.add(OProperties.collection(property.getName(),
-//                                                  // hmmmh...is something is wrong here if I have to create a new EdmCollectionType?
-//                                                  new EdmCollectionType(EdmProperty.CollectionKind.Collection,
-//                                                                        property.getType()), b.build()));
-//         }
-//      }
-//      dump("done addPropertiesFromObject: " + obj.getClass().getName());
-//   }
-//
-//   protected OEntity toOEntity(EdmEntitySet ees, Object obj, PropertyPathHelper pathHelper) {
-//
-//      InMemoryEntityInfo<?> ei = this.findEntityInfoForClass(obj.getClass()); //  eis.get(ees.getName());
-//      final List<OLink> links = new ArrayList<OLink>();
-//      final List<OProperty<?>> properties = new ArrayList<OProperty<?>>();
-//
-//      Map<String, Object> keyKVPair = new HashMap<String, Object>();
-//      for (String key : ei.getKeys()) {
-//         Object keyValue = ei.getPropertyModel().getPropertyValue(obj, key);
-//         keyKVPair.put(key, keyValue);
-//      }
-//
-//      // the entity set being queried may contain objects of subtypes of the entity set's type
-//      EdmEntityType edmEntityType = (EdmEntityType) this.getMetadata().findEdmEntityType(namespace + "." + ei.getEntityTypeName());
-//
-//      // "regular" properties
-//      addPropertiesFromObject(obj, ei.getPropertyModel(), edmEntityType, properties, pathHelper);
-//
-//      // navigation properties
-//
-//      for (final EdmNavigationProperty navProp : edmEntityType.getNavigationProperties()) {
-//
-//         if (!pathHelper.isSelected(navProp.getName())) {
-//            continue;
-//         }
-//
-//         if (!pathHelper.isExpanded(navProp.getName())) {
-//            // defer
-//            if (navProp.getToRole().getMultiplicity() == EdmMultiplicity.MANY) {
-//               links.add(OLinks.relatedEntities(null, navProp.getName(), null));
-//            } else {
-//               links.add(OLinks.relatedEntity(null, navProp.getName(), null));
-//            }
-//         } else {
-//            // inline
-//            pathHelper.navigate(navProp.getName());
-//            if (navProp.getToRole().getMultiplicity() == EdmMultiplicity.MANY) {
-//               List<OEntity> relatedEntities = new ArrayList<OEntity>();
-//
-//               EdmEntitySet relEntitySet = null;
-//
-//               for (final Object entity : getRelatedPojos(navProp, obj, ei)) {
-//                  if (relEntitySet == null) {
-//                     InMemoryEntityInfo<?> oei = this.findEntityInfoForClass(entity.getClass());
-//                     relEntitySet = getMetadata().getEdmEntitySet(oei.getEntitySetName());
-//                  }
-//
-//                  relatedEntities.add(toOEntity(relEntitySet, entity, pathHelper));
-//               }
-//
-//               // relation and href will be filled in later for atom or json
-//               links.add(OLinks.relatedEntitiesInline(null, navProp.getName(), null, relatedEntities));
-//            } else {
-//               final Object entity = ei.getPropertyModel().getPropertyValue(obj, navProp.getName());
-//               OEntity relatedEntity = null;
-//
-//               if (entity != null) {
-//                  InMemoryEntityInfo<?> oei = this.findEntityInfoForClass(entity.getClass());
-//                  EdmEntitySet relEntitySet = getMetadata().getEdmEntitySet(oei.getEntitySetName());
-//                  relatedEntity = toOEntity(relEntitySet, entity, pathHelper);
-//               }
-//               links.add(OLinks.relatedEntityInline(null, navProp.getName(), null, relatedEntity));
-//            }
-//
-//            pathHelper.popPath();
-//         }
-//      }
-//
-//      return OEntities.create(ees, edmEntityType, OEntityKey.create(keyKVPair), properties, links, obj);
-//   }
-//
-//   protected Iterable<?> getRelatedPojos(EdmNavigationProperty navProp, Object srcObject, InMemoryEntityInfo<?> srcInfo) {
-//      if (navProp.getToRole().getMultiplicity() == EdmMultiplicity.MANY) {
-//         Iterable<?> i = srcInfo.getPropertyModel().getCollectionValue(srcObject, navProp.getName());
-//         return i == null ? Collections.EMPTY_LIST : i;
-//      } else {
-//         // can be null
-//         return Collections.singletonList(srcInfo.getPropertyModel().getPropertyValue(srcObject, navProp.getName()));
-//      }
-//   }
-//
-//   private static Predicate1<Object> filterToPredicate(final BoolCommonExpression filter, final PropertyModel properties) {
-//      return new Predicate1<Object>() {
-//         public boolean apply(Object input) {
-//            return InMemoryEvaluation.evaluate(filter, input, properties);
-//         }
-//      };
-//   }
-//
-//   @Override
-//   public EntitiesResponse getEntities(String entitySetName, final QueryInfo queryInfo) {
-//
-//      final RequestContext rc = RequestContext.newBuilder(RequestType.GetEntities)
-//            .entitySetName(entitySetName)
-//            .entitySet(getMetadata().getEdmEntitySet(entitySetName))
-//            .queryInfo(queryInfo)
-//            .pathHelper(new PropertyPathHelper(queryInfo)).build();
-//
-//      final InMemoryEntityInfo<?> ei = eis.get(entitySetName);
-//
-//      Enumerable<Object> objects = ei.getWithContext == null
-//            ? Enumerable.create(ei.get.apply()).cast(Object.class)
-//            : Enumerable.create(ei.getWithContext.apply(rc)).cast(Object.class);
-//
-//      return getEntitiesResponse(rc, rc.getEntitySet(), objects, ei.getPropertyModel());
-//   }
-//
-//   protected EntitiesResponse getEntitiesResponse(final RequestContext rc, final EdmEntitySet targetEntitySet, Enumerable<Object> objects, PropertyModel propertyModel) {
-//      // apply filter
-//      final QueryInfo queryInfo = rc.getQueryInfo();
-//      if (queryInfo != null && queryInfo.filter != null) {
-//         objects = objects.where(filterToPredicate(queryInfo.filter, propertyModel));
-//      }
-//
-//      // compute inlineCount, must be done after applying filter
-//      Integer inlineCount = null;
-//      if (queryInfo != null && queryInfo.inlineCount == InlineCount.ALLPAGES) {
-//         objects = Enumerable.create(objects.toList()); // materialize up front, since we're about to count
-//         inlineCount = objects.count();
-//      }
-//
-//      // apply ordering
-//      if (queryInfo != null && queryInfo.orderBy != null) {
-//         objects = orderBy(objects, queryInfo.orderBy, propertyModel);
-//      }
-//
-//      // work with oentities
-//      Enumerable<OEntity> entities = objects.select(new Func1<Object, OEntity>() {
-//         @Override
-//         public OEntity apply(Object input) {
-//            return toOEntity(targetEntitySet, input, rc.getPathHelper());
-//         }
-//      });
-//
-//      // skip records by $skipToken
-//      if (queryInfo != null && queryInfo.skipToken != null) {
-//         final Boolean[] skipping = new Boolean[]{true};
-//         entities = entities.skipWhile(new Predicate1<OEntity>() {
-//            @Override
-//            public boolean apply(OEntity input) {
-//               if (skipping[0]) {
-//                  String inputKey = input.getEntityKey().toKeyString();
-//                  if (queryInfo.skipToken.equals(inputKey)) skipping[0] = false;
-//                  return true;
-//               }
-//               return false;
-//            }
-//         });
-//      }
-//
-//      // skip records by $skip amount
-//      if (queryInfo != null && queryInfo.skip != null) {
-//         entities = entities.skip(queryInfo.skip);
-//      }
-//
-//      // apply limit
-//      int limit = this.maxResults;
-//      if (queryInfo != null && queryInfo.top != null && queryInfo.top < limit) {
-//         limit = queryInfo.top;
-//      }
-//      entities = entities.take(limit + 1);
-//
-//      // materialize OEntities
-//      List<OEntity> entitiesList = entities.toList();
-//
-//      // determine skipToken if necessary
-//      String skipToken = null;
-//      if (entitiesList.size() > limit) {
-//         entitiesList = Enumerable.create(entitiesList).take(limit).toList();
-//         skipToken = entitiesList.size() == 0 ? null : Enumerable.create(entitiesList).last().getEntityKey().toKeyString();
-//      }
-//
-//      return Responses.entities(entitiesList, targetEntitySet, inlineCount, skipToken);
-//
-//   }
-//
-//   @Override
-//   public CountResponse getEntitiesCount(String entitySetName, final QueryInfo queryInfo) {
-//
-//      final RequestContext rc = RequestContext.newBuilder(RequestType.GetEntitiesCount)
-//            .entitySetName(entitySetName)
-//            .entitySet(getMetadata().getEdmEntitySet(entitySetName))
-//            .queryInfo(queryInfo)
-//            .build();
-//
-//      final InMemoryEntityInfo<?> ei = eis.get(entitySetName);
-//
-//      final PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
-//
-//      Enumerable<Object> objects = ei.getWithContext == null
-//            ? Enumerable.create(ei.get.apply()).cast(Object.class)
-//            : Enumerable.create(ei.getWithContext.apply(rc)).cast(Object.class);
-//
-//      // apply filter
-//      if (queryInfo != null && queryInfo.filter != null) {
-//         objects = objects.where(filterToPredicate(queryInfo.filter, ei.properties));
-//      }
-//
-//      // inlineCount is not applicable to $count queries
-//      if (queryInfo != null && queryInfo.inlineCount == InlineCount.ALLPAGES) {
-//         throw new UnsupportedOperationException("$inlinecount cannot be applied to the resource segment '$count'");
-//      }
-//
-//      // ignore ordering for count
-//
-//      // work with oentities.
-//      Enumerable<OEntity> entities = objects.select(new Func1<Object, OEntity>() {
-//         @Override
-//         public OEntity apply(Object input) {
-//            return toOEntity(rc.getEntitySet(), input, pathHelper);
-//         }
-//      });
-//
-//      // skipToken is not applicable to $count queries
-//      if (queryInfo != null && queryInfo.skipToken != null) {
-//         throw new UnsupportedOperationException("Skip tokens can only be provided for requests that return collections of entities.");
-//      }
-//
-//      // skip records by $skip amount
-//      // http://services.odata.org/Northwind/Northwind.svc/Customers/$count/?$skip=5
-//      if (queryInfo != null && queryInfo.skip != null) {
-//         entities = entities.skip(queryInfo.skip);
-//      }
-//
-//      // apply $top.  maxResults is not applicable to $count but $top is.
-//      // http://services.odata.org/Northwind/Northwind.svc/Customers/$count/?$top=55
-//      int limit = Integer.MAX_VALUE;
-//      if (queryInfo != null && queryInfo.top != null && queryInfo.top < limit) {
-//         limit = queryInfo.top;
-//      }
-//      entities = entities.take(limit);
-//
-//      return Responses.count(entities.count());
-//   }
-//
-//   private Enumerable<Object> orderBy(Enumerable<Object> iter, List<OrderByExpression> orderBys, final PropertyModel properties) {
-//      for (final OrderByExpression orderBy : Enumerable.create(orderBys).reverse())
-//         iter = iter.orderBy(new Comparator<Object>() {
-//            @SuppressWarnings({"unchecked", "rawtypes"})
-//            public int compare(Object o1, Object o2) {
-//               Comparable lhs = (Comparable) InMemoryEvaluation.evaluate(orderBy.getExpression(), o1, properties);
-//               Comparable rhs = (Comparable) InMemoryEvaluation.evaluate(orderBy.getExpression(), o2, properties);
-//               return (orderBy.getDirection() == Direction.ASCENDING ? 1 : -1) * lhs.compareTo(rhs);
-//            }
-//         });
-//      return iter;
-//   }
-//
-//   OEntityKey oEntityKeyGlobal = null;
-//   EntityQueryInfo entityQueryInfoGlobal = null;
-//
-//
-//   // If there is a getEntity() call on consumer then this getEntity() method on producer is called
-//   @Override
-//   public EntityResponse getEntity(final String entitySetName, final OEntityKey entityKey, final EntityQueryInfo queryInfo) {
-//
-//      oEntityKeyGlobal = entityKey;
-//      entityQueryInfoGlobal = queryInfo;
-//
-//
-//      PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
-//
-//      RequestContext rc = RequestContext.newBuilder(RequestType.GetEntity)
-//            .entitySetName(entitySetName)
-//            .entitySet(getMetadata()
-//                             .getEdmEntitySet(entitySetName))
-//            .entityKey(entityKey)
-//            .queryInfo(queryInfo)
-//            .pathHelper(pathHelper).build();
-//
-//      final Object rt = getEntityPojo(rc);
-//      if (rt == null)
-//         throw new NotFoundException("No entity found in entityset " + entitySetName
-//                                           + " for key " + entityKey.toKeyStringWithoutParentheses()
-//                                           + " and query info " + queryInfo);
-//
-//      OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
-//
-//      return Responses.entity(oe);
-//   }
-//
-//   @Override
-//   public void mergeEntity(String entitySetName, OEntity entity) {
-//      throw new NotImplementedException();
-//   }
-//
-//   @Override
-//   public void updateEntity(String entitySetName, OEntity entity) {
-//      throw new NotImplementedException();
-//   }
-//
-//   @Override
-//   public void deleteEntity(String entitySetName, OEntityKey entityKey) {
-//      throw new NotImplementedException();
-//   }
-//
-//   @Override
-//   public EntityResponse createEntity(String entitySetName, final OEntity entity) {
-//
-//      // Is put into IspnCache (or other cache - depends on entitySetName = cacheName)
-//      // cacheName can be defined by other was - decorator, EDM - later? If needed.
-//
-//      System.out.println("\n\nI am in the createEntity method.....\n\n");
-//
-//
-//      // pass entity here
-//      // register it
-//      // and return it back as entity response
-//
-//      // need proper entity key and entitySetName
-//      // first pass via OData from consumer, register into memory and then get it via OData with proper http responses etc.
-//
-////      try {
-//
-//
-//      // TODO do this transformation in some aggregate method (using some EDM model for it?) To transfer OEntity to Pojos?
-//      InMemoryProducerExample.MyInternalCacheEntry entry = new
-//            InMemoryProducerExample.MyInternalCacheEntry((Integer) entity.getProperty("Key").getValue(),
-//                                                         (Integer) entity.getProperty("Value").getValue());
-//
-//      // TODO: why I am deleting all entries which were in that entity set?
-//
-//
-//      final Set<InMemoryProducerExample.MyInternalCacheEntry> setOfEntries = new HashSet<InMemoryProducerExample.MyInternalCacheEntry>();
-//
-//      for (OEntity oe : getEntities(entitySetName, entityQueryInfoGlobal).getEntities()) {
-//
-//         InMemoryProducerExample.MyInternalCacheEntry oldEntry = new
-//               InMemoryProducerExample.MyInternalCacheEntry((Integer) oe.getProperty("Key").getValue(),
-//                                                            (Integer) oe.getProperty("Value").getValue());
-//
-//         setOfEntries.add(oldEntry);
-//      }
-//
-//
-////         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key66", "value66"));
-////         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key77", "value77"));
-////         setOfEntries.add(new InMemoryProducerExample.MyInternalCacheEntry("key88", "value88"));
-//
-//      // And ADD NEW ENTRY HERE INTO SET and register all
-//      setOfEntries.add(entry);
-//
-//
-//      System.out.println("About to register new entry into entitySetName: " + entitySetName);
-//      System.out.println("Entry was transfered to pojo: key:" + entry.getKey() + " value: " + entry.getValue());
-//      // TODO: REGISTER entity immediately from OEntity -- do some processing in register method
-//      // TODO: rename register to sume put? I don't know
-//
-//
-//      // Store into memory (will be instance cache, which will be configured by configuration sent via OData too in init phase)
-//      // new entries are registered here: http://localhost:8887/InMemoryProducerExample.svc/CacheEntriesNew
-//      // TODO: implement register function for one entry and this use for some kind of batching
-//      register(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, entitySetName,
-//               new Func<Iterable<InMemoryProducerExample.MyInternalCacheEntry>>() {
-//                  public Iterable<InMemoryProducerExample.MyInternalCacheEntry> apply() {
-//                     return setOfEntries;
-//                  }
-//               }, Funcs.method(InMemoryProducerExample.MyInternalCacheEntry.class, InMemoryProducerExample.MyInternalCacheEntry.class, "toString"));
-//
-//      System.out.println("New entry was successfully registered!!!");
-//
-//
-////
-////      // Some more logic
-////      // connect it to the cache / cache store etc., this cache (or cache manager needs to be in some ('general') context then
-////
-////      // TODO: do I need to set some status, some response, correctly? !!!
-////
-////      return new EntityResponse() {
-////         @Override
-////         public OEntity getEntity() {
-////            return entity;
-////         }
-////      };
-////
-//////      throw new NotImplementedException();
-//      // TODO: what to return, for which object to set status response to 200 OK, to not throw exception?
-//
-//
-//      // TODO
-//      // pass entity here
-//      // register it
-//      // and return it back as entity response
-//
-//      // need proper entity key and entitySetName
-//
-//      // normally call GET ENTITY here with returning RESPONSE
-//      // pass proper parameters
-//
-//      QueryInfo queryInfo = entityQueryInfoGlobal;
-//      OEntityKey entityKey = OEntityKey.create(entry.getKey());
-//      // and set entity set name as set into which is entry stored newcacheentries.
-//
-//      PropertyPathHelper pathHelper = new PropertyPathHelper(queryInfo);
-//
-//      RequestContext rc = RequestContext.newBuilder(RequestType.GetEntity)
-//            .entitySetName(entitySetName)
-//            .entitySet(getMetadata()
-//                             .getEdmEntitySet(entitySetName))
-//            .entityKey(entityKey)
-//            .queryInfo(queryInfo)
-//            .pathHelper(pathHelper).build();
-//
-//      final Object rt = getEntityPojo(rc);
-//      if (rt == null)
-//         throw new NotFoundException("No entity found in entityset " + entitySetName
-//                                           + " for key " + entityKey.toKeyStringWithoutParentheses()
-//                                           + " and query info " + queryInfo);
-//
-//      OEntity oe = toOEntity(rc.getEntitySet(), rt, rc.getPathHelper());
-//      // it returned status CREATED succesfully  (status 201)
-//
-//      return Responses.entity(oe);
-//
-//
-////      } catch (Exception e) {
-////         System.err.println("I HAVE EXCEPTION WHILE CALLING TO POJO : " + e.getMessage() + " " + e.getStackTrace().toString());
-////      }
-////
-////      return null;
-//   }
-//
-//   @Override
-//   public EntityResponse createEntity(String entitySetName, OEntityKey entityKey, String navProp, OEntity entity) {
-//      System.out.println("THIS IS SECOND createEntity CALL and this is NOT IMPLEMENTED YET!!!");
-//      throw new NotImplementedException();
-//   }
-//
-//   @Override
-//   public BaseResponse getNavProperty(String entitySetName, OEntityKey entityKey, String navProp, QueryInfo queryInfo) {
-//
-//      RequestContext rc = RequestContext.newBuilder(RequestType.GetNavProperty)
-//            .entitySetName(entitySetName)
-//            .entitySet(getMetadata().getEdmEntitySet(entitySetName))
-//            .entityKey(entityKey)
-//            .navPropName(navProp)
-//            .queryInfo(queryInfo)
-//            .pathHelper(new PropertyPathHelper(queryInfo)).build();
-//
-//      EdmNavigationProperty navProperty = rc.getEntitySet().getType().findNavigationProperty(navProp);
-//      if (navProperty != null) {
-//         return getNavProperty(navProperty, rc);
-//      }
-//
-//      // not a NavigationProperty:
-//
-//      EdmProperty edmProperty = rc.getEntitySet().getType().findProperty(navProp);
-//      if (edmProperty == null)
-//         throw new NotFoundException("Property " + navProp + " is not found");
-//      // currently only simple types are supported
-//      EdmType edmType = edmProperty.getType();
-//
-//      if (!edmType.isSimple())
-//         throw new NotImplementedException("Only simple types are supported. Property type is '" + edmType.getFullyQualifiedTypeName() + "'");
-//
-//      // get property value...
-//      InMemoryEntityInfo<?> entityInfo = eis.get(entitySetName);
-//      Object target = getEntityPojo(rc);
-//      Object propertyValue = entityInfo.properties.getPropertyValue(target, navProp);
-//      // ... and create OProperty
-//      OProperty<?> property = OProperties.simple(navProp, (EdmSimpleType<?>) edmType, propertyValue);
-//
-//      return Responses.property(property);
-//   }
-//
-//   protected EdmEntitySet findEntitySetForNavProperty(EdmNavigationProperty navProp) {
-//      EdmEntityType et = navProp.getToRole().getType();
-//      // assumes one set per type...
-//      for (EdmEntitySet set : this.getMetadata().getEntitySets()) {
-//         if (set.getType().equals(et)) {
-//            return set;
-//         }
-//      }
-//      return null;
-//   }
-//
-//   /**
-//    * Gets the entity(s) on the target end of a NavigationProperty.
-//    *
-//    * @param navProp the navigation property
-//    * @param rc      the request context
-//    * @return a BaseResponse with either a single Entity (can be null) or a set of entities.
-//    */
-//   protected BaseResponse getNavProperty(EdmNavigationProperty navProp, RequestContext rc) {
-//
-//      // First, get the source POJO.
-//      Object obj = getEntityPojo(rc);
-//      Iterable relatedPojos = this.getRelatedPojos(navProp, obj, this.findEntityInfoForClass(obj.getClass()));
-//
-//      EdmEntitySet targetEntitySet = findEntitySetForNavProperty(navProp);
-//
-//      if (navProp.getToRole().getMultiplicity() == EdmMultiplicity.MANY) {
-//         // apply filter, orderby, etc.
-//         return getEntitiesResponse(rc, targetEntitySet, Enumerable.create(relatedPojos), findEntityInfoForEntitySet(targetEntitySet.getName()).getPropertyModel());
-//      } else {
-//         return Responses.entity(this.toOEntity(targetEntitySet, relatedPojos.iterator().next(), rc.getPathHelper()));
-//      }
-//   }
-//
-//   @Override
-//   public CountResponse getNavPropertyCount(String entitySetName, OEntityKey entityKey, String navProp, QueryInfo queryInfo) {
-//      throw new NotImplementedException();
-//   }
-//
-//   @Override
-//   public EntityIdResponse getLinks(OEntityId sourceEntity, String targetNavProp) {
-//      throw new NotImplementedException();
-//   }
-//
-//   @Override
-//   public void createLink(OEntityId sourceEntity, String targetNavProp, OEntityId targetEntity) {
-//      throw new NotImplementedException();
-//   }
-//
-//   @Override
-//   public void updateLink(OEntityId sourceEntity, String targetNavProp, OEntityKey oldTargetEntityKey, OEntityId newTargetEntity) {
-//      throw new NotImplementedException();
-//   }
-//
-//   @Override
-//   public void deleteLink(OEntityId sourceEntity, String targetNavProp, OEntityKey targetEntityKey) {
-//      throw new NotImplementedException();
-//   }
-//
-//   @Override
-//   public BaseResponse callFunction(EdmFunctionImport name, java.util.Map<String, OFunctionParameter> params, QueryInfo queryInfo) {
-//      throw new NotImplementedException();
-//   }
-//
-//   @Override
-//   public <TExtension extends OExtension<ODataProducer>> TExtension findExtension(Class<TExtension> clazz) {
-//      return null;
-//   }
-//
-//   public static class RequestContext {
-//
-//      public enum RequestType {
-//         GetEntity, GetEntities, GetEntitiesCount, GetNavProperty
-//      }
-//
-//      ;
-//
-//      public final RequestType requestType;
-//      private final String entitySetName;
-//      private EdmEntitySet entitySet;
-//      private final String navPropName;
-//      private final OEntityKey entityKey;
-//      private final QueryInfo queryInfo;
-//      private final PropertyPathHelper pathHelper;
-//
-//      public RequestType getRequestType() {
-//         return requestType;
-//      }
-//
-//      public String getEntitySetName() {
-//         return entitySetName;
-//      }
-//
-//      public EdmEntitySet getEntitySet() {
-//         return entitySet;
-//      }
-//
-//      public String getNavPropName() {
-//         return navPropName;
-//      }
-//
-//      public OEntityKey getEntityKey() {
-//         return entityKey;
-//      }
-//
-//      public QueryInfo getQueryInfo() {
-//         return queryInfo;
-//      }
-//
-//      public PropertyPathHelper getPathHelper() {
-//         return pathHelper;
-//      }
-//
-//      public static Builder newBuilder(RequestType requestType) {
-//         return new Builder().requestType(requestType);
-//      }
-//
-//      public static class Builder {
-//
-//         private RequestType requestType;
-//         private String entitySetName;
-//         private EdmEntitySet entitySet;
-//         private String navPropName;
-//         private OEntityKey entityKey;
-//         private QueryInfo queryInfo;
-//         private PropertyPathHelper pathHelper;
-//
-//         public Builder requestType(RequestType value) {
-//            this.requestType = value;
-//            return this;
-//         }
-//
-//         public Builder entitySetName(String value) {
-//            this.entitySetName = value;
-//            return this;
-//         }
-//
-//         public Builder entitySet(EdmEntitySet value) {
-//            this.entitySet = value;
-//            return this;
-//         }
-//
-//         public Builder navPropName(String value) {
-//            this.navPropName = value;
-//            return this;
-//         }
-//
-//         public Builder entityKey(OEntityKey value) {
-//            this.entityKey = value;
-//            return this;
-//         }
-//
-//         public Builder queryInfo(QueryInfo value) {
-//            this.queryInfo = value;
-//            return this;
-//         }
-//
-//         public Builder pathHelper(PropertyPathHelper value) {
-//            this.pathHelper = value;
-//            return this;
-//         }
-//
-//         public RequestContext build() {
-//            return new RequestContext(requestType, entitySetName, entitySet, navPropName, entityKey, queryInfo, pathHelper);
-//         }
-//      }
-//
-//      private RequestContext(RequestType requestType, String entitySetName, EdmEntitySet entitySet,
-//                             String navPropName, OEntityKey entityKey, QueryInfo queryInfo, PropertyPathHelper pathHelper) {
-//         this.requestType = requestType;
-//         this.entitySetName = entitySetName;
-//         this.entitySet = entitySet;
-//         this.navPropName = navPropName;
-//         this.entityKey = entityKey;
-//         this.queryInfo = queryInfo;
-//         this.pathHelper = pathHelper;
-//      }
-//   }
-//
-//   /**
-//    * Given an entity set and an entity key, returns the pojo that is that entity instance. The default implementation
-//    * iterates over the entire set of pojos to find the desired instance.
-//    *
-//    * @param rc the current ReqeustContext, may be valuable to the ei.getWithContext impl
-//    * @return the pojo
-//    */
-//   @SuppressWarnings("unchecked")
-//   protected Object getEntityPojo(final RequestContext rc) {
-//      final InMemoryEntityInfo<?> ei = eis.get(rc.getEntitySetName());
-//
-//      final String[] keyList = ei.keys;
-//
-//      Iterable<Object> iter = ei.getWithContext == null ? ((Iterable<Object>) ei.get.apply())
-//            : ((Iterable<Object>) ei.getWithContext.apply(rc));
-//
-//      final Object rt = Enumerable.create(iter).firstOrNull(new Predicate1<Object>() {
-//         public boolean apply(Object input) {
-//            HashMap<String, Object> idObjectMap = ei.id.apply(input);
-//
-//            if (keyList.length == 1) {
-//               Object idValue = rc.getEntityKey().asSingleValue();
-//               return idObjectMap.get(keyList[0]).equals(idValue);
-//            } else if (keyList.length > 1) {
-//               for (String key : keyList) {
-//                  Object curValue = null;
-//                  Iterator<OProperty<?>> keyProps = rc.getEntityKey().asComplexProperties().iterator();
-//                  while (keyProps.hasNext()) {
-//                     OProperty<?> keyProp = keyProps.next();
-//                     if (keyProp.getName().equalsIgnoreCase(key)) {
-//                        curValue = keyProp.getValue();
-//                     }
-//                  }
-//                  if (curValue == null) {
-//                     return false;
-//                  } else if (!idObjectMap.get(key).equals(curValue)) {
-//                     return false;
-//                  }
-//               }
-//               return true;
-//            } else {
-//               return false;
-//            }
-//         }
-//      });
-//      return rt;
-//   }
-//
-//   private enum TriggerType {
-//      Before, After
-//   }
-//
-//   ;
-//
-//   protected void fireUnmarshalEvent(Object pojo, OStructuralObject sobj, TriggerType ttype)
-//         throws IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-//      try {
-//         Method m = pojo.getClass().getMethod(ttype == TriggerType.Before ? "beforeOEntityUnmarshal" : "afterOEntityUnmarshal", OStructuralObject.class);
-//         if (m != null) {
-//            m.invoke(pojo, sobj);
-//         }
-//      } catch (NoSuchMethodException ex) {}
-//   }
-//
-//   /**
-//    * Transforms an OComplexObject into a POJO of the given class
-//    */
-//   public <T> T toPojo(OComplexObject entity, Class<T> pojoClass) throws InstantiationException,
-//                                                                         IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-//      InMemoryComplexTypeInfo<?> e = this.findComplexTypeInfoForClass(pojoClass);
-//
-//      T pojo = fillInPojo(entity, this.getMetadata().findEdmComplexType(
-//            this.namespace + "." + e.getTypeName()), e.getPropertyModel(), pojoClass);
-//
-//      fireUnmarshalEvent(pojo, entity, TriggerType.After);
-//      return pojo;
-//   }
-//
-//   /**
-//    * Populates a new POJO instance of type pojoClass using data from the given structural object.
-//    */
-//   protected <T> T fillInPojo(OStructuralObject sobj, EdmStructuralType stype, PropertyModel propertyModel,
-//                              Class<T> pojoClass) throws InstantiationException, IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-//
-//      T pojo = pojoClass.newInstance();
-//      fireUnmarshalEvent(pojo, sobj, TriggerType.Before);
-//
-//      for (Iterator<EdmProperty> it = stype.getProperties().iterator(); it.hasNext(); ) {
-//         EdmProperty property = it.next();
-//         Object value = null;
-//         try {
-//            value = sobj.getProperty(property.getName()).getValue();
-//         } catch (Exception ex) {
-//            // property not define on object
-//            if (property.isNullable()) {
-//               continue;
-//            } else {
-//               throw new RuntimeException("missing required property " + property.getName());
-//            }
-//         }
-//
-//         if (property.getCollectionKind() == EdmProperty.CollectionKind.NONE) {
-//            if (property.getType().isSimple()) {
-//               // call the setter.
-//               propertyModel.setPropertyValue(pojo, property.getName(), value);
-//            } else {
-//               // complex.
-//               // hmmh, value is a Collection<OProperty<?>>...why is it not an OComplexObject.
-//
-//               propertyModel.setPropertyValue(
-//                     pojo,
-//                     property.getName(),
-//                     value == null
-//                           ? null
-//                           : toPojo(
-//                           OComplexObjects.create((EdmComplexType) property.getType(), (List<OProperty<?>>) value),
-//                           propertyModel.getPropertyType(property.getName())));
-//            }
-//         } else {
-//            // collection.
-//            OCollection<? extends OObject> collection = (OCollection<? extends OObject>) value;
-//            List<Object> pojos = new ArrayList<Object>();
-//            for (OObject item : collection) {
-//               if (collection.getType().isSimple()) {
-//                  pojos.add(((OSimpleObject) item).getValue());
-//               } else {
-//                  // turn OComplexObject into a pojo
-//                  pojos.add(toPojo((OComplexObject) item, propertyModel.getCollectionElementType(property.getName())));
-//               }
-//            }
-//            propertyModel.setCollectionValue(pojo, property.getName(), pojos);
-//         }
-//      }
-//
-//      return pojo;
-//   }
-//
-//   /*
-//   * Design note:
-//   * toPojo is functionality that is useful on both the producer and consumer side.
-//   * I'm putting it in the producer class for now although I suspect there is a
-//   * more elegant design that factors out POJO Classes and PropertyModels into
-//   * some kind of "PojoModelDefinition" class.  The producer side would then
-//   * layer and extended definition that defined how the PojoModelDefinition maps
-//   * to entity sets and such.
-//   *
-//   * with all that said, hopefully this start is useful.  I'm going to use it on
-//   * our producer side for now to handle createEntity payloads.
-//   */
-//
-//   /**
-//    * Transforms the given entity into a POJO of type pojoClass.
-//    */
-//   public <T> T toPojo(OEntity entity, Class<T> pojoClass) throws InstantiationException,
-//                                                                  IllegalAccessException, IllegalArgumentException, InvocationTargetException {
-//
-//      InMemoryEntityInfo<?> e = this.findEntityInfoForClass(pojoClass);
-//
-//      // so, how is this going to work?
-//      // we have the PropertyModel available.  We can lookup the EdmStructuredType if necessary.
-//
-//      EdmEntitySet entitySet = this.getMetadata().findEdmEntitySet(e.getEntitySetName());
-//
-//      T pojo = fillInPojo(entity, entitySet.getType(), e.getPropertyModel(), pojoClass);
-//
-//      // nav props
-//      for (Iterator<EdmNavigationProperty> it = entitySet.getType().getNavigationProperties().iterator(); it.hasNext(); ) {
-//         EdmNavigationProperty np = it.next();
-//         OLink link = null;
-//         try {
-//            link = entity.getLink(np.getName(), OLink.class);
-//         } catch (IllegalArgumentException nolinkex) {
-//            continue;
-//         }
-//
-//         if (link.isInline()) {
-//            if (link.isCollection()) {
-//               List<Object> pojos = new ArrayList<Object>();
-//               for (OEntity relatedEntity : link.getRelatedEntities()) {
-//                  pojos.add(toPojo(relatedEntity, e.getPropertyModel().getCollectionElementType(np.getName())));
-//               }
-//               e.getPropertyModel().setCollectionValue(pojo, np.getName(), pojos);
-//            } else {
-//               e.getPropertyModel().setPropertyValue(pojo, np.getName(),
-//                                                     toPojo(link.getRelatedEntity(), e.getPropertyModel().getPropertyType(np.getName())));
-//            }
-//         } // else ignore deferred links.
-//      }
-//
-//      fireUnmarshalEvent(pojo, entity, TriggerType.After);
-//      return pojo;
-//   }
-//
-//
-//   // TODO: reuse this - everything is implemented and working
-//   // TODO: just use it and map it to the cache
-//
-//   // TODO: re-implement this as some HANDLER for cache
-//   // TODO: this class will provide something like provider for accessing ISPN cache!
-//   public class InMemoryEntityInfo<TEntity> {
-//
-//      // we are maintaining collection of these entities - they are mapped to EntitySetName in [eis] hash map
-//      // TODO: how about maintaining cache inside of instance of this class??
-//      // TODO: and directly access cache here
-//
-//      String entitySetName;
-//      String entityTypeName;
-//      String[] keys;
-//      Class<TEntity> entityClass;
-//      Func<Iterable<TEntity>> get; //returning defined apply()
-//      Func1<RequestContext, Iterable<TEntity>> getWithContext;
-//      Func1<Object, HashMap<String, Object>> id;
-//      PropertyModel properties;
-//      boolean hasStream;
-//
-//      public String getEntitySetName() {
-//         return entitySetName;
-//      }
-//
-//      public String getEntityTypeName() {
-//         return entityTypeName;
-//      }
-//
-//      public String[] getKeys() {
-//         return keys;
-//      }
-//
-//      public Class<TEntity> getEntityClass() {
-//         return entityClass;
-//      }
-//
-//      public Func<Iterable<TEntity>> getGet() {
-//         return get;
-//      }
-//
-//      public Func1<RequestContext, Iterable<TEntity>> getGetWithContext() {
-//         System.out.println("Call from getGetWithContext method - return type was changed!!!");
-//         return getWithContext;
-//      }
-//
-//      public Func1<Object, HashMap<String, Object>> getId() {
-//         return id;
-//      }
-//
-//      public PropertyModel getPropertyModel() {
-//         return properties;
-//      }
-//
-//      public boolean getHasStream() {
-//         return hasStream;
-//      }
-//
-//      public Class<?> getSuperClass() {
-//         return entityClass.getSuperclass() != null && !entityClass.getSuperclass().equals(Object.class) ? entityClass.getSuperclass() : null;
-//      }
-//   }
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//
-//   public class InMemoryEdmGenerator implements EdmGenerator {
-//      private static final boolean DUMP = false;
-////      private static void dump(String msg) { if (DUMP) System.out.println(msg); }
-//
-//      private final Logger log = Logger.getLogger(getClass().getName());
-//
-//      private final String namespace;
-//      private final String containerName;
-//      protected final InMemoryTypeMapping typeMapping;
-//      protected final Map<String, InMemoryEntityInfo<?>> eis; // key: EntitySet name
-//      protected final Map<String, InMemoryComplexTypeInfo<?>> complexTypeInfo; // key complex type edm type name
-//      protected final List<EdmComplexType.Builder> edmComplexTypes = new ArrayList<EdmComplexType.Builder>();
-//
-//      // Note, assumes each Java type will only have a single Entity Set defined for it.
-//      protected final Map<Class<?>, String> entitySetNameByClass = new HashMap<Class<?>, String>();
-//
-//      // build these as we go now.
-//      protected Map<String, EdmEntityType.Builder> entityTypesByName = new HashMap<String, EdmEntityType.Builder>();
-//      protected Map<String, EdmEntitySet.Builder> entitySetsByName = new HashMap<String, EdmEntitySet.Builder>();
-//      protected final boolean flatten;
-//
-//      public InMemoryEdmGenerator(String namespace, String containerName, InMemoryTypeMapping typeMapping,
-//                                  String idPropertyName, Map<String, InfinispanProducer.InMemoryEntityInfo<?>> eis,
-//                                  Map<String, InMemoryComplexTypeInfo<?>> complexTypes) {
-//         this(namespace, containerName, typeMapping, idPropertyName, eis, complexTypes, true);
-//      }
-//
-//      public InMemoryEdmGenerator(String namespace, String containerName, InMemoryTypeMapping typeMapping,
-//                                  String idPropertyName, Map<String, InfinispanProducer.InMemoryEntityInfo<?>> eis,
-//                                  Map<String, InMemoryComplexTypeInfo<?>> complexTypes, boolean flatten) {
-//         this.namespace = namespace;
-//         this.containerName = containerName;
-//         this.typeMapping = typeMapping;
-//         this.eis = eis;
-//         this.complexTypeInfo = complexTypes;
-//
+package org.tsykora.odata.producer;
+
+import java.io.IOException;
+import java.io.InputStream;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.logging.Logger;
+
+import org.codehaus.jackson.map.ObjectMapper;
+import org.core4j.Func;
+import org.core4j.Func1;
+import org.infinispan.Cache;
+import org.infinispan.manager.DefaultCacheManager;
+import org.infinispan.query.CacheQuery;
+import org.infinispan.query.SearchManager;
+import org.odata4j.core.OEntity;
+import org.odata4j.core.OEntityId;
+import org.odata4j.core.OEntityKey;
+import org.odata4j.core.OExtension;
+import org.odata4j.core.OFunctionParameter;
+import org.odata4j.core.OSimpleObject;
+import org.odata4j.edm.EdmComplexType;
+import org.odata4j.edm.EdmDataServices;
+import org.odata4j.edm.EdmDecorator;
+import org.odata4j.edm.EdmEntityContainer;
+import org.odata4j.edm.EdmEntitySet;
+import org.odata4j.edm.EdmEntityType;
+import org.odata4j.edm.EdmFunctionImport;
+import org.odata4j.edm.EdmFunctionParameter;
+import org.odata4j.edm.EdmGenerator;
+import org.odata4j.edm.EdmSchema;
+import org.odata4j.edm.EdmSimpleType;
+import org.odata4j.edm.EdmType;
+import org.odata4j.exceptions.NotImplementedException;
+import org.odata4j.producer.BaseResponse;
+import org.odata4j.producer.CountResponse;
+import org.odata4j.producer.EntitiesResponse;
+import org.odata4j.producer.EntityIdResponse;
+import org.odata4j.producer.EntityQueryInfo;
+import org.odata4j.producer.EntityResponse;
+import org.odata4j.producer.ODataContext;
+import org.odata4j.producer.ODataProducer;
+import org.odata4j.producer.QueryInfo;
+import org.odata4j.producer.Responses;
+import org.odata4j.producer.edm.MetadataProducer;
+import org.odata4j.producer.inmemory.BeanBasedPropertyModel;
+import org.odata4j.producer.inmemory.EnumsAsStringsPropertyModelDelegate;
+import org.odata4j.producer.inmemory.InMemoryComplexTypeInfo;
+import org.odata4j.producer.inmemory.InMemoryTypeMapping;
+import org.odata4j.producer.inmemory.PropertyModel;
+
+/**
+ * ODataProducer with implemented direct access to Infinispan Cache.
+ */
+public class InfinispanProducer implements ODataProducer {
+
+    private static final boolean DUMP = false;
+    private final Logger log = Logger.getLogger(InfinispanProducer.class.getName());
+
+    private static void dump(Object msg) {
+        if (DUMP) {
+            System.out.println(msg);
+        }
+    }
+
+    public static final String ID_PROPNAME = "EntityId";
+    private final String namespace;
+    private final String containerName;
+    private final int maxResults;
+
+    // preserve the order of registration
+    private final Map<String, InMemoryEntityInfo<?>> eis = new LinkedHashMap<String, InMemoryEntityInfo<?>>();
+
+    private final Map<String, InMemoryComplexTypeInfo<?>> complexTypes = new LinkedHashMap<String, InMemoryComplexTypeInfo<?>>();
+    private EdmDataServices metadata;
+    private final EdmDecorator decorator;
+    private final MetadataProducer metadataProducer;
+    private final InMemoryTypeMapping typeMapping;
+    private final boolean flattenEdm;
+    private static final int DEFAULT_MAX_RESULTS = 100;
+
+    // TODO: properly decide: not static??? - cache instance is running with producer instance
+    private DefaultCacheManager defaultCacheManager;
+    // for faster cache access
+    private HashMap<String, Cache> caches = new HashMap<String, Cache>();
+
+
+    /**
+     * Creates a new instance of an in-memory POJO producer.
+     *
+     * @param namespace the namespace of the schema registrations
+     */
+    public InfinispanProducer(String namespace, String ispnConfigFile) {
+        this(namespace, DEFAULT_MAX_RESULTS, ispnConfigFile);
+    }
+
+    /**
+     * Creates a new instance of an in-memory POJO producer.
+     *
+     * @param namespace  the namespace of the schema registrations
+     * @param maxResults the maximum number of entities to return in a single call
+     */
+    public InfinispanProducer(String namespace, int maxResults, String ispnConfigFile) {
+        this(namespace, null, maxResults, null, null, ispnConfigFile);
+    }
+
+    /**
+     * Creates a new instance of an in-memory POJO producer.
+     *
+     * @param namespace     the namespace of the schema registrations
+     * @param containerName the container name for generated metadata
+     * @param maxResults    the maximum number of entities to return in a single call
+     * @param decorator     a decorator to use for edm customizations
+     * @param typeMapping   optional mapping between java types and edm types, null for default
+     */
+    public InfinispanProducer(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
+                              String ispnConfigFile) {
+        this(namespace, containerName, maxResults, decorator, typeMapping,
+                true, ispnConfigFile); // legacy: flatten edm
+    }
+
+    /**
+     * Do everything important here while creating new producer instance.
+     */
+    public <TEntity, TKey> InfinispanProducer(String namespace, String containerName, int maxResults,
+                                              EdmDecorator decorator, InMemoryTypeMapping typeMapping,
+                                              boolean flattenEdm, String ispnConfigFile) {
+        this.namespace = namespace;
+        this.containerName = containerName != null && !containerName.isEmpty() ? containerName : "Container";
+        this.maxResults = maxResults;
+        this.decorator = decorator;
+        this.metadataProducer = new MetadataProducer(this, decorator);
+        this.typeMapping = typeMapping == null ? InMemoryTypeMapping.DEFAULT : typeMapping;
+        this.flattenEdm = flattenEdm;
+
+
+        // TODO add possibility for passing configurations (global, local)
+        try {
+            // true = start it + start defined caches
+            defaultCacheManager = new DefaultCacheManager(ispnConfigFile, true);
+
+
+            Set<String> cacheNames = defaultCacheManager.getCacheNames();
+
+            for (String cacheName : cacheNames) {
+//            dump("Starting cache with name " + cacheName + " on defaultCacheManager...");
+//            defaultCacheManager.startCache(cacheName);
+
+                dump("Registering cache with name " + cacheName + " in Producer...");
+                // cacheName = entitySetName
+                eis.put(cacheName, null);
+            }
+
+        } catch (IOException e) {
+            System.out.println(" PROBLEMS WITH CREATING DEFAULT CACHE MANAGER! ");
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Look into global map for registered cache. Avoiding multiple asking CacheManager.
+     * <p/>
+     * If there is no cache with given name, get it from CacheManager and store.
+     *
+     * @param cacheName
+     * @return
+     */
+    private Cache getCache(String cacheName) {
+        if (caches.get(cacheName) != null) {
+
+            return this.caches.get(cacheName);
+
+        } else {
+
+            try {
+                System.out.println("Starting cache with name " + cacheName + " on defaultCacheManager...");
+                defaultCacheManager.startCache(cacheName);
+                System.out.println("Cache started!....");
+                Cache cache = defaultCacheManager.getCache(cacheName);
+
+                cache.put("simpleKey1", "simpleValue1"); // starts cache
+                dump("Cache " + cacheName + " status: " + cache.getStatus());
+
+                System.out.println(" simpleKey1\", \"simpleValue1 ------ PUTTED INTO CACHE, now some json stuff:");
+
+                this.caches.put(cacheName, cache);
+                return cache;
+            } catch (Exception e) {
+                System.out.println(" \n\n ***** ERROR DURING STARTING CACHE __ DURING EXPERIMENTS WITH INDEXING ***** \n\n");
+                e.printStackTrace();
+            }
+        }
+        return this.caches.get(cacheName);
+    }
+
+    @Override
+    public EdmDataServices getMetadata() {
+        if (metadata == null) {
+            metadata = newEdmGenerator(namespace, typeMapping, ID_PROPNAME, eis, complexTypes).generateEdm(decorator).build();
+        }
+        return metadata;
+    }
+
+    protected InMemoryEdmGenerator newEdmGenerator(String namespace, InMemoryTypeMapping typeMapping, String idPropName, Map<String, InMemoryEntityInfo<?>> eis,
+                                                   Map<String, InMemoryComplexTypeInfo<?>> complexTypesInfo) {
+        return new InMemoryEdmGenerator(namespace, containerName, typeMapping, ID_PROPNAME, eis, complexTypesInfo, this.flattenEdm);
+    }
+
+    @Override
+    public MetadataProducer getMetadataProducer() {
+        return metadataProducer;
+    }
+
+    @Override
+    public void close() {
+    }
+
+
+    // Not supported -- use defined OData functions
+    @Override
+    public EntitiesResponse getEntities(ODataContext context, String entitySetName, final QueryInfo queryInfo) {
+        throw new NotImplementedException();
+    }
+
+
+    // Not supported -- use defined OData functions
+    @Override
+    public CountResponse getEntitiesCount(ODataContext context, String entitySetName, final QueryInfo queryInfo) {
+        throw new NotImplementedException();
+    }
+
+    // Not supported -- use defined OData functions
+    @Override
+    public EntityResponse getEntity(ODataContext context, final String entitySetName, final OEntityKey entityKey, final EntityQueryInfo queryInfo) {
+        throw new NotImplementedException();
+    }
+
+    // Not supported -- use defined OData functions
+    @Override
+    public void mergeEntity(ODataContext context, String entitySetName, OEntity entity) {
+        throw new NotImplementedException();
+    }
+
+    // Not supported -- use defined OData functions
+    @Override
+    public void updateEntity(ODataContext context, String entitySetName, OEntity entity) {
+        throw new NotImplementedException();
+    }
+
+
+    // Not supported -- use defined OData functions
+    @Override
+    public void deleteEntity(ODataContext context, String entitySetName, OEntityKey entityKey) {
+        throw new NotImplementedException();
+    }
+
+    // Not supported -- use defined OData functions
+    @Override
+    public EntityResponse createEntity(ODataContext context, String entitySetName, final OEntity entity) {
+        throw new NotImplementedException();
+    }
+
+    // Not supported -- use defined OData functions
+    @Override
+    public EntityResponse createEntity(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, OEntity entity) {
+        throw new NotImplementedException();
+    }
+
+    // Not supported (How to navigate entities inside NOSQL, schema-less store?)
+    @Override
+    public BaseResponse getNavProperty(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, QueryInfo queryInfo) {
+        throw new NotImplementedException();
+    }
+
+    // Not supported (How to navigate entities inside NOSQL, schema-less store?)
+    @Override
+    public CountResponse getNavPropertyCount(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, QueryInfo queryInfo) {
+        throw new NotImplementedException();
+    }
+
+    // Not supported (How to navigate entities inside NOSQL, schema-less store? Any links here? Check OData and confirm.)
+    @Override
+    public EntityIdResponse getLinks(ODataContext context, OEntityId sourceEntity, String targetNavProp) {
+        throw new NotImplementedException();
+    }
+
+    // Not supported (How to navigate entities inside NOSQL, schema-less store? Any links here? Check OData and confirm.)
+    @Override
+    public void createLink(ODataContext context, OEntityId sourceEntity, String targetNavProp, OEntityId targetEntity) {
+        throw new NotImplementedException();
+    }
+
+    // Not supported (How to navigate entities inside NOSQL, schema-less store? Any links here? Check OData and confirm.)
+    @Override
+    public void updateLink(ODataContext context, OEntityId sourceEntity, String targetNavProp, OEntityKey oldTargetEntityKey, OEntityId newTargetEntity) {
+        throw new NotImplementedException();
+    }
+
+    // Not supported (How to navigate entities inside NOSQL, schema-less store? Any links here? Check OData and confirm.)
+    @Override
+    public void deleteLink(ODataContext context, OEntityId sourceEntity, String targetNavProp, OEntityKey targetEntityKey) {
+        throw new NotImplementedException();
+    }
+
+
+    /**
+     * HTTP POST request accepted, issued on service/cacheName_put?params...&$filter=... URI
+     *
+     * @return
+     */
+    private BaseResponse callFunctionPut(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue) {
+
+        System.out.println("Putting into " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
+        getCache(setNameWhichIsCacheName).put(entryKey, cachedValue);
+
+        // TODO: avoid this when FLAG don't return when put = true
+//        if (flag) {
+//            TODO: prepare BaseResponse? and FunctionResource.java for it!
+//            return null; // clients will get NO_CONTENT response (It is successful kind of response!)
+//        }
+        return callFunctionGet(setNameWhichIsCacheName, entryKey, null);
+    }
+
+
+    public BaseResponse callFunctionGet(String setNameWhichIsCacheName, String entryKey,
+                                        QueryInfo queryInfo) {
+
+        List<Object> queryResult = null;
+
+        if (entryKey != null) {
+            // ignore query and return value directly
+            CachedValue value = (CachedValue) getCache(setNameWhichIsCacheName).get(entryKey);
+            if (value != null) {
+                // TODO: look closely at formatting this
+                return Responses.simple(EdmSimpleType.STRING, "jsonValue", value.getJsonValueWrapper().getJson());
+            } else {
+                // client will get NO_CONTENT (204)
+                return null;
+            }
+
+        } else {
+            // I need some filter
+            // TODO: don't process filters when cache is not Queryable (Log warning + serve only direct gets) !!! perf+
+
+            // Maybe remove this check?
+            if (queryInfo.filter == null) {
+                return Responses.error(new OErrorImpl("Parameter 'key' is not specified, therefore we want to get entries using query filter." +
+                        " \n However, $filter is not specified as well."));
+            }
+
+            System.out.println("Query report for $filter " + queryInfo.filter.toString());
+
+            SearchManager searchManager = org.infinispan.query.Search.getSearchManager(getCache(setNameWhichIsCacheName));
+            MapQueryExpressionVisitor mapQueryExpressionVisitor =
+                    new MapQueryExpressionVisitor(searchManager.buildQueryBuilderForClass(CachedValue.class).get());
+            mapQueryExpressionVisitor.visit(queryInfo.filter);
+
+            // Query cache here adn get results based on constructed Lucene query
+            CacheQuery queryFromVisitor = searchManager.getQuery(mapQueryExpressionVisitor.getBuiltLuceneQuery(),
+                    CachedValue.class);
+            // pass query result to the function final response
+            queryResult = queryFromVisitor.list();
+
+            System.out.println(" \n\n SEARCH RESULTS GOT BY VISITOR!!! APPROACH: size:" + queryResult.size() + ":");
+
+            for (Object one_result : queryResult) {
+                System.out.println(one_result);
+            }
+
+            // *********************************************************************************
+            // We have set queryResult object containing list of results from querying the cache
+            // Now apply other filters/order by/top/skip etc. requests
+
+            if (queryInfo.top != null) {
+                // client wants to only a specified count of first "top" results
+                // use it for collections of objects??
+            }
+
+            if (queryInfo.skip != null) {
+                // client wants to skip particular number of results -- skip them and return only what's requested
+                // use it for collections of objects??
+
+            }
+
+            if (queryInfo.orderBy != null) {
+                // TODO: I hope this can be definitely added into LUCENE QUERY builder and we can get back
+                // already ordered objects
+            }
+        }
+
+        if (queryResult.size() > 0) {
+            StringBuilder sb = new StringBuilder();
+            // build response
+            for (Object one_result : queryResult) {
+                CachedValue cv = (CachedValue) one_result;
+                sb.append(cv.getJsonValueWrapper().getJson());
+                sb.append("\n");
+            }
+            // stack more json strings responses
+            return Responses.simple(EdmSimpleType.STRING, "jsonValue", sb.toString());
+        } else {
+            // no results found, clients will get NO_CONTENT response
+            return null;
+        }
+    }
+
+    public BaseResponse callFunctionRemove(String setNameWhichIsCacheName, String entryKey) {
+        // TODO: later, avoid returning by using flag (or add option to call uri)
+        CachedValue removed = (CachedValue) getCache(setNameWhichIsCacheName).remove(entryKey);
+        return Responses.simple(EdmSimpleType.STRING, "jsonValue", removed.getJsonValueWrapper().getJson());
+    }
+
+    public BaseResponse callFunctionReplace(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue) {
+
+        System.out.println("Replacing in " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
+        getCache(setNameWhichIsCacheName).replace(entryKey, cachedValue);
+
+        // TODO: avoid this when FLAG don't return when put = true
+//        if (flag) {
+//            TODO: prepare BaseResponse? and FunctionResource.java for it!
+//            return null; // clients will get NO_CONTENT response (It is successful kind of response!)
+//        }
+        return callFunctionGet(setNameWhichIsCacheName, entryKey, null);
+    }
+
+    /**
+     * The heart of our producer.
+     * We can go the way of having cacheName_get/put/delete/update and call particular aforementioned methods
+     * (i.e. create, delete, update, get entity)
+     * <p/>
+     * TODO: implement real - cache related functions like: Start, Stop etc.
+     * <p/>
+     * <p/>
+     * Use it like: http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_get?key=%27jsonKey1%27"
+     * Use HTTP POST for create / PUT entity into the cache
+     *
+     * @param context
+     * @param function
+     * @param params
+     * @param queryInfo
+     * @return
+     */
+    @Override
+    public BaseResponse callFunction(ODataContext context, EdmFunctionImport function, Map<String, OFunctionParameter> params,
+                                     QueryInfo queryInfo) {
+
+
+        // every function call need to have key or queryInfo specified
+        // TODO: modify condition to not only .filter (but also other constraints?) queryInfo != null is not enough
+        // TODO: it's not null for every case I think
+
+
+        if (params.get("key") != null || queryInfo.filter != null) {
+
+            // TODO: what is mutual for all, at least 2 function should be here and pass as a parameter to child function call
+
+            String setNameWhichIsCacheName = function.getEntitySet().getName();
+            CachedValue cachedValue = null;
+
+            String entryKey = null;
+            if (params.get("key") != null) {
+                entryKey = params.get("key").getValue().toString();
+            }
+
+            // Extract client payload in case of POST and PUT
+            boolean extractClientPayload = (function.getHttpMethod().equals("POST") && function.getName().endsWith("_put")) ||
+                    ((function.getHttpMethod().equals("PUT") && function.getName().endsWith("_replace")));
+
+            if (extractClientPayload) {
+                // TODO: Q: why is that JSON encoded into ByteArrayStream on server side? Can ve avoid this?
+                OSimpleObject payloadOSimpleObject = (OSimpleObject) params.get("payload").getValue();
+                try {
+
+                    InputStream jsonInputStream = (InputStream) payloadOSimpleObject.getValue();
+
+//                    ByteArrayInputStream inputStream = (ByteArrayInputStream) payloadOSimpleObject.getValue();
+//                    BufferedReader rd = new BufferedReader(new InputStreamReader(inputStream));
+
+
+//                    BufferedReader rd = new BufferedReader(new InputStreamReader((InputStream) payloadOSimpleObject.getValue()));
+//                    String result = "";
+//                    String line;
+//                    while ((line = rd.readLine()) != null) {
+//                        result += line;
+//                    }
+//                    rd.close();
+//
+//
+//                    dump("Extracted JSON from payload: " + result);
+
+                    // TODO: store only jsonValue field into the cache for indexing...
+                    // TODO: EXTRACT it from { "d" : { "jsonValue" : "ENTRY_FOR_INDEX" } } format
+
+                    Object extractedJsonValue = "";
+
+//                    result:
+//                    {"d" : {"jsonValue" : "{
+//                    "entityClass":"org.infinispan.odata.Person",
+//                    "id":"person1",
+//                    "gender":"MALE",
+//                    "firstName":"John",
+//                    "lastName":"Smith",
+//                    "age":24}"
+//                    }}
+
+                    // TODO: to method - extractJsonValue()
+                    // (InputStream) payloadOSimpleObject.getValue())
+
+                    ObjectMapper mapper = new ObjectMapper();
+//                    System.out.println("CallFunction: Reading by Jackson mapper, json to read: " + result);
+//                    Map<String, Object> entryAsMap = (Map<String, Object>) mapper.readValue(result, Object.class);
+                    System.out.println("CallFunction: reading json from inputStream");
+                    Map<String, Object> entryAsMap = (Map<String, Object>) mapper.readValue(jsonInputStream, Object.class);
+
+                    System.out.println("CallFunction: Reading JSON response from put.");
+                    // field "d"
+                    for (String field : entryAsMap.keySet()) {
+                        System.out.println("CallFunction: * Field: " + field + " *");
+                        System.out.println("CallFunction: Class: " + entryAsMap.get(field).getClass());
+                        System.out.println("CallFunction: value: " + entryAsMap.get(field));
+
+                        Map<String, Object> childEntry = (Map<String, Object>) entryAsMap.get(field);
+
+                        System.out.println("writer1: " + mapper.writeValueAsString(childEntry));
+
+                        for (String fieldInner : childEntry.keySet()) {
+                            System.out.println("Field inner: " + fieldInner);
+                            System.out.println(childEntry.get(fieldInner));
+                            System.out.println("writer2: " +mapper.writeValueAsString(fieldInner));
+                        }
+
+                        extractedJsonValue = childEntry.get("jsonValue");
+                        System.out.println("extractedJsonValue: " + extractedJsonValue);
+                        System.out.println("writer3: " + mapper.writeValueAsString(extractedJsonValue));
+                    }
+
+                    cachedValue = new CachedValue(mapper.writeValueAsString(extractedJsonValue));
+                } catch (Exception e) {
+                    return Responses.error(new OErrorImpl("Problems with extracting jsonValue from payload. " + e.getMessage()));
+                }
+            }
+
+
+            if (function.getHttpMethod().equals("POST") && function.getName().endsWith("_put")) {
+                return callFunctionPut(setNameWhichIsCacheName, entryKey, cachedValue);
+            }
+
+            if (function.getHttpMethod().equals("GET") && function.getName().endsWith("_get")) {
+                return callFunctionGet(setNameWhichIsCacheName, entryKey, queryInfo);
+            }
+
+            if (function.getHttpMethod().equals("DELETE") && function.getName().endsWith("_remove")) {
+                return callFunctionRemove(setNameWhichIsCacheName, entryKey);
+            }
+
+            if (function.getHttpMethod().equals("PUT") && function.getName().endsWith("_replace")) {
+                callFunctionReplace(setNameWhichIsCacheName, entryKey, cachedValue);
+            }
+
+            return Responses.error(new OErrorImpl(
+                    " HTTP GET method AND cache method ending _get,\n" +
+                            " HTTP POST method AND cache method ending _put,\n" +
+                            " HTTP DELETE method AND cache method ending _remove\n" +
+                            " OR HTTP PUT method AND cache method ending _replace was expected.\n" +
+                            " Function name was: " + function.getName() + " HTTP method was: " + function.getHttpMethod()));
+
+        }
+
+        return Responses.error(new OErrorImpl("Parameter 'key' or $filter needs to be specified."));
+    }
+
+    @Override
+    public <TExtension extends OExtension<ODataProducer>> TExtension findExtension(Class<TExtension> clazz) {
+        return null;
+    }
+
+
+    /**
+     * TODO: Do we really need this? Can we find another (more simple) way of registering entities and drop this?
+     *
+     * @param <TEntity>
+     */
+    public class InMemoryEntityInfo<TEntity> {
+
+        // we are maintaining collection of these entities - they are mapped to EntitySetName in [eis] hash map
+        String entitySetName;
+        String entityTypeName;
+        String[] keys;
+        Class<TEntity> entityClass;
+        Func<Iterable<TEntity>> get; //returning defined apply()
+
+        Func1<Object, HashMap<String, Object>> id;
+        PropertyModel properties;
+        boolean hasStream;
+
+        public String getEntitySetName() {
+            return entitySetName;
+        }
+
+        public String getEntityTypeName() {
+            return entityTypeName;
+        }
+
+        public String[] getKeys() {
+            return keys;
+        }
+
+        public Class<TEntity> getEntityClass() {
+            return entityClass;
+        }
+
+        public Func<Iterable<TEntity>> getGet() {
+            return get;
+        }
+
+        public Func1<Object, HashMap<String, Object>> getId() {
+            return id;
+        }
+
+        public PropertyModel getPropertyModel() {
+            return properties;
+        }
+
+        public boolean getHasStream() {
+            return hasStream;
+        }
+
+        public Class<?> getSuperClass() {
+            return entityClass.getSuperclass() != null && !entityClass.getSuperclass().equals(Object.class) ? entityClass.getSuperclass() : null;
+        }
+    }
+
+
+    /**
+     * TODO: Can we simplify this even more?
+     * <p/>
+     * There is a workaround in method toEdmProperties(). Key and Value entity properties are directly considered as
+     * byte[].class.
+     */
+    public class InMemoryEdmGenerator implements EdmGenerator {
+
+        private static final boolean DUMP = false;
+        //      private static void dump(String msg) { if (DUMP) System.out.println(msg); }
+        private final Logger log = Logger.getLogger(InMemoryEdmGenerator.class.getName());
+        private final String namespace;
+        private final String containerName;
+        protected final InMemoryTypeMapping typeMapping;
+        protected final Map<String, InMemoryEntityInfo<?>> eis; // key: EntitySet name
+        protected final Map<String, InMemoryComplexTypeInfo<?>> complexTypeInfo; // key complex type edm type name
+        protected final List<EdmComplexType.Builder> edmComplexTypes = new ArrayList<EdmComplexType.Builder>();
+        // Note, assumes each Java type will only have a single Entity Set defined for it.
+        protected final Map<Class<?>, String> entitySetNameByClass = new HashMap<Class<?>, String>();
+        // build these as we go now.
+        protected Map<String, EdmEntityType.Builder> entityTypesByName = new HashMap<String, EdmEntityType.Builder>();
+        protected Map<String, EdmEntitySet.Builder> entitySetsByName = new HashMap<String, EdmEntitySet.Builder>();
+        protected final boolean flatten;
+
+        public InMemoryEdmGenerator(String namespace, String containerName, InMemoryTypeMapping typeMapping,
+                                    String idPropertyName, Map<String, InfinispanProducer.InMemoryEntityInfo<?>> eis,
+                                    Map<String, InMemoryComplexTypeInfo<?>> complexTypes) {
+            this(namespace, containerName, typeMapping, idPropertyName, eis, complexTypes, true);
+        }
+
+        public InMemoryEdmGenerator(String namespace, String containerName, InMemoryTypeMapping typeMapping,
+                                    String idPropertyName, Map<String, InfinispanProducer.InMemoryEntityInfo<?>> eis,
+                                    Map<String, InMemoryComplexTypeInfo<?>> complexTypes, boolean flatten) {
+            this.namespace = namespace;
+            this.containerName = containerName;
+            this.typeMapping = typeMapping;
+            this.eis = eis;
+            this.complexTypeInfo = complexTypes;
+
+            // if not registering, this is null
 //         for (Map.Entry<String, InfinispanProducer.InMemoryEntityInfo<?>> e : eis.entrySet()) {
+//            // e.getValue().entityClass = MyInternalCacheEntry , e.getKey() = "CacheEntries"
+//            // e.getValue() = InMemoryEntityInfo
 //            entitySetNameByClass.put(e.getValue().entityClass, e.getKey());
 //         }
-//         this.flatten = flatten;
-//      }
-//
-//      @Override
-//      public EdmDataServices.Builder generateEdm(EdmDecorator decorator) {
-//
-//         List<EdmSchema.Builder> schemas = new ArrayList<EdmSchema.Builder>();
-//         List<EdmEntityContainer.Builder> containers = new ArrayList<EdmEntityContainer.Builder>();
-//         List<EdmAssociation.Builder> associations = new ArrayList<EdmAssociation.Builder>();
-//         List<EdmAssociationSet.Builder> associationSets = new ArrayList<EdmAssociationSet.Builder>();
-//
-//
-//
-//         createComplexTypes(decorator, edmComplexTypes);
-//
-//         // creates id other basic SUPPORTED_TYPE properties(structural) entities
-//         createStructuralEntities(decorator);
-//
-//         // TODO handle back references too
-//         // create hashmaps from sets
-//
-//         // TODO!!!
-//         // Looks like I need this to properly register EntitySetNames!!!
-//         createNavigationProperties(associations, associationSets,
-//                                    entityTypesByName, entitySetsByName, entitySetNameByClass);
-//
-//         EdmEntityContainer.Builder container = EdmEntityContainer.newBuilder().setName(containerName).setIsDefault(true)
-//               .addEntitySets(entitySetsByName.values()).addAssociationSets(associationSets);
-//
-//         containers.add(container);
-//
-//         EdmSchema.Builder schema = EdmSchema.newBuilder().setNamespace(namespace)
-//               .addEntityTypes(entityTypesByName.values())
-//               .addAssociations(associations)
-//               .addEntityContainers(containers)
-//               .addComplexTypes(edmComplexTypes);
-//
-//         addFunctions(schema, container);
-//
-//         if (decorator != null) {
-//            schema.setDocumentation(decorator.getDocumentationForSchema(namespace));
-//            schema.setAnnotations(decorator.getAnnotationsForSchema(namespace));
-//         }
-//
-//         schemas.add(schema);
-//         EdmDataServices.Builder rt = EdmDataServices.newBuilder().addSchemas(schemas);
-//         if (decorator != null)
-//            rt.addNamespaces(decorator.getNamespaces());
-//         return rt;
-//      }
-//
-//      private void createComplexTypes(EdmDecorator decorator, List<EdmComplexType.Builder> complexTypes) {
-//         for (String complexTypeName : complexTypeInfo.keySet()) {
-//            dump("edm complexType: " + complexTypeName);
-//            InMemoryComplexTypeInfo<?> typeInfo = complexTypeInfo.get(complexTypeName);
-//
-//            List<EdmProperty.Builder> properties = new ArrayList<EdmProperty.Builder>();
-//
-//            // no keys
-//            properties.addAll(toEdmProperties(decorator, typeInfo.getPropertyModel(), new String[]{}, complexTypeName));
-//
-//            EdmComplexType.Builder typeBuilder = EdmComplexType.newBuilder()
-//                  .setNamespace(namespace)
-//                  .setName(typeInfo.getTypeName())
-//                  .addProperties(properties);
-//
-//            if (decorator != null) {
-//               typeBuilder.setDocumentation(decorator.getDocumentationForEntityType(namespace, complexTypeName));
-//               typeBuilder.setAnnotations(decorator.getAnnotationsForEntityType(namespace, complexTypeName));
-//            }
-//
-//            complexTypes.add(typeBuilder);
-//         }
-//      }
-//
-//      private void createStructuralEntities(EdmDecorator decorator) {
-//
-//         // eis contains all of the registered entity sets.
-//         for (String entitySetName : eis.keySet()) {
-//            InfinispanProducer.InMemoryEntityInfo<?> entityInfo = eis.get(entitySetName);
-//
-//            // do we have this type yet?
-//            EdmEntityType.Builder eet = entityTypesByName.get(entityInfo.entityTypeName);
-//            if (eet == null) {
-//               eet = createStructuralType(decorator, entityInfo);
-//            }
-//
-//            EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName).setEntityType(eet);
-//            entitySetsByName.put(ees.getName(), ees);
-//
-//         }
-//      }
-//
-//      protected InfinispanProducer.InMemoryEntityInfo<?> findEntityInfoForClass(Class<?> clazz) {
-//         for (InfinispanProducer.InMemoryEntityInfo<?> typeInfo : this.eis.values()) {
-//            if (typeInfo.entityClass.equals(clazz)) {
-//               return typeInfo;
-//            }
-//         }
-//
-//         return null;
-//      }
-//
-//      /*
-//      * contains all generated InMemoryEntityInfos that get created as we walk
-//      * up the inheritance hierarchy and find Java types that are not registered.
-//      */
-//      private Map<Class<?>, InfinispanProducer.InMemoryEntityInfo<?>> unregisteredEntityInfo =
-//            new HashMap<Class<?>, InfinispanProducer.InMemoryEntityInfo<?>>();
-//
-//      protected InfinispanProducer.InMemoryEntityInfo<?> getUnregisteredEntityInfo(Class<?> clazz, InfinispanProducer.InMemoryEntityInfo<?> subclass) {
-//         InfinispanProducer.InMemoryEntityInfo<?> ei = unregisteredEntityInfo.get(clazz);
-//         if (ei == null) {
-//            ei = new InfinispanProducer.InMemoryEntityInfo();
-//            ei.entityTypeName = clazz.getSimpleName();
-//            ei.keys = subclass.keys;
-//            ei.entityClass = (Class) clazz;
-//            ei.properties = new EnumsAsStringsPropertyModelDelegate(
-//                  new BeanBasedPropertyModel(ei.entityClass, this.flatten));
-//         }
-//         return ei;
-//      }
-//
-//      protected EdmEntityType.Builder createStructuralType(EdmDecorator decorator, InfinispanProducer.InMemoryEntityInfo<?> entityInfo) {
-//         List<EdmProperty.Builder> properties = new ArrayList<EdmProperty.Builder>();
-//
-//         Class<?> superClass = flatten ? null : entityInfo.getSuperClass();
-//
-//         properties.addAll(toEdmProperties(decorator, entityInfo.properties, entityInfo.keys, entityInfo.entityTypeName));
-//
-//         EdmEntityType.Builder eet = EdmEntityType.newBuilder()
-//               .setNamespace(namespace)
-//               .setName(entityInfo.entityTypeName)
-//               .setHasStream(entityInfo.hasStream)
-//               .addProperties(properties);
-//
-//         if (superClass == null) {
-//            eet.addKeys(entityInfo.keys);
-//         }
-//
-//         if (decorator != null) {
-//            eet.setDocumentation(decorator.getDocumentationForEntityType(namespace, entityInfo.entityTypeName));
-//            eet.setAnnotations(decorator.getAnnotationsForEntityType(namespace, entityInfo.entityTypeName));
-//         }
-//         entityTypesByName.put(eet.getName(), eet);
-//
-//         EdmEntityType.Builder superType = null;
-//         if (!this.flatten && entityInfo.entityClass.getSuperclass() != null && !entityInfo.entityClass.getSuperclass().equals(Object.class)) {
-//            InfinispanProducer.InMemoryEntityInfo<?> entityInfoSuper = findEntityInfoForClass(entityInfo.entityClass.getSuperclass());
-//            // may have created it along another branch in the hierarchy
-//            if (entityInfoSuper == null) {
-//               // synthesize...
-//               entityInfoSuper = getUnregisteredEntityInfo(entityInfo.entityClass.getSuperclass(), entityInfo);
-//            }
-//
-//            superType = entityTypesByName.get(entityInfoSuper.entityTypeName);
-//            if (superType == null) {
-//               superType = createStructuralType(decorator, entityInfoSuper);
-//            }
-//         }
-//
-//         eet.setBaseType(superType);
-//         return eet;
-//      }
-//
-//      protected void createNavigationProperties(List<EdmAssociation.Builder> associations,
-//                                                List<EdmAssociationSet.Builder> associationSets,
-//                                                Map<String, EdmEntityType.Builder> entityTypesByName,
-//                                                Map<String, EdmEntitySet.Builder> entitySetByName,
-//                                                Map<Class<?>, String> entityNameByClass) {
-//
-//         for (String entitySetName : eis.keySet()) {
-//            InfinispanProducer.InMemoryEntityInfo<?> ei = eis.get(entitySetName);
-//            Class<?> clazz1 = ei.entityClass;
-//
-//            generateToOneNavProperties(associations, associationSets,
-//                                       entityTypesByName, entitySetByName, entityNameByClass,
-//                                       ei.entityTypeName, ei);
-//
-//            generateToManyNavProperties(associations, associationSets,
-//                                        entityTypesByName, entitySetByName, entityNameByClass,
-//                                        ei.entityTypeName, ei, clazz1);
-//         }
-//      }
-//
-//      protected void generateToOneNavProperties(
-//            List<EdmAssociation.Builder> associations,
-//            List<EdmAssociationSet.Builder> associationSets,
-//            Map<String, EdmEntityType.Builder> entityTypesByName,
-//            Map<String, EdmEntitySet.Builder> entitySetByName,
-//            Map<Class<?>, String> entityNameByClass,
-//            String entityTypeName,
-//            InfinispanProducer.InMemoryEntityInfo<?> ei) {
-//
-//         Iterable<String> propertyNames = this.flatten ? ei.properties.getPropertyNames() : ei.properties.getDeclaredPropertyNames();
-//         for (String assocProp : propertyNames) {
-//
-//            EdmEntityType.Builder eet1 = entityTypesByName.get(entityTypeName);
-//            Class<?> clazz2 = ei.properties.getPropertyType(assocProp);
-//            String entitySetName2 = entityNameByClass.get(clazz2);
-//            InfinispanProducer.InMemoryEntityInfo<?> ei2 = entitySetName2 == null ? null : eis.get(entitySetName2);
-//
-//            if (log.isLoggable(Level.FINE)) {
-//               log.log(Level.FINE, "genToOnNavProp {0} - {1}({2}) eetName2: {3}", new Object[]{entityTypeName, assocProp, clazz2, entitySetName2});
-//            }
-//
-//            if (eet1.findProperty(assocProp) != null || ei2 == null)
-//               continue;
-//
-//            EdmEntityType.Builder eet2 = entityTypesByName.get(ei2.entityTypeName);
-//
-//            EdmMultiplicity m1 = EdmMultiplicity.MANY;
-//            EdmMultiplicity m2 = EdmMultiplicity.ONE;
-//
-//            String assocName = String.format("FK_%s_%s", eet1.getName(), eet2.getName());
-//            EdmAssociationEnd.Builder assocEnd1 = EdmAssociationEnd.newBuilder().setRole(eet1.getName())
-//                  .setType(eet1).setMultiplicity(m1);
-//            String assocEnd2Name = eet2.getName();
-//            if (assocEnd2Name.equals(eet1.getName()))
-//               assocEnd2Name = assocEnd2Name + "1";
-//
-//            EdmAssociationEnd.Builder assocEnd2 = EdmAssociationEnd.newBuilder().setRole(assocEnd2Name).setType(eet2).setMultiplicity(m2);
-//            EdmAssociation.Builder assoc = EdmAssociation.newBuilder().setNamespace(namespace).setName(assocName).setEnds(assocEnd1, assocEnd2);
-//
-//            associations.add(assoc);
-//
-//            EdmEntitySet.Builder ees1 = entitySetByName.get(eet1.getName());
-//            EdmEntitySet.Builder ees2 = entitySetByName.get(eet2.getName());
-//            if (ees1 == null) {
-//               // entity set name different than entity type name.
-//               ees1 = getEntitySetForEntityTypeName(eet1.getName());
-//            }
-//            if (ees2 == null) {
-//               // entity set name different than entity type name.
-//               ees2 = getEntitySetForEntityTypeName(eet2.getName());
-//            }
-//
-//            EdmAssociationSet.Builder eas = EdmAssociationSet.newBuilder().setName(assocName).setAssociation(assoc).setEnds(
-//                  EdmAssociationSetEnd.newBuilder().setRole(assocEnd1).setEntitySet(ees1),
-//                  EdmAssociationSetEnd.newBuilder().setRole(assocEnd2).setEntitySet(ees2));
-//
-//            associationSets.add(eas);
-//
-//            EdmNavigationProperty.Builder np = EdmNavigationProperty.newBuilder(assocProp)
-//                  .setRelationship(assoc).setFromTo(assoc.getEnd1(), assoc.getEnd2());
-//
-//            eet1.addNavigationProperties(np);
-//         }
-//      }
-//
-//
-//      protected EdmEntitySet.Builder getEntitySetForEntityTypeName(String entityTypeName) {
-//
-//         for (InfinispanProducer.InMemoryEntityInfo<?> ti : eis.values()) {
-//            if (ti.entityTypeName.equals(entityTypeName)) {
-//               return entitySetsByName.get(ti.entitySetName);
-//            }
-//         }
-//         return null;
-//      }
-//
-//
-//      protected void generateToManyNavProperties(List<EdmAssociation.Builder> associations,
-//                                                 List<EdmAssociationSet.Builder> associationSets,
-//                                                 Map<String, EdmEntityType.Builder> entityTypesByName,
-//                                                 Map<String, EdmEntitySet.Builder> entitySetByName,
-//                                                 Map<Class<?>, String> entityNameByClass,
-//                                                 String entityTypeName,
-//                                                 InfinispanProducer.InMemoryEntityInfo<?> ei,
-//                                                 Class<?> clazz1) {
-//
-//         Iterable<String> collectionNames = this.flatten ? ei.properties.getCollectionNames() : ei.properties.getDeclaredCollectionNames();
-//
-//         for (String assocProp : collectionNames) {
-//
-//            final EdmEntityType.Builder eet1 = entityTypesByName.get(entityTypeName);
-//
-//            Class<?> clazz2 = ei.properties.getCollectionElementType(assocProp);
-//            String entitySetName2 = entityNameByClass.get(clazz2);
-//            InfinispanProducer.InMemoryEntityInfo<?> class2eiInfo = entitySetName2 == null ? null : eis.get(entitySetName2);
-//
-//            if (class2eiInfo == null)
-//               continue;
-//
-//            final EdmEntityType.Builder eet2 = entityTypesByName.get(class2eiInfo.entityTypeName);
-//
-//            try {
-//               EdmAssociation.Builder assoc = Enumerable.create(associations).firstOrNull(new Predicate1<EdmAssociation.Builder>() {
-//
-//                  public boolean apply(EdmAssociation.Builder input) {
-//                     return input.getEnd1().getType().equals(eet2) && input.getEnd2().getType().equals(eet1);
-//                  }
-//               });
-//
-//               EdmAssociationEnd.Builder fromRole, toRole;
-//
-//               if (assoc == null) {
-//                  //no association already exists
-//                  EdmMultiplicity m1 = EdmMultiplicity.ZERO_TO_ONE;
-//                  EdmMultiplicity m2 = EdmMultiplicity.MANY;
-//
-//                  //find ei info of class2
-//                  for (String tmp : class2eiInfo.properties.getCollectionNames()) {
-//                     //class2 has a ref to class1
-//                     //Class<?> tmpc = class2eiInfo.properties.getCollectionElementType(tmp);
-//                     if (clazz1 == class2eiInfo.properties.getCollectionElementType(tmp)) {
-//                        m1 = EdmMultiplicity.MANY;
-//                        m2 = EdmMultiplicity.MANY;
-//                        break;
-//                     }
-//                  }
-//
-//                  String assocName = String.format("FK_%s_%s", eet1.getName(), eet2.getName());
-//                  EdmAssociationEnd.Builder assocEnd1 = EdmAssociationEnd.newBuilder().setRole(eet1.getName()).setType(eet1).setMultiplicity(m1);
-//                  String assocEnd2Name = eet2.getName();
-//                  if (assocEnd2Name.equals(eet1.getName()))
-//                     assocEnd2Name = assocEnd2Name + "1";
-//                  EdmAssociationEnd.Builder assocEnd2 = EdmAssociationEnd.newBuilder().setRole(assocEnd2Name).setType(eet2).setMultiplicity(m2);
-//                  assoc = EdmAssociation.newBuilder().setNamespace(namespace).setName(assocName).setEnds(assocEnd1, assocEnd2);
-//
-//                  associations.add(assoc);
-//
-//                  EdmEntitySet.Builder ees1 = entitySetByName.get(eet1.getName());
-//                  EdmEntitySet.Builder ees2 = entitySetByName.get(eet2.getName());
-//                  if (ees1 == null) {
-//                     // entity set name different than entity type name.
-//                     ees1 = getEntitySetForEntityTypeName(eet1.getName());
-//                  }
-//                  if (ees2 == null) {
-//                     // entity set name different than entity type name.
-//                     ees2 = getEntitySetForEntityTypeName(eet2.getName());
-//                  }
-//
-//                  EdmAssociationSet.Builder eas = EdmAssociationSet.newBuilder().setName(assocName).setAssociation(assoc).setEnds(
-//                        EdmAssociationSetEnd.newBuilder().setRole(assocEnd1).setEntitySet(ees1),
-//                        EdmAssociationSetEnd.newBuilder().setRole(assocEnd2).setEntitySet(ees2));
-//                  associationSets.add(eas);
-//
-//                  fromRole = assoc.getEnd1();
-//                  toRole = assoc.getEnd2();
-//               } else {
-//                  fromRole = assoc.getEnd2();
-//                  toRole = assoc.getEnd1();
-//               }
-//
-//               EdmNavigationProperty.Builder np = EdmNavigationProperty.newBuilder(assocProp).setRelationship(assoc).setFromTo(fromRole, toRole);
-//
-//               eet1.addNavigationProperties(np);
-//            } catch (Exception e) {
-//               // hmmh...I guess the build() will fail later
-//               log.log(Level.WARNING, "Exception building Edm associations: " + entityTypeName + "," + clazz1 + " set: " + ei.entitySetName
-//                     + " -> " + assocProp, e);
-//            }
-//         }
-//      }
-//
-//      protected EdmComplexType.Builder findComplexTypeBuilder(String typeName) {
-//         String fqName = this.namespace + "." + typeName;
-//         for (EdmComplexType.Builder builder : this.edmComplexTypes) {
-//            if (builder.getFullyQualifiedTypeName().equals(fqName)) {
-//               return builder;
-//            }
-//         }
-//         return null;
-//      }
-//
-//      protected EdmComplexType.Builder findComplexTypeForClass(Class<?> clazz) {
-//         for (InMemoryComplexTypeInfo<?> typeInfo : this.complexTypeInfo.values()) {
-//            if (typeInfo.getEntityClass().equals(clazz)) {
-//               // the typeName defines the edm type name
-//               return findComplexTypeBuilder(typeInfo.getTypeName());
-//            }
-//         }
-//
-//         return null;
-//      }
-//
-//      private Collection<EdmProperty.Builder> toEdmProperties(
-//            EdmDecorator decorator,
-//            PropertyModel model,
-//            String[] keys,
-//            String structuralTypename) {
-//
-//         List<EdmProperty.Builder> rt = new ArrayList<EdmProperty.Builder>();
-//         Set<String> keySet = Enumerable.create(keys).toSet();
-//
-//         Iterable<String> propertyNames = this.flatten ? model.getPropertyNames() : model.getDeclaredPropertyNames();
-//         for (String propName : propertyNames) {
-//            dump("edm property: " + propName);
-//            Class<?> propType = model.getPropertyType(propName);
-//            EdmType type = typeMapping.findEdmType(propType);
-//            EdmComplexType.Builder typeBuilder = null;
-//            if (type == null) {
-//               typeBuilder = findComplexTypeForClass(propType);
-//            }
-//
-//            dump("edm property: " + propName + " type: " + type + " builder: " + typeBuilder);
-//            if (type == null && typeBuilder == null) {
-//               continue;
-//            }
-//
-//            EdmProperty.Builder ep = EdmProperty
-//                  .newBuilder(propName)
-//                  .setNullable(!keySet.contains(propName));
-//
-//            if (type != null) {
-//               ep.setType(type);
-//            } else {
-//               ep.setType(typeBuilder);
-//            }
-//
-//            if (decorator != null) {
-//               ep.setDocumentation(decorator.getDocumentationForProperty(namespace, structuralTypename, propName));
-//               ep.setAnnotations(decorator.getAnnotationsForProperty(namespace, structuralTypename, propName));
-//            }
-//            rt.add(ep);
-//         }
-//
-//         // collections of primitives and complex types
-//         propertyNames = this.flatten ? model.getCollectionNames() : model.getDeclaredCollectionNames();
-//         for (String collectionPropName : propertyNames) {
-//            Class<?> collectionElementType = model.getCollectionElementType(collectionPropName);
-//            if (entitySetNameByClass.get(collectionElementType) != null) {
-//               // this will be a nav prop
-//               continue;
-//            }
-//
-//            EdmType type = typeMapping.findEdmType(collectionElementType);
-//            EdmType.Builder typeBuilder = null;
-//            if (type == null) {
-//               typeBuilder = findComplexTypeForClass(collectionElementType);
-//            } else {
-//               typeBuilder = EdmSimpleType.newBuilder(type);
-//            }
-//
-//            if (typeBuilder == null) {
-//               continue;
-//            }
-//
-//            // either a simple or complex type.
-//            EdmProperty.Builder ep = EdmProperty.newBuilder(collectionPropName)
-//                  .setNullable(true)
-//                  .setCollectionKind(EdmProperty.CollectionKind.Collection)
-//                  .setType(typeBuilder);
-//
-//            if (decorator != null) {
-//               ep.setDocumentation(decorator.getDocumentationForProperty(namespace, structuralTypename, collectionPropName));
-//               ep.setAnnotations(decorator.getAnnotationsForProperty(namespace, structuralTypename, collectionPropName));
-//            }
-//            rt.add(ep);
-//         }
-//
-//         return rt;
-//      }
-//
-//      /**
-//       * get the Edm namespace
-//       *
-//       * @return the Edm namespace
-//       */
-//      public String getNamespace() {
-//         return namespace;
-//      }
-//
-//      /**
-//       * provides an override point for applications to add application specific EdmFunctions to their producer.
-//       *
-//       * @param schema    the EdmSchema.Builder
-//       * @param container the EdmEntityContainer.Builder
-//       */
-//      protected void addFunctions(EdmSchema.Builder schema, EdmEntityContainer.Builder container) {
-//         // overridable :)
-//      }
-//   }
-//
-//}
+            this.flatten = flatten;
+        }
+
+        @Override
+        public EdmDataServices.Builder generateEdm(EdmDecorator decorator) {
+
+            List<EdmSchema.Builder> schemas = new ArrayList<EdmSchema.Builder>();
+            List<EdmEntityContainer.Builder> containers = new ArrayList<EdmEntityContainer.Builder>();
+
+//            createComplexTypes(decorator, edmComplexTypes);
+
+            // creates id other basic SUPPORTED_TYPE properties(structural) entities
+            createStructuralEntities(decorator);
+
+            // TODO handle back references too
+            // create hashmaps from sets
+
+//            createNavigationProperties(associations, associationSets,
+//                    entityTypesByName, entitySetsByName, entitySetNameByClass);
+
+            EdmEntityContainer.Builder container = EdmEntityContainer.newBuilder().
+                    setName(containerName).setIsDefault(true).
+                    addEntitySets(entitySetsByName.values());
+
+            // I need EntityType for EntitySet for EdmxFormatWriter
+
+//         EdmSchema.Builder schema = EdmSchema.newBuilder().setNamespace(namespace).
+//               addEntityTypes(entityTypesByName.values()).addAssociations(associations).
+//               addEntityContainers(containers).addComplexTypes(edmComplexTypes);
+
+            // fictional entity type to satisfy EdmxFormatWriter & EdmxFormatParser
+//         EdmEntityType.Builder d = EdmEntityType.newBuilder().setBaseType("java.lang.String");
+//            EdmEntityType.Builder eet = EdmEntityType.newBuilder().setNamespace(namespace).
+//                    setName("java.lang.String").setHasStream(false);
+            // java.lang.IllegalArgumentException: Root types must have keys
+//         at org.odata4j.edm.EdmEntityType.<init>(EdmEntityType.java:54)
+
+
+            // I don't have entity types, nor associations... however I need to register containers
+//         EdmSchema.Builder schema = EdmSchema.newBuilder().setNamespace(namespace).addComplexTypes(edmComplexTypes).addEntityTypes(eet);
+            EdmSchema.Builder schema = EdmSchema.newBuilder().setNamespace(namespace).addComplexTypes(edmComplexTypes);
+
+            addFunctions(container);
+
+            // FIXED *****************************************
+            // FIXED add container after function registration / functions are added directly into container object
+            containers.add(container);
+
+            if (decorator != null) {
+                schema.setDocumentation(decorator.getDocumentationForSchema(namespace));
+                schema.setAnnotations(decorator.getAnnotationsForSchema(namespace));
+            }
+
+            // FIXED ********************************
+            // FIXED add containers into schema so I can get it in Metadata and properly find function imports in EdmDataServices
+            schema.addEntityContainers(containers);
+            schemas.add(schema);
+            EdmDataServices.Builder rt = EdmDataServices.newBuilder().addSchemas(schemas);
+            if (decorator != null) {
+                rt.addNamespaces(decorator.getNamespaces());
+            }
+            return rt;
+        }
+
+
+        // TODO: use decorator in other way if needed
+        private void createStructuralEntities(EdmDecorator decorator) {
+            // eis contains all of the registered entity sets.
+            for (String entitySetName : eis.keySet()) {
+//                EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName).setEntityType(eet);
+                EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName);
+                entitySetsByName.put(ees.getName(), ees);
+            }
+        }
+
+        protected InfinispanProducer.InMemoryEntityInfo<?> findEntityInfoForClass(Class<?> clazz) {
+            for (InfinispanProducer.InMemoryEntityInfo<?> typeInfo : this.eis.values()) {
+                if (typeInfo.entityClass.equals(clazz)) {
+                    return typeInfo;
+                }
+            }
+            return null;
+        }
+
+        /*
+        * contains all generated InMemoryEntityInfos that get created as we walk
+        * up the inheritance hierarchy and find Java types that are not registered.
+        */
+        private Map<Class<?>, InfinispanProducer.InMemoryEntityInfo<?>> unregisteredEntityInfo =
+                new HashMap<Class<?>, InfinispanProducer.InMemoryEntityInfo<?>>();
+
+        protected InfinispanProducer.InMemoryEntityInfo<?> getUnregisteredEntityInfo(Class<?> clazz, InfinispanProducer.InMemoryEntityInfo<?> subclass) {
+            InfinispanProducer.InMemoryEntityInfo<?> ei = unregisteredEntityInfo.get(clazz);
+            if (ei == null) {
+                ei = new InfinispanProducer.InMemoryEntityInfo();
+                ei.entityTypeName = clazz.getSimpleName();
+                ei.keys = subclass.keys;
+                ei.entityClass = (Class) clazz;
+                ei.properties = new EnumsAsStringsPropertyModelDelegate(
+                        new BeanBasedPropertyModel(ei.entityClass, this.flatten));
+            }
+            return ei;
+        }
+
+        protected EdmEntityType.Builder createStructuralType(EdmDecorator decorator, InfinispanProducer.InMemoryEntityInfo<?> entityInfo) {
+
+            Class<?> superClass = flatten ? null : entityInfo.getSuperClass();
+
+
+            EdmEntityType.Builder eet = EdmEntityType.newBuilder().setNamespace(namespace).
+                    setName(entityInfo.entityTypeName).setHasStream(entityInfo.hasStream);
+
+            if (superClass == null) {
+                eet.addKeys(entityInfo.keys);
+            }
+
+            if (decorator != null) {
+                eet.setDocumentation(decorator.getDocumentationForEntityType(namespace, entityInfo.entityTypeName));
+                eet.setAnnotations(decorator.getAnnotationsForEntityType(namespace, entityInfo.entityTypeName));
+            }
+            entityTypesByName.put(eet.getName(), eet);
+
+            EdmEntityType.Builder superType = null;
+            if (!this.flatten && entityInfo.entityClass.getSuperclass() != null && !entityInfo.entityClass.getSuperclass().equals(Object.class)) {
+                InfinispanProducer.InMemoryEntityInfo<?> entityInfoSuper = findEntityInfoForClass(entityInfo.entityClass.getSuperclass());
+                // may have created it along another branch in the hierarchy
+                if (entityInfoSuper == null) {
+                    // synthesize...
+                    entityInfoSuper = getUnregisteredEntityInfo(entityInfo.entityClass.getSuperclass(), entityInfo);
+                }
+
+                superType = entityTypesByName.get(entityInfoSuper.entityTypeName);
+                if (superType == null) {
+                    superType = createStructuralType(decorator, entityInfoSuper);
+                }
+            }
+
+            eet.setBaseType(superType);
+            return eet;
+        }
+
+
+        /**
+         * Function definitions it defines and add functions into EDM Schema these functions are callable as GET HTTP
+         * operations
+         * <p/>
+         * <p/>
+         * TODO: Define cache operations: stop, start etc. (we need to support this) We will support operations with caches.
+         * <p/>
+         * provides an override point for applications to add application specific EdmFunctions to their producer.
+         * <p/>
+         * note: if function getReturnType returns null it returns nothing in ConsumerFunctionCallRequest
+         *
+         * @param container the EdmEntityContainer.Builder
+         */
+        protected void addFunctions(EdmEntityContainer.Builder container) {
+
+            List<EdmFunctionImport.Builder> funcImports = new LinkedList<EdmFunctionImport.Builder>();
+
+            int i = 0;
+            while (i < container.getEntitySets().size()) {
+                // define functions for each entity set (each cache)
+
+                String entitySetNameCacheName = container.getEntitySets().get(i).getName();
+                List<EdmFunctionParameter.Builder> funcParameters = new LinkedList<EdmFunctionParameter.Builder>();
+
+                EdmFunctionParameter.Builder pbKey = new EdmFunctionParameter.Builder();
+
+                // for POST, GET, DELETE and PUT method
+                pbKey.setName("key").setType(EdmType.getSimple("String")).setNullable(true).build();
+                funcParameters.add(pbKey);
+
+
+                // only cache name function for method POST requests
+                EdmFunctionImport.Builder fb5 = new EdmFunctionImport.Builder();
+                EdmFunctionImport.Builder fb6 = new EdmFunctionImport.Builder();
+                EdmFunctionImport.Builder fb7 = new EdmFunctionImport.Builder();
+                EdmFunctionImport.Builder fb8 = new EdmFunctionImport.Builder();
+
+                // OData spec. HINT
+//                IsBindable - 'true' indicates that the first parameter is the binding parameter
+//                IsSideEffecting - 'true' defines an action rather than a function
+//                IsAlwaysBindable - 'false' defines that the binding can be conditioned to the entity state.
+
+                // IMPORTANT TASK perf+
+                // Parent TODO: implement also async variants + maybe do it with advanced cache
+                // TODO: and expect some flags during calls in special parameters /cache_put?key='key1'&flags='IGNORE_RETURN_VALUE,ASYNC'
+
+                // TODO: do it like iteration through enum GET POST DELETE PUT and change Http method inside!!
+                // TODO: not 4 imports, duplicate code
+
+                // for HTTP POST (gather and emulates POST request for createEntity)
+                fb5.setName(entitySetNameCacheName + "_put")
+                        .setEntitySet(container.getEntitySets().get(i))
+                        .setEntitySetName(entitySetNameCacheName)
+                                // let return type to null to be able to directly access response
+                        .setReturnType(EdmSimpleType.STRING)
+                                // by specifying http method, we make from this "function" a SERVICE OPERATION kind of a "function"
+                        .setHttpMethod("POST")
+                        .setBindable(false)
+                        .setSideEffecting(false)  // true for Action (POST)
+                        .setAlwaysBindable(false)
+                        .addParameters(funcParameters).build();
+
+                // TODO: maybe change return type to something like JSON VALUE
+                // TODO: so we can avoid some ByteArrayInputStream -> string,json transformations (possible?)
+                fb6.setName(entitySetNameCacheName + "_get")
+                        .setEntitySet(container.getEntitySets().get(i))
+                        .setEntitySetName(entitySetNameCacheName)
+                                // let return type to null to be able to directly access response
+                        .setReturnType(EdmSimpleType.STRING)
+                        .setHttpMethod("GET")
+                        .setBindable(false)
+                        .setSideEffecting(false)  // true for Action (POST)
+                        .setAlwaysBindable(false)
+                        .addParameters(funcParameters).build();
+
+                fb7.setName(entitySetNameCacheName + "_remove")
+                        .setEntitySet(container.getEntitySets().get(i))
+                        .setEntitySetName(entitySetNameCacheName)
+                                // let return type to null to be able to directly access response
+                        .setReturnType(EdmSimpleType.STRING)
+                        .setHttpMethod("DELETE")
+                        .setBindable(false)
+                        .setSideEffecting(false)  // true for Action (POST)
+                        .setAlwaysBindable(false)
+                        .addParameters(funcParameters).build();
+
+                fb8.setName(entitySetNameCacheName + "_replace")
+                        .setEntitySet(container.getEntitySets().get(i))
+                        .setEntitySetName(entitySetNameCacheName)
+                                // let return type to null to be able to directly access response
+                        .setReturnType(EdmSimpleType.STRING)
+                        .setHttpMethod("PUT")
+                        .setBindable(false)
+                        .setSideEffecting(false)  // true for Action (POST)
+                        .setAlwaysBindable(false)
+                        .addParameters(funcParameters).build();
+
+                funcImports.add(fb5);
+                funcImports.add(fb6);
+                funcImports.add(fb7);
+                funcImports.add(fb8);
+
+                i++;
+            }
+
+            dump("Functions import ok...");
+            container.addFunctionImports(funcImports);
+        }
+    }
+}
+
+
+
+
+

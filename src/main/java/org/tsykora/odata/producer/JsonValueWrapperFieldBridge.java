@@ -12,6 +12,29 @@ import org.hibernate.search.bridge.LuceneOptions;
  * We use this field bridge for extracting actual fields from the JSON and indexing them with Lucene.
  * TODO: find out how to index numeric values (for queries like <, > etc.)
  *
+ * Expected JSON format from client:
+ *
+ * {"d" : {"jsonValue" : "{
+ * "entityClass":"org.infinispan.odata.Person",
+ * "id":"person1",
+ * "gender":"MALE",
+ * "firstName":"John",
+ * "lastName":"Smith",
+ * "age":24}"
+ * }}
+ *
+ * NOTE: only jsonValue is extracted in InfinispanProducer before put.
+ * We are putting and indexing actually only this section:
+ *
+ * {"entityClass":"org.infinispan.odata.Person",
+ * "id":"person1",
+ * "gender":"MALE",
+ * "firstName":"John",
+ * "lastName":"Smith",
+ * "age":24}
+ *
+ * as this is the actual entry which we need to store in the cache and index.
+ *
  * @author tsykora@redhat.com
  */
 public final class JsonValueWrapperFieldBridge implements FieldBridge {
