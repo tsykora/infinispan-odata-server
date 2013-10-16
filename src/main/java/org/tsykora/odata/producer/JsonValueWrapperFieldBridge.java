@@ -14,16 +14,16 @@ import org.hibernate.search.bridge.LuceneOptions;
  *
  * Expected JSON format from client:
  *
- * {"d" : {"jsonValue" : "{
+ * {"d" : {"jsonValue" : {
  * "entityClass":"org.infinispan.odata.Person",
  * "id":"person1",
  * "gender":"MALE",
  * "firstName":"John",
  * "lastName":"Smith",
- * "age":24}"
+ * "age":24}
  * }}
  *
- * NOTE: only jsonValue is extracted in InfinispanProducer before put.
+ * NOTE: only jsonValue is extracted in InfinispanProducer before put entry into the cache.
  * We are putting and indexing actually only this section:
  *
  * {"entityClass":"org.infinispan.odata.Person",

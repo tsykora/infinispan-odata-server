@@ -557,8 +557,8 @@ public class ExampleConsumer extends AbstractExample {
                 HttpClient httpClient = new DefaultHttpClient();
 
                 // TODO: deal with that { "d" : { later... this is OData JSON standard
-//                String exampleJsonString = "{ \"d\" : {\n" +
-                String exampleJsonString = "{\n" +
+                String exampleJsonString = "{ \"d\" : {\n \"jsonValue\" : {" +
+//                String exampleJsonString = "{\n" +
 //                        "  \"name\" : { \"first\" : \"Neo\", \"last\" : \"Matrix McMaster\" },\n" +
                         "\"entityClass\" : \"org.my.domain.person\",\n" +
                         "\"gender\" : \"MALE\",\n" +
@@ -566,8 +566,8 @@ public class ExampleConsumer extends AbstractExample {
                         "\"age\" : 24,\n" +
                         "\"firstname\" : \"Neo\",\n" +
                         "\"lastname\" : \"Matrix McMaster\"" +
-//                        "} }"; // for { "d" : { format
-                        "}";
+                        "} } }"; // for { "d" : { format
+//                        "}";
 
                 String jsonPerson2 = "{\n" +
 //                        "  \"name\" : { \"first\" : \"Neo\", \"last\" : \"Matrix McMaster\" },\n" +

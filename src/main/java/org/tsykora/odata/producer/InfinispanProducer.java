@@ -472,74 +472,39 @@ public class InfinispanProducer implements ODataProducer {
                     ((function.getHttpMethod().equals("PUT") && function.getName().endsWith("_replace")));
 
             if (extractClientPayload) {
+
                 // TODO: Q: why is that JSON encoded into ByteArrayStream on server side? Can ve avoid this?
                 OSimpleObject payloadOSimpleObject = (OSimpleObject) params.get("payload").getValue();
+
                 try {
 
+                    // TODO: to method - extractJsonValue(), pass inputStream and getCachedValue
+                    ObjectMapper mapper = new ObjectMapper();
+
                     InputStream jsonInputStream = (InputStream) payloadOSimpleObject.getValue();
-
-//                    ByteArrayInputStream inputStream = (ByteArrayInputStream) payloadOSimpleObject.getValue();
-//                    BufferedReader rd = new BufferedReader(new InputStreamReader(inputStream));
-
-
-//                    BufferedReader rd = new BufferedReader(new InputStreamReader((InputStream) payloadOSimpleObject.getValue()));
-//                    String result = "";
-//                    String line;
-//                    while ((line = rd.readLine()) != null) {
-//                        result += line;
-//                    }
-//                    rd.close();
-//
-//
-//                    dump("Extracted JSON from payload: " + result);
-
-                    // TODO: store only jsonValue field into the cache for indexing...
-                    // TODO: EXTRACT it from { "d" : { "jsonValue" : "ENTRY_FOR_INDEX" } } format
-
                     Object extractedJsonValue = "";
 
-//                    result:
-//                    {"d" : {"jsonValue" : "{
-//                    "entityClass":"org.infinispan.odata.Person",
-//                    "id":"person1",
-//                    "gender":"MALE",
-//                    "firstName":"John",
-//                    "lastName":"Smith",
-//                    "age":24}"
-//                    }}
 
-                    // TODO: to method - extractJsonValue()
-                    // (InputStream) payloadOSimpleObject.getValue())
-
-                    ObjectMapper mapper = new ObjectMapper();
-//                    System.out.println("CallFunction: Reading by Jackson mapper, json to read: " + result);
-//                    Map<String, Object> entryAsMap = (Map<String, Object>) mapper.readValue(result, Object.class);
-                    System.out.println("CallFunction: reading json from inputStream");
+                    System.out.println("CallFunction: reading JSON from inputStream and extracting jsonValue as String...");
                     Map<String, Object> entryAsMap = (Map<String, Object>) mapper.readValue(jsonInputStream, Object.class);
+                    Map<String, Object> childEntry = (Map<String, Object>) entryAsMap.get("d");
 
-                    System.out.println("CallFunction: Reading JSON response from put.");
-                    // field "d"
-                    for (String field : entryAsMap.keySet()) {
-                        System.out.println("CallFunction: * Field: " + field + " *");
-                        System.out.println("CallFunction: Class: " + entryAsMap.get(field).getClass());
-                        System.out.println("CallFunction: value: " + entryAsMap.get(field));
-
-                        Map<String, Object> childEntry = (Map<String, Object>) entryAsMap.get(field);
-
-                        System.out.println("writer1: " + mapper.writeValueAsString(childEntry));
-
-                        for (String fieldInner : childEntry.keySet()) {
-                            System.out.println("Field inner: " + fieldInner);
-                            System.out.println(childEntry.get(fieldInner));
-                            System.out.println("writer2: " +mapper.writeValueAsString(fieldInner));
-                        }
-
-                        extractedJsonValue = childEntry.get("jsonValue");
-                        System.out.println("extractedJsonValue: " + extractedJsonValue);
-                        System.out.println("writer3: " + mapper.writeValueAsString(extractedJsonValue));
+                    if (childEntry == null) {
+                        return Responses.error(new OErrorImpl("Expected \"d\" for starting JSON OData format."));
                     }
 
+                    extractedJsonValue = childEntry.get("jsonValue");
+
+                    if (extractedJsonValue == null) {
+                        return Responses.error(new OErrorImpl("Expected \"jsonValue\" to be specified." +
+                                "Value of this field is the whole entity represented as nested JSON object."));
+                    }
+
+                    System.out.println("extractedJsonValue: " + extractedJsonValue);
+                    System.out.println("will be put into cache (wrapped) like: " + mapper.writeValueAsString(extractedJsonValue));
+
                     cachedValue = new CachedValue(mapper.writeValueAsString(extractedJsonValue));
+
                 } catch (Exception e) {
                     return Responses.error(new OErrorImpl("Problems with extracting jsonValue from payload. " + e.getMessage()));
                 }
