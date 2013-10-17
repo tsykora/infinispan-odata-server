@@ -23,7 +23,7 @@ import org.hibernate.search.bridge.LuceneOptions;
  * "age":24}
  * }}
  *
- * NOTE: only jsonValue is extracted in InfinispanProducer before put entry into the cache.
+ * NOTE: only jsonValue is extracted in InfinispanProducer before put/replace entry into the cache.
  * We are putting and indexing actually only this section:
  *
  * {"entityClass":"org.infinispan.odata.Person",
@@ -33,7 +33,7 @@ import org.hibernate.search.bridge.LuceneOptions;
  * "lastName":"Smith",
  * "age":24}
  *
- * as this is the actual entry which we need to store in the cache and index.
+ * as this is the particular entry which we need to store in the cache and index.
  *
  * @author tsykora@redhat.com
  */
@@ -78,8 +78,8 @@ public final class JsonValueWrapperFieldBridge implements FieldBridge {
 //                    Integer number = Integer.getInteger(entryAsMap.get(field).toString());
 //                    luceneOptions.addNumericFieldToDocument(field, number, document);
                 } else {
-
                     // not a number
+
                     // TODO: how to deal with lists, LinkedHashMaps? (recursive addition?) (index lists somehow?)
 
                     // Do the magic here... add it to the Lucene Document
@@ -87,24 +87,11 @@ public final class JsonValueWrapperFieldBridge implements FieldBridge {
                 }
             }
 
-
-//          decodeAndIndex(valueWrapper.getJson(), document, luceneOptions);
-
         } catch (IOException e) {
             System.out.println("EXCEPTION: in JsonValueWrapperFieldBridge.... " + e.getMessage());
             e.printStackTrace();
         }
 
 
-    }
-
-    private void decodeAndIndex(String json, Document document, LuceneOptions luceneOptions) {
-//      SerializationContext serCtx = ProtobufMetadataManager.getSerializationContext(cache.getCacheManager());
-//      Descriptors.Descriptor wrapperDescriptor = serCtx.getMessageDescriptor(WrappedMessage.PROTOBUF_TYPE_NAME);
-//      try {
-//         new ProtobufParser().parse(new WrappedMessageTagHandler(document, luceneOptions, serCtx), wrapperDescriptor, json);
-//      } catch (IOException e) {
-//         throw new CacheException(e);
-//      }
     }
 }

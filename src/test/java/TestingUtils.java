@@ -1,10 +1,12 @@
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.net.URLEncoder;
 import java.util.Map;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
@@ -38,6 +40,53 @@ public class TestingUtils {
             System.out.println("Executing HTTP POST...");
             return httpClient.execute(httpPost);
 
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (ClientProtocolException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        fail("HttpResponse for return expected");
+        return null;
+    }
+
+
+    public static HttpResponse httpGetJsonEntryByEntryKey(String serviceUri, String cacheName, String entryKey) {
+
+        HttpClient httpClient = new DefaultHttpClient();
+
+        String get = serviceUri + "" + cacheName + "_get?key=%27" + entryKey + "%27";
+        HttpGet httpGet = new HttpGet(get);
+        httpGet.setHeader("Content-Type", "application/json; charset=UTF-8");
+        httpGet.setHeader("Accept", "application/json; charset=UTF-8");
+
+        try {
+            System.out.println("Executing HTTP GET...");
+            return httpClient.execute(httpGet);
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (ClientProtocolException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        fail("HttpResponse for return expected");
+        return null;
+    }
+
+    public static HttpResponse httpGetJsonEntryByODataQuery(String serviceUri, String cacheName, String filterQuery) {
+        HttpClient httpClient = new DefaultHttpClient();
+
+        try {
+            filterQuery = URLEncoder.encode(filterQuery, "UTF-8");
+            String get = serviceUri + "" + cacheName + "_get?$filter=" + filterQuery;
+            HttpGet httpGet = new HttpGet(get);
+            httpGet.setHeader("Content-Type", "application/json; charset=UTF-8");
+            httpGet.setHeader("Accept", "application/json; charset=UTF-8");
+
+            System.out.println("Executing HTTP GET...");
+            return httpClient.execute(httpGet);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         } catch (ClientProtocolException e) {
@@ -111,9 +160,9 @@ public class TestingUtils {
             System.out.println("Extraction in TestUtil: " +
                     "Directly extracting jsonValue from Object Map (was read from HTTP response InputStream).");
             entryAsMap = (Map<String, Object>) standardizedJson;
-            Map<String, Object> childEntry = (Map<String, Object>) entryAsMap.get("d");
+            Map<String, Object> childMap = (Map<String, Object>) entryAsMap.get("d");
             try {
-                returnedJsonValueAsString = mapper.writeValueAsString(childEntry.get("jsonValue"));
+                returnedJsonValueAsString = mapper.writeValueAsString(childMap.get("jsonValue"));
             } catch (IOException e) {
                 e.printStackTrace();
                 fail("Object Map standardized json exception: " + e.getMessage());

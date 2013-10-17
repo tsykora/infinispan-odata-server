@@ -183,6 +183,7 @@ public class InfinispanProducer implements ODataProducer {
                 System.out.println("Cache started!....");
                 Cache cache = defaultCacheManager.getCache(cacheName);
 
+                // TODO: force it to start by other approach
                 cache.put("simpleKey1", "simpleValue1"); // starts cache
                 dump("Cache " + cacheName + " status: " + cache.getStatus());
 
@@ -320,7 +321,7 @@ public class InfinispanProducer implements ODataProducer {
 
         // TODO: avoid this when FLAG don't return when put = true
 //        if (flag) {
-//            TODO: prepare BaseResponse? and FunctionResource.java for it!
+//            TODO: prepare BaseResponse? and FunctionResource.java for it!?
 //            return null; // clients will get NO_CONTENT response (It is successful kind of response!)
 //        }
         return callFunctionGet(setNameWhichIsCacheName, entryKey, null);
@@ -336,8 +337,8 @@ public class InfinispanProducer implements ODataProducer {
             // ignore query and return value directly
             CachedValue value = (CachedValue) getCache(setNameWhichIsCacheName).get(entryKey);
             if (value != null) {
-                // TODO: look closely at formatting this
-                return Responses.simple(EdmSimpleType.STRING, "jsonValue", value.getJsonValueWrapper().getJson());
+                // we return simple String and encapsulate it in FunctionResource by "d" {} to make it standardized
+                return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", value.getJsonValueWrapper().getJson());
             } else {
                 // client will get NO_CONTENT (204)
                 return null;
@@ -402,7 +403,7 @@ public class InfinispanProducer implements ODataProducer {
                 sb.append("\n");
             }
             // stack more json strings responses
-            return Responses.simple(EdmSimpleType.STRING, "jsonValue", sb.toString());
+            return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", sb.toString());
         } else {
             // no results found, clients will get NO_CONTENT response
             return null;
@@ -412,7 +413,7 @@ public class InfinispanProducer implements ODataProducer {
     public BaseResponse callFunctionRemove(String setNameWhichIsCacheName, String entryKey) {
         // TODO: later, avoid returning by using flag (or add option to call uri)
         CachedValue removed = (CachedValue) getCache(setNameWhichIsCacheName).remove(entryKey);
-        return Responses.simple(EdmSimpleType.STRING, "jsonValue", removed.getJsonValueWrapper().getJson());
+        return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", removed.getJsonValueWrapper().getJson());
     }
 
     public BaseResponse callFunctionReplace(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue) {
@@ -454,10 +455,7 @@ public class InfinispanProducer implements ODataProducer {
         // TODO: modify condition to not only .filter (but also other constraints?) queryInfo != null is not enough
         // TODO: it's not null for every case I think
 
-
         if (params.get("key") != null || queryInfo.filter != null) {
-
-            // TODO: what is mutual for all, at least 2 function should be here and pass as a parameter to child function call
 
             String setNameWhichIsCacheName = function.getEntitySet().getName();
             CachedValue cachedValue = null;
@@ -467,41 +465,33 @@ public class InfinispanProducer implements ODataProducer {
                 entryKey = params.get("key").getValue().toString();
             }
 
-            // Extract client payload in case of POST and PUT
+            // Extract client payload in case of POST(ispn put) and PUT(ispn replace)
             boolean extractClientPayload = (function.getHttpMethod().equals("POST") && function.getName().endsWith("_put")) ||
                     ((function.getHttpMethod().equals("PUT") && function.getName().endsWith("_replace")));
 
             if (extractClientPayload) {
-
-                // TODO: Q: why is that JSON encoded into ByteArrayStream on server side? Can ve avoid this?
                 OSimpleObject payloadOSimpleObject = (OSimpleObject) params.get("payload").getValue();
-
                 try {
-
-                    // TODO: to method - extractJsonValue(), pass inputStream and getCachedValue
                     ObjectMapper mapper = new ObjectMapper();
-
                     InputStream jsonInputStream = (InputStream) payloadOSimpleObject.getValue();
-                    Object extractedJsonValue = "";
 
-
-                    System.out.println("CallFunction: reading JSON from inputStream and extracting jsonValue as String...");
                     Map<String, Object> entryAsMap = (Map<String, Object>) mapper.readValue(jsonInputStream, Object.class);
-                    Map<String, Object> childEntry = (Map<String, Object>) entryAsMap.get("d");
+                    Map<String, Object> childMap = (Map<String, Object>) entryAsMap.get("d");
 
-                    if (childEntry == null) {
+                    if (childMap == null) {
                         return Responses.error(new OErrorImpl("Expected \"d\" for starting JSON OData format."));
                     }
 
-                    extractedJsonValue = childEntry.get("jsonValue");
+                    Object extractedJsonValue = childMap.get("jsonValue");
 
                     if (extractedJsonValue == null) {
                         return Responses.error(new OErrorImpl("Expected \"jsonValue\" to be specified." +
                                 "Value of this field is the whole entity represented as nested JSON object."));
                     }
 
-                    System.out.println("extractedJsonValue: " + extractedJsonValue);
-                    System.out.println("will be put into cache (wrapped) like: " + mapper.writeValueAsString(extractedJsonValue));
+                    System.out.println("ExtractedJsonValue map for Mapper: " + extractedJsonValue);
+                    System.out.println("Will be put into cache (wrapped in JsonValueWrapper) like String: "
+                            + mapper.writeValueAsString(extractedJsonValue));
 
                     cachedValue = new CachedValue(mapper.writeValueAsString(extractedJsonValue));
 

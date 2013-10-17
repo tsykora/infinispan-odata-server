@@ -1,10 +1,10 @@
 package org.tsykora.odata.facades;
 
+import javax.ws.rs.core.MediaType;
+
 import org.odata4j.consumer.ODataConsumer;
 import org.odata4j.format.FormatType;
 import org.odata4j.producer.server.ODataServer;
-
-import javax.ws.rs.core.MediaType;
 
 public interface RuntimeFacade {
 

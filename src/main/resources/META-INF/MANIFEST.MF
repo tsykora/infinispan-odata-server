@@ -1,3 +1,3 @@
-Main-Class: org.tsykora.odata.producer.ODataInfinispanServerRunner
+Main-Class: org.tsykora.odata.server.ODataInfinispanServerRunner
 
 

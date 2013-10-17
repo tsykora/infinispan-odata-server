@@ -91,7 +91,12 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
      * @param expr - general expression
      */
     public void visit(BoolCommonExpression expr) {
-        // TODO: Use switch to retype?
+        // TODO: Use switch to retype? - we don't need this
+
+        // TODO: IMPORTANT: Do it top -> down according to the highest precedence
+
+        // () PARENTHESES expressions here? As the first? The highest precedence?
+        // Look into OData specification
 
         if(expr.getClass().getInterfaces()[0] == AndExpression.class) {
             visit((AndExpression) expr);

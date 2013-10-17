@@ -1,8 +1,9 @@
-package org.tsykora.odata.producer;
+package org.tsykora.odata.server;
 
 import org.odata4j.producer.resources.DefaultODataProducerProvider;
 import org.tsykora.odata.facades.JerseyRuntimeFacade;
 import org.tsykora.odata.facades.RuntimeFacade;
+import org.tsykora.odata.producer.InfinispanProducer;
 
 /**
  * @author tsykora

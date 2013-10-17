@@ -169,7 +169,7 @@
                     <configuration>
                         <archive>
                             <manifest>
-                                <mainClass>org.tsykora.odata.producer.ODataInfinispanServerRunner</mainClass>
+                                <mainClass>org.tsykora.odata.server.ODataInfinispanServerRunner</mainClass>
                             </manifest>
                         </archive>
                         <descriptorRefs>
