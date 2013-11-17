@@ -3,6 +3,7 @@ import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 
 import org.apache.http.HttpResponse;
+import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.junit.After;
 import org.junit.AfterClass;
@@ -15,28 +16,30 @@ import static org.junit.Assert.assertEquals;
 
 /**
  *
- * This is basic test suite for OData producer + server. We are using apache http client for
- * client-server interaction.
- *
- * TODO: add test for ignore_return_values
- * TODO: + follow OData standard for 201 created + our build up for return values + 201
- *
- * TODO: ensure gets are called after puts
+ * This test case tests functional side of replication ability of Infinispan OData servers.
  *
  * @author Tomas Sykora <tomas@infinispan.org>
  */
-public class BasicODataCacheTest {
+public class ReplicationODataCacheTest {
 
     private ObjectMapper mapper = new ObjectMapper();
+    private static final Logger log = Logger.getLogger(ReplicationODataCacheTest.class.getName());
 
-    public BasicODataCacheTest() {
+    public ReplicationODataCacheTest() {
     }
 
     @BeforeClass
     public static void setUpClass() {
+
+        log.info("\n\n STARTING INFINISPAN ODATA SERVER http://localhost:8887/ODataInfinispanEndpoint.svc/ \n\n ");
         String[] args = {"http://localhost:8887/ODataInfinispanEndpoint.svc/",
                 "infinispan-dist.xml"};
         ODataInfinispanServerRunner.main(args);
+
+        log.info("\n\n STARTING INFINISPAN ODATA SERVER http://localhost:9887/ODataInfinispanEndpoint.svc/ \n\n ");
+        String[] args2 = {"http://localhost:9887/ODataInfinispanEndpoint.svc/",
+                "infinispan-dist.xml"};
+        ODataInfinispanServerRunner.main(args2);
     }
 
     @AfterClass
@@ -73,32 +76,12 @@ public class BasicODataCacheTest {
 
     }
 
-    @Test
-    public void jsonPutIgnoreReturnValues() throws UnsupportedEncodingException {
-
-        String serviceUri = "http://localhost:8887/ODataInfinispanEndpoint.svc/";
-        String cacheName = "mySpecialNamedCache";
-
-        String jsonPersonIgnoreReturn = TestingUtils.createJsonPersonString(
-                "org.infinispan.odata.Person", "person1", "MALE", "John", "Smith", 24);
-
-        System.out.println("Test: About to send HTTP POST...");
-        final HttpResponse httpPutResponse = TestingUtils.httpPostPutJsonEntry(
-                serviceUri, cacheName, "person1", jsonPersonIgnoreReturn, true);
-
-        int statusCode = httpPutResponse.getStatusLine().getStatusCode();
-        assertEquals("Status code from POST without any flag was expected 201 - CREATED.", 201, statusCode);
-
-        // TODO check by consequent get if it's stored
-
-        // we have no return values here
-//        compareHttpResponseWithJsonEntity(httpPutResponse, jsonPerson1);
-    }
 
 
     @Test
-    // also tests explicitly disabled IGNORE_RETURN_VALUES flag
     public void basicJsonPut() throws UnsupportedEncodingException {
+
+        log.trace("\n\n Testing PUT on http://localhost:8887/ODataInfinispanEndpoint.svc/ \n\n ");
 
         String serviceUri = "http://localhost:8887/ODataInfinispanEndpoint.svc/";
         String cacheName = "mySpecialNamedCache";
@@ -121,7 +104,9 @@ public class BasicODataCacheTest {
     @Test
     public void basicJsonGet() {
 
-        String serviceUri = "http://localhost:8887/ODataInfinispanEndpoint.svc/";
+        log.trace("\n\n Testing GET from http://localhost:9887/ODataInfinispanEndpoint.svc/ \n\n ");
+
+        String serviceUri = "http://localhost:9887/ODataInfinispanEndpoint.svc/";
         String cacheName = "mySpecialNamedCache";
 
         String jsonPerson1 = TestingUtils.createJsonPersonString(
@@ -137,50 +122,7 @@ public class BasicODataCacheTest {
         compareHttpResponseWithJsonEntity(httpGetResponse, jsonPerson1);
     }
 
-    @Test
-    public void test404notFound() {
 
-        String serviceUri = "http://localhost:8887/ODataInfinispanEndpoint.svc/";
-        String cacheName = "mySpecialNamedCache";
-
-        System.out.println("Test: About to send HTTP GET with key specified...");
-        final HttpResponse httpGetResponse = TestingUtils.httpGetJsonEntryByEntryKey(
-                serviceUri, cacheName, "nonexistent_person");
-
-        int statusCode = httpGetResponse.getStatusLine().getStatusCode();
-        assertEquals("Get for nonexistent_person. Status was expected 404.", 404, statusCode);
-    }
-
-
-    @Test
-    public void basicEQQueryTest() {
-
-//        try {
-//            System.out.println(" \n\n\n SLEEEEEEEEEEEEEEEEEEPING FOR 360000 millis...........");
-//            Thread.sleep(360000);
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();  // TODO: Customise this generated block
-//        }
-
-        // TODO up
-        String serviceUri = "http://localhost:8887/ODataInfinispanEndpoint.svc/";
-        String cacheName = "mySpecialNamedCache";
-
-        String jsonPerson1 = TestingUtils.createJsonPersonString(
-                "org.infinispan.odata.Person", "person1", "MALE", "John", "Smith", 24);
-
-        System.out.println("Test: About to send HTTP GET with filter specified...");
-        String odataQuery = "firstName eq 'John'";
-        final HttpResponse httpGetResponse = TestingUtils.httpGetJsonEntryByODataQuery(
-                serviceUri, cacheName, odataQuery);
-
-        int statusCode = httpGetResponse.getStatusLine().getStatusCode();
-        assertEquals("Status code from GET without any flag was expected 200.", 200, statusCode);
-
-        compareHttpResponseWithJsonEntity(httpGetResponse, jsonPerson1);
-        // TODO: consume it
-//        EntityUtils.consume(httpGetResponse.getEntity());
-    }
 
 
 }

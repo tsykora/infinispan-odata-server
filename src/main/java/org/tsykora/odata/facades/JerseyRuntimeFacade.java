@@ -5,7 +5,6 @@ import javax.ws.rs.ext.RuntimeDelegate;
 
 import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.api.container.filter.LoggingFilter;
 import org.junit.Assert;
 import org.odata4j.consumer.ODataConsumer;
 import org.odata4j.consumer.behaviors.MethodTunnelingBehavior;
@@ -66,11 +65,12 @@ public class JerseyRuntimeFacade implements RuntimeFacade {
 
     private ODataServer createODataServer(String baseUri) {
 
-        return new ODataJerseyServer(baseUri, DefaultODataApplication.class, RootApplication.class)
-                .addJerseyRequestFilter(LoggingFilter.class).setJerseyTrace(true) // log all requests
-//        .addJerseyRequestFilter(LoggingFilter.class) // log all requests
+        return new ODataJerseyServer(baseUri, DefaultODataApplication.class, RootApplication.class);
+//                .addJerseyResponseFilter(LoggingFilter.class).setJerseyTrace(true)
+//                .addJerseyRequestFilter(LoggingFilter.class).setJerseyTrace(true); // log all requests
+//        .addJerseyRequestFilter(LoggingFilter.class); // log all requests
                 //      .addHttpServerFilter(new WhitelistFilter("127.0.0.1","0:0:0:0:0:0:0:1%0")) // only allow local requests
-                ;
+//                ;
     }
 
     @Override

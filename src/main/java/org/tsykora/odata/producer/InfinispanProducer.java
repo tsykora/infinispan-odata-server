@@ -9,12 +9,16 @@ import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Logger;
 
+import javax.ws.rs.core.Response;
+
+import org.apache.log4j.Logger;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.core4j.Func;
 import org.core4j.Func1;
+import org.infinispan.AdvancedCache;
 import org.infinispan.Cache;
+import org.infinispan.context.Flag;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.query.CacheQuery;
 import org.infinispan.query.SearchManager;
@@ -55,16 +59,20 @@ import org.odata4j.producer.inmemory.InMemoryTypeMapping;
 import org.odata4j.producer.inmemory.PropertyModel;
 
 /**
+ *
  * ODataProducer with implemented direct access to Infinispan Cache.
+ *
+ * @author Tomas Sykora <tomas@infinispan.org>
+ *
  */
 public class InfinispanProducer implements ODataProducer {
 
     private static final boolean DUMP = false;
-    private final Logger log = Logger.getLogger(InfinispanProducer.class.getName());
+    private static final Logger log = Logger.getLogger(InfinispanProducer.class.getName());
 
     private static void dump(Object msg) {
         if (DUMP) {
-            System.out.println(msg);
+            log.trace(msg);
         }
     }
 
@@ -87,7 +95,7 @@ public class InfinispanProducer implements ODataProducer {
     // TODO: properly decide: not static??? - cache instance is running with producer instance
     private DefaultCacheManager defaultCacheManager;
     // for faster cache access
-    private HashMap<String, Cache> caches = new HashMap<String, Cache>();
+    private HashMap<String, AdvancedCache> caches = new HashMap<String, AdvancedCache>();
 
 
     /**
@@ -170,7 +178,7 @@ public class InfinispanProducer implements ODataProducer {
      * @param cacheName
      * @return
      */
-    private Cache getCache(String cacheName) {
+    private AdvancedCache getCache(String cacheName) {
         if (caches.get(cacheName) != null) {
 
             return this.caches.get(cacheName);
@@ -178,21 +186,21 @@ public class InfinispanProducer implements ODataProducer {
         } else {
 
             try {
-                System.out.println("Starting cache with name " + cacheName + " on defaultCacheManager...");
+                log.info("Starting cache with name " + cacheName + " on defaultCacheManager...");
                 defaultCacheManager.startCache(cacheName);
-                System.out.println("Cache started!....");
+                log.info("Cache started!....");
                 Cache cache = defaultCacheManager.getCache(cacheName);
 
                 // TODO: force it to start by other approach
                 cache.put("simpleKey1", "simpleValue1"); // starts cache
                 dump("Cache " + cacheName + " status: " + cache.getStatus());
 
-                System.out.println(" simpleKey1\", \"simpleValue1 ------ PUTTED INTO CACHE, now some json stuff:");
+                log.trace(" simpleKey1\", \"simpleValue1 ------ PUTTED INTO CACHE, now some json stuff:");
 
-                this.caches.put(cacheName, cache);
-                return cache;
+                this.caches.put(cacheName, cache.getAdvancedCache());
+                return cache.getAdvancedCache();
             } catch (Exception e) {
-                System.out.println(" \n\n ***** ERROR DURING STARTING CACHE __ DURING EXPERIMENTS WITH INDEXING ***** \n\n");
+                log.error(" \n\n ***** ERROR DURING STARTING CACHE __ DURING EXPERIMENTS WITH INDEXING ***** \n\n");
                 e.printStackTrace();
             }
         }
@@ -314,17 +322,32 @@ public class InfinispanProducer implements ODataProducer {
      *
      * @return
      */
-    private BaseResponse callFunctionPut(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue) {
+    private BaseResponse callFunctionPut(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue,
+                                         boolean ignoreReturnValues) {
 
-        System.out.println("Putting into " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
-        getCache(setNameWhichIsCacheName).put(entryKey, cachedValue);
+        log.trace("*********** Putting into " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
 
-        // TODO: avoid this when FLAG don't return when put = true
-//        if (flag) {
-//            TODO: prepare BaseResponse? and FunctionResource.java for it!?
-//            return null; // clients will get NO_CONTENT response (It is successful kind of response!)
-//        }
-        return callFunctionGet(setNameWhichIsCacheName, entryKey, null);
+        if (ignoreReturnValues) {
+
+            getCache(setNameWhichIsCacheName).withFlags(Flag.IGNORE_RETURN_VALUES).put(entryKey, cachedValue);
+
+            log.trace("*********** Put with IGNORE_RETURN_VALUES *******");
+           // TODO: link to new entity should be returned (return it in the value, build by using a key)
+           // create new property in InfinispanResponse -- createdEntityLink
+           return Responses.infinispanResponse(null, null, null, Response.Status.CREATED);
+
+        } else {
+
+            getCache(setNameWhichIsCacheName).put(entryKey, cachedValue);
+
+            // TODO -- ODATA spec -- set response to 201 and Created (callGet is setting this up to OK not CREATED -- pass some flag)
+            log.trace(" ************* Put function, ignoring return values false, returning full get after put");
+            return callFunctionGet(setNameWhichIsCacheName, entryKey, null);
+
+        }
+
+
+
     }
 
 
@@ -337,11 +360,13 @@ public class InfinispanProducer implements ODataProducer {
             // ignore query and return value directly
             CachedValue value = (CachedValue) getCache(setNameWhichIsCacheName).get(entryKey);
             if (value != null) {
-                // we return simple String and encapsulate it in FunctionResource by "d" {} to make it standardized
-                return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", value.getJsonValueWrapper().getJson());
+                log.trace("CallFunctionGet entry with key " + entryKey + " was found. Returning response with status 200.");
+                return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", standardizeJSONresponse(
+                        new StringBuilder(value.getJsonValueWrapper().getJson())).toString(), Response.Status.OK);
             } else {
-                // client will get NO_CONTENT (204)
-                return null;
+                // no results found, clients will get 404 response
+                log.trace("CallFunctionGet entry with key " + entryKey + " was not found. Returning response with status 404.");
+                return Responses.infinispanResponse(null, null, null, Response.Status.NOT_FOUND);
             }
 
         } else {
@@ -354,7 +379,7 @@ public class InfinispanProducer implements ODataProducer {
                         " \n However, $filter is not specified as well."));
             }
 
-            System.out.println("Query report for $filter " + queryInfo.filter.toString());
+            log.trace("Query report for $filter " + queryInfo.filter.toString());
 
             SearchManager searchManager = org.infinispan.query.Search.getSearchManager(getCache(setNameWhichIsCacheName));
             MapQueryExpressionVisitor mapQueryExpressionVisitor =
@@ -367,10 +392,10 @@ public class InfinispanProducer implements ODataProducer {
             // pass query result to the function final response
             queryResult = queryFromVisitor.list();
 
-            System.out.println(" \n\n SEARCH RESULTS GOT BY VISITOR!!! APPROACH: size:" + queryResult.size() + ":");
+            log.trace(" \n\n SEARCH RESULTS GOT BY VISITOR!!! APPROACH: size:" + queryResult.size() + ":");
 
             for (Object one_result : queryResult) {
-                System.out.println(one_result);
+                log.trace(one_result);
             }
 
             // *********************************************************************************
@@ -398,27 +423,56 @@ public class InfinispanProducer implements ODataProducer {
             StringBuilder sb = new StringBuilder();
             // build response
             for (Object one_result : queryResult) {
+                // stack more JSON strings responses
                 CachedValue cv = (CachedValue) one_result;
                 sb.append(cv.getJsonValueWrapper().getJson());
                 sb.append("\n");
             }
-            // stack more json strings responses
-            return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", sb.toString());
+            log.trace("CallFunctionGet method... returning query results in JSON format: " + standardizeJSONresponse(sb).toString());
+            return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", standardizeJSONresponse(sb).toString(), Response.Status.OK);
         } else {
-            // no results found, clients will get NO_CONTENT response
-            return null;
+            // no results found, clients will get 404 response
+            return Responses.infinispanResponse(null, null, null, Response.Status.NOT_FOUND);
         }
+    }
+
+    /**
+     *
+     *
+     * @param value
+     * @return standardized StringBuilder object
+     */
+    private StringBuilder standardizeJSONresponse(StringBuilder value) {
+        //      example of raw: InfinispanResponse response getValue():
+//      {"entityClass":"org.my.domain.person","gender":"MALE","verified":false,"age":24,"firstname":"Neo","lastname":"Matrix McMaster"}
+
+//      we need:
+
+//      { "d" : {
+//      "jsonValue" : {"entityClass":"org.my.domain.person","gender":"MALE",
+//                    "verified":false,"age":24,"firstname":"Neo","lastname":"Matrix McMaster"}
+//      }}
+
+        StringBuilder sb = new StringBuilder();
+
+        sb.append("{ \"d\" : { ");
+        sb.append(" \"jsonValue\" : ");
+//      e.g. {"entityClass":"org.my.domain.person","gender":"MALE","verified":false,"age":24,"firstname":"Neo","lastname":"Matrix McMaster"}
+        sb.append(value.toString() + "");
+        sb.append("}}");
+
+        return sb;
     }
 
     public BaseResponse callFunctionRemove(String setNameWhichIsCacheName, String entryKey) {
         // TODO: later, avoid returning by using flag (or add option to call uri)
         CachedValue removed = (CachedValue) getCache(setNameWhichIsCacheName).remove(entryKey);
-        return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", removed.getJsonValueWrapper().getJson());
+        return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", removed.getJsonValueWrapper().getJson(), Response.Status.OK);
     }
 
     public BaseResponse callFunctionReplace(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue) {
 
-        System.out.println("Replacing in " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
+        log.trace("Replacing in " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
         getCache(setNameWhichIsCacheName).replace(entryKey, cachedValue);
 
         // TODO: avoid this when FLAG don't return when put = true
@@ -478,6 +532,7 @@ public class InfinispanProducer implements ODataProducer {
                     Map<String, Object> entryAsMap = (Map<String, Object>) mapper.readValue(jsonInputStream, Object.class);
                     Map<String, Object> childMap = (Map<String, Object>) entryAsMap.get("d");
 
+                    // TODO: inserting JSON can be without "d" this is not standard. Users can put simple JSON
                     if (childMap == null) {
                         return Responses.error(new OErrorImpl("Expected \"d\" for starting JSON OData format."));
                     }
@@ -489,8 +544,8 @@ public class InfinispanProducer implements ODataProducer {
                                 "Value of this field is the whole entity represented as nested JSON object."));
                     }
 
-                    System.out.println("ExtractedJsonValue map for Mapper: " + extractedJsonValue);
-                    System.out.println("Will be put into cache (wrapped in JsonValueWrapper) like String: "
+                    log.trace("ExtractedJsonValue map for Mapper: " + extractedJsonValue);
+                    log.trace("Will be put into cache (wrapped in JsonValueWrapper) like String: "
                             + mapper.writeValueAsString(extractedJsonValue));
 
                     cachedValue = new CachedValue(mapper.writeValueAsString(extractedJsonValue));
@@ -502,7 +557,15 @@ public class InfinispanProducer implements ODataProducer {
 
 
             if (function.getHttpMethod().equals("POST") && function.getName().endsWith("_put")) {
-                return callFunctionPut(setNameWhichIsCacheName, entryKey, cachedValue);
+
+                boolean ignoreReturnValues = false;
+                if(params.get("IGNORE_RETURN_VALUES") != null) {
+                    // still can be set to false (by user in URI)
+                    log.trace("IGNORE_RETURN_VALUES value from URI parameter: " + params.get("IGNORE_RETURN_VALUES").getValue().toString());
+                    ignoreReturnValues = Boolean.parseBoolean(params.get("IGNORE_RETURN_VALUES").getValue().toString());
+                }
+                log.trace("IGNORE_RETURN_VALUES set to: " + ignoreReturnValues);
+                return callFunctionPut(setNameWhichIsCacheName, entryKey, cachedValue, ignoreReturnValues);
             }
 
             if (function.getHttpMethod().equals("GET") && function.getName().endsWith("_get")) {
@@ -803,10 +866,19 @@ public class InfinispanProducer implements ODataProducer {
                 List<EdmFunctionParameter.Builder> funcParameters = new LinkedList<EdmFunctionParameter.Builder>();
 
                 EdmFunctionParameter.Builder pbKey = new EdmFunctionParameter.Builder();
+                EdmFunctionParameter.Builder pbIgnoreReturnValues = new EdmFunctionParameter.Builder();
 
                 // for POST, GET, DELETE and PUT method
+                // It is needed to add function parameter for all values (FLAGS) which users need to pass through URI
                 pbKey.setName("key").setType(EdmType.getSimple("String")).setNullable(true).build();
+
+                // TODO: add other FLAGS
+                pbIgnoreReturnValues.setName("IGNORE_RETURN_VALUES").setType(EdmType.getSimple("String")).setNullable(true).build();
+
+                // TODO: add basic cache operations (start, stop)
+
                 funcParameters.add(pbKey);
+                funcParameters.add(pbIgnoreReturnValues);
 
 
                 // only cache name function for method POST requests
@@ -836,12 +908,10 @@ public class InfinispanProducer implements ODataProducer {
                                 // by specifying http method, we make from this "function" a SERVICE OPERATION kind of a "function"
                         .setHttpMethod("POST")
                         .setBindable(false)
-                        .setSideEffecting(false)  // true for Action (POST)
+                        .setSideEffecting(true)  // true for Action (POST)
                         .setAlwaysBindable(false)
                         .addParameters(funcParameters).build();
 
-                // TODO: maybe change return type to something like JSON VALUE
-                // TODO: so we can avoid some ByteArrayInputStream -> string,json transformations (possible?)
                 fb6.setName(entitySetNameCacheName + "_get")
                         .setEntitySet(container.getEntitySets().get(i))
                         .setEntitySetName(entitySetNameCacheName)
@@ -849,7 +919,7 @@ public class InfinispanProducer implements ODataProducer {
                         .setReturnType(EdmSimpleType.STRING)
                         .setHttpMethod("GET")
                         .setBindable(false)
-                        .setSideEffecting(false)  // true for Action (POST)
+                        .setSideEffecting(true)  // true for Action (POST)
                         .setAlwaysBindable(false)
                         .addParameters(funcParameters).build();
 
@@ -860,7 +930,7 @@ public class InfinispanProducer implements ODataProducer {
                         .setReturnType(EdmSimpleType.STRING)
                         .setHttpMethod("DELETE")
                         .setBindable(false)
-                        .setSideEffecting(false)  // true for Action (POST)
+                        .setSideEffecting(true)  // true for Action (POST)
                         .setAlwaysBindable(false)
                         .addParameters(funcParameters).build();
 
@@ -871,7 +941,7 @@ public class InfinispanProducer implements ODataProducer {
                         .setReturnType(EdmSimpleType.STRING)
                         .setHttpMethod("PUT")
                         .setBindable(false)
-                        .setSideEffecting(false)  // true for Action (POST)
+                        .setSideEffecting(true)  // true for Action (POST)
                         .setAlwaysBindable(false)
                         .addParameters(funcParameters).build();
 

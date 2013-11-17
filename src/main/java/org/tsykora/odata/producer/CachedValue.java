@@ -1,5 +1,7 @@
 package org.tsykora.odata.producer;
 
+import java.io.Serializable;
+
 import org.hibernate.search.annotations.Analyze;
 import org.hibernate.search.annotations.Field;
 import org.hibernate.search.annotations.FieldBridge;
@@ -8,12 +10,12 @@ import org.hibernate.search.annotations.Store;
 
 /**
  * Instances of this class will be directly stored into Infinispan cache.
- * They encapsulate JsonValueWrapper containing json as a String.
+ * They encapsulate JsonValueWrapper containing JSON as a String.
  *
  * @author tsykora@redhat.com
  */
 @Indexed
-public class CachedValue {
+public class CachedValue implements Serializable {
     @Field(analyze = Analyze.YES, store = Store.YES)
     @FieldBridge(impl = JsonValueWrapperFieldBridge.class)
     JsonValueWrapper json;

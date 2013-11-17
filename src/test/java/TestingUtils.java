@@ -22,11 +22,19 @@ import static org.junit.Assert.fail;
  */
 public class TestingUtils {
 
-    public static HttpResponse httpPostPutJsonEntry(String serviceUri, String cacheName, String entryKey, String jsonValue) {
+    public static HttpResponse httpPostPutJsonEntry(String serviceUri, String cacheName,
+                                                    String entryKey, String jsonValue, boolean ignoreReturnValues) throws UnsupportedEncodingException{
 
         HttpClient httpClient = new DefaultHttpClient();
+        String post = "";
 
-        String post = serviceUri + "" + cacheName + "_put?key=%27" + entryKey + "%27";
+        if (ignoreReturnValues) {
+            // test IGNORE_RETURN_VALUES flag
+            post = serviceUri + "" + cacheName + "_put?IGNORE_RETURN_VALUES=%27true%27&key=%27" + entryKey + "%27";
+        } else {
+            post = serviceUri + "" + cacheName + "_put?IGNORE_RETURN_VALUES=%27false%27&key=%27" + entryKey + "%27";
+        }
+
         HttpPost httpPost = new HttpPost(post);
         httpPost.setHeader("Content-Type", "application/json; charset=UTF-8");
         httpPost.setHeader("Accept", "application/json; charset=UTF-8");
@@ -116,6 +124,7 @@ public class TestingUtils {
 
         StringBuilder sb = new StringBuilder();
 
+        // TODO: endpoint have to accept standard JSON value (without "d" specification)
         // according do OData JSON format standard
         sb.append("{\"d\" : {\"jsonValue\" : ");
         sb.append("{");
