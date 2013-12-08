@@ -16,6 +16,11 @@ import org.odata4j.producer.resources.DefaultODataApplication;
 import org.odata4j.producer.resources.RootApplication;
 import org.odata4j.producer.server.ODataServer;
 
+/**
+ *
+ * Class changed from odata4j InMemoryProducer example.
+ *
+ */
 public class JerseyRuntimeFacade implements RuntimeFacade {
 
     static {

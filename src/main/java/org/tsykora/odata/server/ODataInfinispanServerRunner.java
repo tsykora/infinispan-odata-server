@@ -41,7 +41,7 @@ public class ODataInfinispanServerRunner {
 
         String endpointUri = args[0];
 
-        String containerName = "ODataInfinispanContainer";
+        String containerName = "InfinispanODataContainer";
         String configFile = args[1];
 
         final InfinispanProducer infinispanProducer =

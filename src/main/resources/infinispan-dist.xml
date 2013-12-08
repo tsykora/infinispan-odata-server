@@ -27,6 +27,7 @@
 
         <transport clusterName="OData-Cluster" transportClass="org.infinispan.remoting.transport.jgroups.JGroupsTransport">
             <properties>
+                <!-- TOOD: get it from eternal source -->
                 <property name="configurationFile" value="jgroups-tcp.xml"/>
             </properties>
         </transport>
@@ -85,6 +86,7 @@
     </default>
 
     <namedCache name="defaultCache">
+
         <clustering mode="replication">
             <stateTransfer fetchInMemoryState="true"/>
             <sync replTimeout="25000"/>

@@ -123,25 +123,20 @@ public class TestingUtils {
                                                 String gender, String firstName, String lastName, int age) {
 
         StringBuilder sb = new StringBuilder();
-
-        // TODO: endpoint have to accept standard JSON value (without "d" specification)
-        // according do OData JSON format standard
-        sb.append("{\"d\" : {\"jsonValue\" : ");
         sb.append("{");
-        sb.append("\"entityClass\":\"" + entityClass + "\",\n");
-        sb.append("\"id\":\"" + id + "\",\n");
-        sb.append("\"gender\":\"" + gender + "\",\n");
-        sb.append("\"firstName\":\"" + firstName + "\",\n");
-        sb.append("\"lastName\":\"" + lastName + "\",\n");
-        sb.append("\"age\":" + age + "\n");
+        sb.append("\"entityClass\":\"" + entityClass + "\",");
+        sb.append("\"id\":\"" + id + "\",");
+        sb.append("\"gender\":\"" + gender + "\",");
+        sb.append("\"firstName\":\"" + firstName + "\",");
+        sb.append("\"lastName\":\"" + lastName + "\",");
+        sb.append("\"age\":" + age);
         sb.append("}");
-        sb.append("}}");
-
         return sb.toString();
     }
 
-
     /**
+     * This method extracts raw jsonValue from standardized service response.
+     *
      * Standardized format
      * <p/>
      * {"d" : {"jsonValue" : {
@@ -153,12 +148,12 @@ public class TestingUtils {
      * "age":24}
      * }}
      *
-     * @param standardizedJson Obtain it like: Object standardizedJson = mapper.readValue(jsonInStream, Object.class);
-     *                         where InputStream jsonInStream = httpResponse.getEntity().getContent(); or this can be
-     *                         String which represents standardized JSON Object.
-     * @return returns value of field jsonValue as String
+     * @param standardizedJson - can be obtained like: <p> Object standardizedJson = mapper.readValue(jsonInStream, Object.class);
+     *                         where InputStream jsonInStream = httpResponse.getEntity().getContent();
+     *
+     * @return returns value of field jsonValue as String (i.e. raw JSON entity which was stored into the cache)
      */
-    public static String extractJsonValueFromStandardizedODataJsonAsString(Object standardizedJson) {
+public static String extractJsonValueFromStandardizedODataJsonAsString(Object standardizedJson) {
 
         String returnedJsonValueAsString = null;
         Map<String, Object> entryAsMap = null;
@@ -166,8 +161,6 @@ public class TestingUtils {
 
         if (standardizedJson instanceof Map) {
             // this is JSON Object from HTTP response
-            System.out.println("Extraction in TestUtil: " +
-                    "Directly extracting jsonValue from Object Map (was read from HTTP response InputStream).");
             entryAsMap = (Map<String, Object>) standardizedJson;
             Map<String, Object> childMap = (Map<String, Object>) entryAsMap.get("d");
             try {
@@ -177,22 +170,7 @@ public class TestingUtils {
                 fail("Object Map standardized json exception: " + e.getMessage());
             }
         }
-
-        if (standardizedJson instanceof String) {
-            try {
-                // read from String
-                System.out.println("Extraction in TestUtil: Reading JSON from String for extraction...");
-                entryAsMap = (Map<String, Object>) mapper.readValue(standardizedJson.toString(), Object.class);
-                Map<String, Object> childMap = (Map<String, Object>) entryAsMap.get("d");
-                returnedJsonValueAsString = mapper.writeValueAsString(childMap.get("jsonValue"));
-            } catch (IOException e) {
-                e.printStackTrace();
-                fail("String standardized json exception: " + e.getMessage());
-            }
-        }
-
         assertTrue("ReturnedJsonValueAsString should not be null", returnedJsonValueAsString != null);
-        System.out.println("Extraction in TestUtil: Returning returnedJsonValueAsString: " + returnedJsonValueAsString);
         return returnedJsonValueAsString;
     }
 }

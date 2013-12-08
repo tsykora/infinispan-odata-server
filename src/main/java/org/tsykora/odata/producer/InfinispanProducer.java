@@ -1,7 +1,10 @@
 package org.tsykora.odata.producer;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -13,7 +16,6 @@ import java.util.Set;
 import javax.ws.rs.core.Response;
 
 import org.apache.log4j.Logger;
-import org.codehaus.jackson.map.ObjectMapper;
 import org.core4j.Func;
 import org.core4j.Func1;
 import org.infinispan.AdvancedCache;
@@ -31,6 +33,7 @@ import org.odata4j.core.OSimpleObject;
 import org.odata4j.edm.EdmComplexType;
 import org.odata4j.edm.EdmDataServices;
 import org.odata4j.edm.EdmDecorator;
+import org.odata4j.edm.EdmDocumentation;
 import org.odata4j.edm.EdmEntityContainer;
 import org.odata4j.edm.EdmEntitySet;
 import org.odata4j.edm.EdmEntityType;
@@ -59,11 +62,9 @@ import org.odata4j.producer.inmemory.InMemoryTypeMapping;
 import org.odata4j.producer.inmemory.PropertyModel;
 
 /**
- *
  * ODataProducer with implemented direct access to Infinispan Cache.
  *
  * @author Tomas Sykora <tomas@infinispan.org>
- *
  */
 public class InfinispanProducer implements ODataProducer {
 
@@ -92,7 +93,6 @@ public class InfinispanProducer implements ODataProducer {
     private final boolean flattenEdm;
     private static final int DEFAULT_MAX_RESULTS = 100;
 
-    // TODO: properly decide: not static??? - cache instance is running with producer instance
     private DefaultCacheManager defaultCacheManager;
     // for faster cache access
     private HashMap<String, AdvancedCache> caches = new HashMap<String, AdvancedCache>();
@@ -150,22 +150,25 @@ public class InfinispanProducer implements ODataProducer {
         // TODO add possibility for passing configurations (global, local)
         try {
             // true = start it + start defined caches
-            defaultCacheManager = new DefaultCacheManager(ispnConfigFile, true);
 
+            log.info("Infinispan config file: " + ispnConfigFile);
+
+            defaultCacheManager = new DefaultCacheManager(ispnConfigFile, true);
 
             Set<String> cacheNames = defaultCacheManager.getCacheNames();
 
             for (String cacheName : cacheNames) {
+
 //            dump("Starting cache with name " + cacheName + " on defaultCacheManager...");
 //            defaultCacheManager.startCache(cacheName);
 
-                dump("Registering cache with name " + cacheName + " in Producer...");
+                log.info("Registering cache with name " + cacheName + " in OData InfinispanProducer...");
                 // cacheName = entitySetName
                 eis.put(cacheName, null);
             }
 
         } catch (IOException e) {
-            System.out.println(" PROBLEMS WITH CREATING DEFAULT CACHE MANAGER! ");
+            log.error(" PROBLEMS WITH CREATING DEFAULT CACHE MANAGER! ");
             e.printStackTrace();
         }
     }
@@ -233,20 +236,72 @@ public class InfinispanProducer implements ODataProducer {
     // Not supported -- use defined OData functions
     @Override
     public EntitiesResponse getEntities(ODataContext context, String entitySetName, final QueryInfo queryInfo) {
-        throw new NotImplementedException();
+
+        // returning all entities from set/cache
+        // calling like
+        // http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache
+
+        throw new NotImplementedException("getEntities Not yet implemented...");
     }
 
 
     // Not supported -- use defined OData functions
     @Override
-    public CountResponse getEntitiesCount(ODataContext context, String entitySetName, final QueryInfo queryInfo) {
+    public CountResponse getEntitiesCount(ODataContext context, final String entitySetName, final QueryInfo queryInfo) {
         throw new NotImplementedException();
     }
 
     // Not supported -- use defined OData functions
     @Override
-    public EntityResponse getEntity(ODataContext context, final String entitySetName, final OEntityKey entityKey, final EntityQueryInfo queryInfo) {
+    public EntityResponse getEntity(ODataContext context, String entitySetName, OEntityKey entityKey, EntityQueryInfo queryInfo) {
+//        // Is this faster than return simple get through function? (no, it is little bit slower)
+//
+//        // http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache('something') <--- entity key
+//        final String entryKey = entityKey.toKeyStringWithoutParentheses().replace("'", "");
+//        log.info("\n\n getEntity -- entryKey set to " + entryKey + " \n\n");
+//        final String setNameWhichIsCacheName = entitySetName;
+//
+//        EdmEntityType.Builder eet = EdmEntityType.newBuilder().setNamespace(namespace).
+//                setName("CachedValue").setBaseType("Edm.String").setHasStream(false);
+//        List<String> keysForRootEdmType = new ArrayList<String>();
+//        keysForRootEdmType.add("rootTypeKey");
+//        eet.addKeys(keysForRootEdmType);
+//
+//        EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName).setEntityType(eet);
+//
+//        // get
+//        final CachedValue cachedValue = (CachedValue) getCache(setNameWhichIsCacheName).get(entryKey);
+//
+//        final StringBuilder sb = new StringBuilder();
+//        // actual get
+//        sb.append(cachedValue.getJsonValueWrapper().getJson().toString());
+//
+//        final List<OProperty<?>> properties = new ArrayList<OProperty<?>>();
+//        properties.add(new OProperty<Object>() {
+//            @Override
+//            public EdmType getType() {
+//                return EdmType.getSimple("Edm.String");
+//            }
+//
+//            @Override
+//            public Object getValue() {
+//                return sb.toString();
+//            }
+//
+//            @Override
+//            public String getName() {
+//                return "jsonValue";
+//            }
+//        });
+//        final Map<String, Object> keyKVPair = new HashMap<String, Object>();
+//        keyKVPair.put("rootTypeKey", entryKey);
+////      ??  EdmEntityType edmEntityType = (EdmEntityType) this.getMetadata().findEdmEntityType(namespace + "." + entitySetName);
+//        OEntityKey oekey = OEntityKey.create(keyKVPair);
+//        OEntity oe = OEntities.create(ees.build(), eet.build(), oekey, properties, null);
+//        return Responses.entity(oe);
+
         throw new NotImplementedException();
+
     }
 
     // Not supported -- use defined OData functions
@@ -283,7 +338,8 @@ public class InfinispanProducer implements ODataProducer {
     // Not supported (How to navigate entities inside NOSQL, schema-less store?)
     @Override
     public BaseResponse getNavProperty(ODataContext context, String entitySetName, OEntityKey entityKey, String navProp, QueryInfo queryInfo) {
-        throw new NotImplementedException();
+        throw new NotImplementedException("Navigation properties are not supported. This service returns whole JSON documents based on" +
+                " the key or filtered by filters.");
     }
 
     // Not supported (How to navigate entities inside NOSQL, schema-less store?)
@@ -324,30 +380,19 @@ public class InfinispanProducer implements ODataProducer {
      */
     private BaseResponse callFunctionPut(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue,
                                          boolean ignoreReturnValues) {
-
-        log.trace("*********** Putting into " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
+        log.trace("Putting into " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
 
         if (ignoreReturnValues) {
-
             getCache(setNameWhichIsCacheName).withFlags(Flag.IGNORE_RETURN_VALUES).put(entryKey, cachedValue);
-
-            log.trace("*********** Put with IGNORE_RETURN_VALUES *******");
-           // TODO: link to new entity should be returned (return it in the value, build by using a key)
-           // create new property in InfinispanResponse -- createdEntityLink
-           return Responses.infinispanResponse(null, null, null, Response.Status.CREATED);
-
+            log.trace("Put with IGNORE_RETURN_VALUES");
+            return Responses.infinispanResponse(null, null, null, Response.Status.CREATED);
         } else {
-
             getCache(setNameWhichIsCacheName).put(entryKey, cachedValue);
-
-            // TODO -- ODATA spec -- set response to 201 and Created (callGet is setting this up to OK not CREATED -- pass some flag)
-            log.trace(" ************* Put function, ignoring return values false, returning full get after put");
-            return callFunctionGet(setNameWhichIsCacheName, entryKey, null);
-
+            CachedValue resultOfPutForResponse = (CachedValue) getCache(setNameWhichIsCacheName).get(entryKey);
+            log.trace("Put function, ignoring return values false, returning full get after put");
+            return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", standardizeJSONresponse(
+                    new StringBuilder(resultOfPutForResponse.getJsonValueWrapper().getJson())).toString(), Response.Status.CREATED);
         }
-
-
-
     }
 
 
@@ -436,34 +481,6 @@ public class InfinispanProducer implements ODataProducer {
         }
     }
 
-    /**
-     *
-     *
-     * @param value
-     * @return standardized StringBuilder object
-     */
-    private StringBuilder standardizeJSONresponse(StringBuilder value) {
-        //      example of raw: InfinispanResponse response getValue():
-//      {"entityClass":"org.my.domain.person","gender":"MALE","verified":false,"age":24,"firstname":"Neo","lastname":"Matrix McMaster"}
-
-//      we need:
-
-//      { "d" : {
-//      "jsonValue" : {"entityClass":"org.my.domain.person","gender":"MALE",
-//                    "verified":false,"age":24,"firstname":"Neo","lastname":"Matrix McMaster"}
-//      }}
-
-        StringBuilder sb = new StringBuilder();
-
-        sb.append("{ \"d\" : { ");
-        sb.append(" \"jsonValue\" : ");
-//      e.g. {"entityClass":"org.my.domain.person","gender":"MALE","verified":false,"age":24,"firstname":"Neo","lastname":"Matrix McMaster"}
-        sb.append(value.toString() + "");
-        sb.append("}}");
-
-        return sb;
-    }
-
     public BaseResponse callFunctionRemove(String setNameWhichIsCacheName, String entryKey) {
         // TODO: later, avoid returning by using flag (or add option to call uri)
         CachedValue removed = (CachedValue) getCache(setNameWhichIsCacheName).remove(entryKey);
@@ -488,7 +505,7 @@ public class InfinispanProducer implements ODataProducer {
      * We can go the way of having cacheName_get/put/delete/update and call particular aforementioned methods
      * (i.e. create, delete, update, get entity)
      * <p/>
-     * TODO: implement real - cache related functions like: Start, Stop etc.
+     * TODO: implement cache management related functions like: Start, Stop etc. probably cacheName_stop
      * <p/>
      * <p/>
      * Use it like: http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_get?key=%27jsonKey1%27"
@@ -523,35 +540,35 @@ public class InfinispanProducer implements ODataProducer {
             boolean extractClientPayload = (function.getHttpMethod().equals("POST") && function.getName().endsWith("_put")) ||
                     ((function.getHttpMethod().equals("PUT") && function.getName().endsWith("_replace")));
 
+            InputStream jsonInputStream = null;
+
             if (extractClientPayload) {
+                // raw JSON data
                 OSimpleObject payloadOSimpleObject = (OSimpleObject) params.get("payload").getValue();
+
+                jsonInputStream = (InputStream) payloadOSimpleObject.getValue();
+                BufferedReader br = new BufferedReader(new InputStreamReader(new BufferedInputStream(jsonInputStream)));
+                StringBuilder sb = new StringBuilder();
+                String readLine;
+
                 try {
-                    ObjectMapper mapper = new ObjectMapper();
-                    InputStream jsonInputStream = (InputStream) payloadOSimpleObject.getValue();
-
-                    Map<String, Object> entryAsMap = (Map<String, Object>) mapper.readValue(jsonInputStream, Object.class);
-                    Map<String, Object> childMap = (Map<String, Object>) entryAsMap.get("d");
-
-                    // TODO: inserting JSON can be without "d" this is not standard. Users can put simple JSON
-                    if (childMap == null) {
-                        return Responses.error(new OErrorImpl("Expected \"d\" for starting JSON OData format."));
+                    while (((readLine = br.readLine()) != null)) {
+                        sb.append(readLine);
                     }
 
-                    Object extractedJsonValue = childMap.get("jsonValue");
-
-                    if (extractedJsonValue == null) {
-                        return Responses.error(new OErrorImpl("Expected \"jsonValue\" to be specified." +
-                                "Value of this field is the whole entity represented as nested JSON object."));
-                    }
-
-                    log.trace("ExtractedJsonValue map for Mapper: " + extractedJsonValue);
-                    log.trace("Will be put into cache (wrapped in JsonValueWrapper) like String: "
-                            + mapper.writeValueAsString(extractedJsonValue));
-
-                    cachedValue = new CachedValue(mapper.writeValueAsString(extractedJsonValue));
+                    log.trace("Client payload extracted for put or replace: " + sb.toString());
+                    cachedValue = new CachedValue(sb.toString());
 
                 } catch (Exception e) {
                     return Responses.error(new OErrorImpl("Problems with extracting jsonValue from payload. " + e.getMessage()));
+                } finally {
+                    try {
+                        if (jsonInputStream != null) jsonInputStream.close();
+                        if (br != null) br.close();
+                    } catch (IOException e) {
+                        log.error("Closing streams in InfinispanProducer failed. Method callFunction()." + e.getMessage());
+                        e.printStackTrace();
+                    }
                 }
             }
 
@@ -559,12 +576,12 @@ public class InfinispanProducer implements ODataProducer {
             if (function.getHttpMethod().equals("POST") && function.getName().endsWith("_put")) {
 
                 boolean ignoreReturnValues = false;
-                if(params.get("IGNORE_RETURN_VALUES") != null) {
+                if (params.get("IGNORE_RETURN_VALUES") != null) {
                     // still can be set to false (by user in URI)
                     log.trace("IGNORE_RETURN_VALUES value from URI parameter: " + params.get("IGNORE_RETURN_VALUES").getValue().toString());
                     ignoreReturnValues = Boolean.parseBoolean(params.get("IGNORE_RETURN_VALUES").getValue().toString());
                 }
-                log.trace("IGNORE_RETURN_VALUES set to: " + ignoreReturnValues);
+                log.trace("put, IGNORE_RETURN_VALUES set to: " + ignoreReturnValues);
                 return callFunctionPut(setNameWhichIsCacheName, entryKey, cachedValue, ignoreReturnValues);
             }
 
@@ -768,8 +785,33 @@ public class InfinispanProducer implements ODataProducer {
         private void createStructuralEntities(EdmDecorator decorator) {
             // eis contains all of the registered entity sets.
             for (String entitySetName : eis.keySet()) {
-//                EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName).setEntityType(eet);
-                EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName);
+
+                // TODO !!! RETURN BACK check in odata4j libs! See diff and return it back a resolve problem here!!!
+
+                // TODO: it is necessary to set EdmEntityType for metadata to work
+
+                EdmEntityType.Builder eet = EdmEntityType.newBuilder().setNamespace(namespace).
+                        setName("CachedValue").setBaseType("Edm.String").setHasStream(false);
+
+                // Root types mush have keys, add keys
+                // TODO: find out how to link/get entities with dependence on this key
+                List<String> keysForRootEdmType = new ArrayList<String>();
+                keysForRootEdmType.add("rootTypeKey");
+                eet.addKeys(keysForRootEdmType);
+
+                EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName).setEntityType(eet);
+
+                ees.setDocumentation(new EdmDocumentation("This EDM EntitySet represents Infinispan cache." +
+                        " Cache is ready for storing JSON documents. " +
+                        "Enable indexing in Infinispan configuration XML file for searching capabilities. " +
+                        "Base EdmEntityType is Edm.STRING (being able to return JSON entities).",
+
+                        "org.infinispan.odata.producer.CachedValue objects " +
+                        "are stored into the Infinispan cache. CachedValue instance encapsulates " +
+                                "org.infinispan.odata.producer.JsonValueWrapper instance, which wraps " +
+                                "JSON entity as a String."));
+
+//                EdmEntitySet.Builder ees = EdmEntitySet.newBuilder().setName(entitySetName);
                 entitySetsByName.put(ees.getName(), ees);
             }
         }
@@ -912,16 +954,21 @@ public class InfinispanProducer implements ODataProducer {
                         .setAlwaysBindable(false)
                         .addParameters(funcParameters).build();
 
-                fb6.setName(entitySetNameCacheName + "_get")
-                        .setEntitySet(container.getEntitySets().get(i))
-                        .setEntitySetName(entitySetNameCacheName)
-                                // let return type to null to be able to directly access response
-                        .setReturnType(EdmSimpleType.STRING)
-                        .setHttpMethod("GET")
-                        .setBindable(false)
-                        .setSideEffecting(true)  // true for Action (POST)
-                        .setAlwaysBindable(false)
-                        .addParameters(funcParameters).build();
+                fb5.setDocumentation(new EdmDocumentation("Use this function for putting JSON documents into the Infinispan cache. " +
+                        "Specify the key of the entry and set BODY of the HTTP POST.",
+                        "FLAG parameter IGNORE_RETURN_VALUES can be set up. " +
+                                "Usage: serviceUri.svc/" + entitySetNameCacheName + "_put/IGNORE_RETURN_VALUES='false'&key='key1'"));
+
+                        fb6.setName(entitySetNameCacheName + "_get")
+                                .setEntitySet(container.getEntitySets().get(i))
+                                .setEntitySetName(entitySetNameCacheName)
+                                        // let return type to null to be able to directly access response
+                                .setReturnType(EdmSimpleType.STRING)
+                                .setHttpMethod("GET")
+                                .setBindable(false)
+                                .setSideEffecting(true)  // true for Action (POST)
+                                .setAlwaysBindable(false)
+                                .addParameters(funcParameters).build();
 
                 fb7.setName(entitySetNameCacheName + "_remove")
                         .setEntitySet(container.getEntitySets().get(i))
@@ -956,6 +1003,33 @@ public class InfinispanProducer implements ODataProducer {
             dump("Functions import ok...");
             container.addFunctionImports(funcImports);
         }
+    }
+
+    /**
+     * [ODATA STANDARD]
+     * Encapsulates JSON string into OData standard format for service returns.
+     * JSON values are coming RAW (puts):
+     * <p/>
+     * {"entityClass":"org.my.domain.person","gender":"MALE",
+     * "verified":false,"age":24,"firstname":"Neo","lastname":"Matrix McMaster"}
+     * <p/>
+     * and have to be returned (gets) in standard format ("d" stands for "data"):
+     * <p/>
+     * { "d" : {
+     * "jsonValue" :
+     * {"entityClass":"org.my.domain.person","gender":"MALE","verified":false,"age":24,"firstname":"Neo","lastname":"Matrix McMaster"}
+     * }}
+     *
+     * @param value -- StringBuilder containing raw JSON string
+     * @return standardized StringBuilder object
+     */
+    private StringBuilder standardizeJSONresponse(StringBuilder value) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("{ \"d\" : { ");
+        sb.append(" \"jsonValue\" : ");
+        sb.append(value.toString() + "");
+        sb.append("}}");
+        return sb;
     }
 }
 
