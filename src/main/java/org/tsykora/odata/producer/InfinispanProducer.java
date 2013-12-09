@@ -775,9 +775,8 @@ public class InfinispanProducer implements ODataProducer {
 
             List<EdmFunctionImport.Builder> funcImports = new LinkedList<EdmFunctionImport.Builder>();
 
-            int i = 0;
-            while (i < container.getEntitySets().size()) {
-                i++;
+
+            for (int i = 0; i<container.getEntitySets().size(); i++) {
                 // define functions for each entity set (= each cache)
 
                 String entitySetNameCacheName = container.getEntitySets().get(i).getName();

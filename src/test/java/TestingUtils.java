@@ -139,14 +139,14 @@ public class TestingUtils {
      *
      * Standardized format
      * <p/>
-     * {"d" : {"jsonValue" : {
+     * {"d" : {
      * "entityClass":"org.infinispan.odata.Person",
      * "id":"person1",
      * "gender":"MALE",
      * "firstName":"John",
      * "lastName":"Smith",
      * "age":24}
-     * }}
+     * }
      *
      * @param standardizedJson - can be obtained like: <p> Object standardizedJson = mapper.readValue(jsonInStream, Object.class);
      *                         where InputStream jsonInStream = httpResponse.getEntity().getContent();
@@ -162,9 +162,8 @@ public static String extractJsonValueFromStandardizedODataJsonAsString(Object st
         if (standardizedJson instanceof Map) {
             // this is JSON Object from HTTP response
             entryAsMap = (Map<String, Object>) standardizedJson;
-            Map<String, Object> childMap = (Map<String, Object>) entryAsMap.get("d");
             try {
-                returnedJsonValueAsString = mapper.writeValueAsString(childMap.get("jsonValue"));
+                returnedJsonValueAsString = mapper.writeValueAsString(entryAsMap.get("d"));
             } catch (IOException e) {
                 e.printStackTrace();
                 fail("Object Map standardized json exception: " + e.getMessage());
