@@ -107,6 +107,12 @@ public class BasicODataCacheTest {
                 serviceUri + cacheName + "_get?key='person1'", httpPutResponse.getFirstHeader("location").getValue());
 
         compareHttpResponseWithJsonEntity(httpPutResponse, jsonPerson1);
+
+//        try {
+//            Thread.sleep(300000);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();  // TODO: Customise this generated block
+//        }
     }
 
 
