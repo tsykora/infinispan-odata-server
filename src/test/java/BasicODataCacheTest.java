@@ -108,11 +108,11 @@ public class BasicODataCacheTest {
 
         compareHttpResponseWithJsonEntity(httpPutResponse, jsonPerson1);
 
-//        try {
-//            Thread.sleep(300000);
-//        } catch (InterruptedException e) {
-//            e.printStackTrace();  // TODO: Customise this generated block
-//        }
+        try {
+            Thread.sleep(600000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();  // TODO: Customise this generated block
+        }
     }
 
 

@@ -36,7 +36,7 @@ public class JerseyRuntimeFacade implements RuntimeFacade {
             ODataServer server = startODataServer(baseUri);
 //          server.setHttpAuthenticator (need added classes + improvements later)
 
-            System.out.println("OData Infinispan server successfully started.");
+            System.out.println("Infinispan OData server successfully started.");
             System.out.println("-Dlog4j.configuration=file:///path/log4j.xml can be passed.");
             System.out.println("Service listening at: " + baseUri);
             System.out.println("Metadata ready for access at: " + baseUri + "$metadata");

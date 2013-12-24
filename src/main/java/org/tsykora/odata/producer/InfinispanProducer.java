@@ -62,9 +62,13 @@ import org.odata4j.producer.inmemory.InMemoryTypeMapping;
 import org.odata4j.producer.inmemory.PropertyModel;
 
 /**
- * ODataProducer with implemented direct access to Infinispan Cache.
+ * ODataProducer implementation with direct access to the Infinispan's caches.
+ *
+ * TODO: FIND OUT AUTHOR OF THE InMemoryProducerExample and give a proper credit to him (them).
  *
  * @author Tomas Sykora <tomas@infinispan.org>
+ *
+ * this class is based on the InMemoryProducer -- author
  */
 public class InfinispanProducer implements ODataProducer {
 
@@ -311,40 +315,45 @@ public class InfinispanProducer implements ODataProducer {
             }
         }
 
-        if (queryResult.size() > 0) {
+        int resultsCount = queryResult.size();
+        if (resultsCount > 0) {
             StringBuilder sb = new StringBuilder();
             // build response
 
             // [ODATA SPEC]
-            // signs marked as "-" are standardized by standardizeJSONresponse() function
+            // signs marked as "---" are standardized by standardizeJSONresponse() function
             // part market as "/****/", "/" including will be passed to standardizeJSONresponse() function
             // result of standardizeJSONresponse() will be directly returned to clients
 
             // for more results, create array
-            // --------/***************************/-
+            // --------/*************************/-
             // { "d" : [{ ... }, { ...}, { ... }] }
 
-            // for one result, return just it
+            // for one result, return just one stored JSON document
             // --------/*****/-
             // { "d" : { ... }}
 
-            if (queryResult.size() > 1) {
+            if (resultsCount > 1) {
                 sb.append("["); // start array of results
             }
 
+
+            int counter = 0;
             for (Object one_result : queryResult) {
+                counter++;
                 // stack more JSON strings responses if needed
                 CachedValue cv = (CachedValue) one_result;
                 sb.append(cv.getJsonValueWrapper().getJson());
 
 //                sb.append("\n"); // for better readability?
 
-                if (queryResult.size() > 1) {
-                    sb.append(", "); // delimit results inside of an array
+                if ((resultsCount > 1) && (resultsCount > counter)) {
+                    // delimit results inside of an array, don't add "," after the last one JSON
+                    sb.append(", \n");
                 }
             }
 
-            if (queryResult.size() > 1) {
+            if (resultsCount > 1) {
                 sb.append("]"); // end array of results
             }
 
@@ -700,6 +709,13 @@ public class InfinispanProducer implements ODataProducer {
             return null;
         }
 
+
+
+
+
+
+
+        // TODO: WE PROBABLY DON'T NEED THESE 2 CLASSES below
         /*
         * contains all generated InMemoryEntityInfos that get created as we walk
         * up the inheritance hierarchy and find Java types that are not registered.
@@ -994,7 +1010,7 @@ public class InfinispanProducer implements ODataProducer {
 //        // Todo return error if anything went wrong (parsing the key?)
 //        return Responses.entity(oe);
 
-        throw new NotImplementedException();
+        throw new NotImplementedException("getEntity not yet implemented. Use service operations as defined in $metadata.");
     }
 
     // Not supported -- use defined OData functions
