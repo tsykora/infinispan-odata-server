@@ -55,6 +55,8 @@ public final class JsonValueWrapperFieldBridge implements FieldBridge, Serializa
             throw new IllegalArgumentException("This FieldBridge can only be applied to a JsonValueWrapper");
         }
 
+        // TODO: what to do when I have corrupted JSON as input???
+
         JsonValueWrapper valueWrapper = (JsonValueWrapper) value;
         String json = valueWrapper.getJson();
 

@@ -91,6 +91,8 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
      * @param expr - general expression
      */
     public void visit(BoolCommonExpression expr) {
+        // recursive function for translating queries
+
         // TODO: Use switch to retype? - we don't need this
 
         // TODO: IMPORTANT: Do it top -> down according to the highest precedence

@@ -97,7 +97,7 @@ public class InfinispanProducer implements ODataProducer {
     private final boolean flattenEdm;
     private static final int DEFAULT_MAX_RESULTS = 100;
 
-    private DefaultCacheManager defaultCacheManager;
+    private DefaultCacheManager defaultCacheManager = null;
     // for faster cache access
     private HashMap<String, AdvancedCache> caches = new HashMap<String, AdvancedCache>();
 
@@ -150,7 +150,7 @@ public class InfinispanProducer implements ODataProducer {
         this.typeMapping = typeMapping == null ? InMemoryTypeMapping.DEFAULT : typeMapping;
         this.flattenEdm = flattenEdm;
 
-
+        // TODO: implement running in -DtestMode=true (pre-fill up cache with 10 JSON entries)
         // TODO add possibility for passing configurations (global, local)
         try {
             // true = start it + start defined caches
@@ -161,6 +161,9 @@ public class InfinispanProducer implements ODataProducer {
 
             // default cache is not included in this Set
             Set<String> cacheNames = defaultCacheManager.getCacheNames();
+
+            // TODO: add default cache explicitly? check whether exist? created every time?
+//            cacheNames.add("default");
 
             for (String cacheName : cacheNames) {
                 log.info("Registering cache with name " + cacheName + " in OData InfinispanProducer...");
@@ -231,6 +234,9 @@ public class InfinispanProducer implements ODataProducer {
     private BaseResponse callFunctionPut(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue,
                                          boolean ignoreReturnValues) {
         log.trace("Putting into " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
+
+        // TODO -- what to do in PUT when cache has indexing disabled??? Does it even reach JACKson and/or field bridge?
+        // TODO -- or when indexing disabled, this is just ignored?
 
         if (ignoreReturnValues) {
             getCache(setNameWhichIsCacheName).withFlags(Flag.IGNORE_RETURN_VALUES).put(entryKey, cachedValue);
@@ -327,7 +333,7 @@ public class InfinispanProducer implements ODataProducer {
 
             // for more results, create array
             // --------/*************************/-
-            // { "d" : [{ ... }, { ...}, { ... }] }
+            // { "d" : [{ ... }, { ... }, { ... }] }
 
             // for one result, return just one stored JSON document
             // --------/*****/-
