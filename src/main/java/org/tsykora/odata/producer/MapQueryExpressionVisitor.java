@@ -100,6 +100,10 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
         // () PARENTHESES expressions here? As the first? The highest precedence?
         // Look into OData specification
 
+        // TODO: how to do it better?
+        // Is it UNDER??? if yes, then it's ok.... like if its already in producer and expr and going to and, that's ok
+        // Query.info is simply BoolCommonExp .... I simply need to distribute it here....
+
         if(expr.getClass().getInterfaces()[0] == AndExpression.class) {
             visit((AndExpression) expr);
         }
@@ -109,7 +113,6 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
         if(expr.getClass().getInterfaces()[0] == EqExpression.class) {
             visit((EqExpression) expr);
         }
-
 
     }
 
@@ -122,6 +125,7 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
         visit(expr.getRHS());
         booleanQuery.add(this.tmpQuery, BooleanClause.Occur.MUST);
 
+        // TODO -- use setter and getter
         this.tmpQuery = booleanQuery;
         System.out.println("tmpQuery set to: " + tmpQuery);
     }

@@ -18,12 +18,18 @@
         <!-- If the transport is omitted, there is no way to create distributed or clustered
             caches. There is no added cost to defining a transport but not creating a cache that uses one,
             since the transport is created and initialized lazily. -->
-        <transport
-                clusterName="OData-Cluster"
-                >
 
-            <!-- Note that the JGroups transport uses sensible defaults if no configuration
-                property is defined. See the JGroupsTransport javadocs for more flags -->
+
+        <!-- Note that the JGroups transport uses sensible defaults if no configuration
+            property is defined. See the JGroupsTransport javadocs for more flags -->
+        <!--<transport clusterName="OData-Cluster" >-->
+        <!--</transport>-->
+
+        <transport clusterName="OData-Cluster" transportClass="org.infinispan.remoting.transport.jgroups.JGroupsTransport">
+            <properties>
+                <!-- TOOD: get it from external source/path -->
+                <property name="configurationFile" value="jgroups-tcp.xml"/>
+            </properties>
         </transport>
 
     </global>
@@ -44,36 +50,46 @@
             with Hibernate Search DirectoryProvider). Replication is recommended for best performance of
             Lucene indexes, but make sure you have enough memory to store the index in your heap.
             Also distribution scales much better than replication on high number of nodes in the cluster. -->
-        <clustering
-                mode="distribution">
-
+        <clustering mode="distribution">
             <!-- Prefer loading all data at startup than later -->
-            <stateTransfer
-                    timeout="480000"
-                    fetchInMemoryState="true"/>
-
+            <stateTransfer timeout="480000" fetchInMemoryState="true"/>
             <!-- Network calls are synchronous by default -->
             <sync replTimeout="20000"/>
             <hash numOwners="2"/>
         </clustering>
-        <jmxStatistics
-                enabled="true"/>
+
+        <jmxStatistics enabled="true"/>
         <!--<eviction-->
-                <!--maxEntries="-1"-->
-                <!--strategy="NONE"/>-->
+        <!--maxEntries="-1"-->
+        <!--strategy="NONE"/>-->
         <!--<expiration-->
-                <!--maxIdle="-1"-->
-                <!--reaperEnabled="false"/>-->
+        <!--maxIdle="-1"-->
+        <!--reaperEnabled="false"/>-->
+
+        <indexing enabled="false" indexLocalOnly="true">
+            <properties>
+                <!--as simple as possible? -->
+                <!--<property name="default.directory_provider" value="ram" />-->
+                <!-- Use our custom IndexManager; TODO autoinject by default? -->
+                <property name="hibernate.search.default.indexmanager"
+                          value="org.infinispan.query.indexmanager.InfinispanIndexManager"/>
+                <!-- specify the managed index is to be shared across the nodes -->
+                <property name="hibernate.search.default.directory_provider" value="infinispan"/>
+                <!-- Supporting exclusive index usage will require lock cleanup on crashed nodes to be implemented -->
+                <property name="hibernate.search.default.exclusive_index_use" value="false"/>
+                <!-- Use latest Lucene version -->
+                <property name="hibernate.search.lucene_version" value="LUCENE_36"/>
+            </properties>
+        </indexing>
     </default>
 
-
-    <namedCache name="defaultCache">
-        <clustering mode="distribution">
-            <stateTransfer fetchInMemoryState="true"/>
-            <sync replTimeout="25000"/>
-            <hash numOwners="2"/>
-        </clustering>
-    </namedCache>
+    <!--<namedCache name="defaultCache">-->
+        <!--<clustering mode="distribution">-->
+            <!--<stateTransfer fetchInMemoryState="true"/>-->
+            <!--<sync replTimeout="25000"/>-->
+            <!--<hash numOwners="2"/>-->
+        <!--</clustering>-->
+    <!--</namedCache>-->
 
     <namedCache name="mySpecialNamedCache">
         <clustering mode="distribution">
@@ -82,6 +98,5 @@
             <hash numOwners="2"/>
         </clustering>
     </namedCache>
-
 
 </infinispan>

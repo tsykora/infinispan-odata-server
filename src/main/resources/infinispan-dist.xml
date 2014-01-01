@@ -27,7 +27,7 @@
 
         <transport clusterName="OData-Cluster" transportClass="org.infinispan.remoting.transport.jgroups.JGroupsTransport">
             <properties>
-                <!-- TOOD: get it from eternal source -->
+                <!-- TOOD: get it from external source/path -->
                 <property name="configurationFile" value="jgroups-tcp.xml"/>
             </properties>
         </transport>
@@ -50,11 +50,12 @@
             with Hibernate Search DirectoryProvider). Replication is recommended for best performance of
             Lucene indexes, but make sure you have enough memory to store the index in your heap.
             Also distribution scales much better than replication on high number of nodes in the cluster. -->
-        <clustering mode="replication">
+        <clustering mode="distribution">
             <!-- Prefer loading all data at startup than later -->
             <stateTransfer timeout="480000" fetchInMemoryState="true"/>
             <!-- Network calls are synchronous by default -->
             <sync replTimeout="20000"/>
+            <hash numOwners="2"/>
         </clustering>
 
         <jmxStatistics enabled="true"/>
@@ -65,7 +66,7 @@
         <!--maxIdle="-1"-->
         <!--reaperEnabled="false"/>-->
 
-        <indexing enabled="true" indexLocalOnly="true">
+        <indexing enabled="false" indexLocalOnly="true">
             <properties>
 
                 <!--as simple as possible? -->
@@ -82,23 +83,21 @@
                 <property name="hibernate.search.lucene_version" value="LUCENE_36"/>
             </properties>
         </indexing>
-
     </default>
 
     <namedCache name="defaultCache">
-
-        <clustering mode="replication">
+        <clustering mode="distribution">
             <stateTransfer fetchInMemoryState="true"/>
             <sync replTimeout="25000"/>
-            <!--<hash numOwners="2"/>-->
+            <hash numOwners="2"/>
         </clustering>
     </namedCache>
 
     <namedCache name="mySpecialNamedCache">
-        <clustering mode="replication">
+        <clustering mode="distribution">
             <stateTransfer fetchInMemoryState="true"/>
             <sync replTimeout="25000"/>
-            <!--<hash numOwners="2"/>-->
+            <hash numOwners="2"/>
         </clustering>
     </namedCache>
 

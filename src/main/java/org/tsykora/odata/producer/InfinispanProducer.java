@@ -198,7 +198,7 @@ public class InfinispanProducer implements ODataProducer {
                 this.caches.put(cacheName, cache.getAdvancedCache());
                 return cache.getAdvancedCache();
             } catch (Exception e) {
-                log.error(" \n\n ***** ERROR DURING STARTING CACHE ***** \n\n" + e.getMessage());
+                log.error("ERROR DURING STARTING CACHE " + cacheName + " " + e.getMessage());
                 e.printStackTrace();
             }
         }
@@ -208,6 +208,12 @@ public class InfinispanProducer implements ODataProducer {
     @Override
     public EdmDataServices getMetadata() {
         if (metadata == null) {
+
+            // TODO -- decide entity type of entity set properly
+            // TODO -- change this <edmx:DataServices m:DataServiceVersion="2.0"> to 3.0
+
+            // TODO -- how to generate appropriate WADL (or is it by JERSEY -- hard set?)
+
             metadata = newEdmGenerator(namespace, typeMapping, ID_PROPNAME, eis, complexTypes).generateEdm(decorator).build();
         }
         return metadata;
@@ -243,8 +249,11 @@ public class InfinispanProducer implements ODataProducer {
             log.trace("Put with IGNORE_RETURN_VALUES");
             return Responses.infinispanResponse(null, null, null, Response.Status.CREATED);
         } else {
+
+            // TODO: one liner
             getCache(setNameWhichIsCacheName).put(entryKey, cachedValue);
             CachedValue resultOfPutForResponse = (CachedValue) getCache(setNameWhichIsCacheName).get(entryKey);
+
             log.trace("Put function, ignoring return values false, returning full get after put");
             return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", standardizeJSONresponse(
                     new StringBuilder(resultOfPutForResponse.getJsonValueWrapper().getJson())).toString(), Response.Status.CREATED);
@@ -374,7 +383,9 @@ public class InfinispanProducer implements ODataProducer {
     public BaseResponse callFunctionRemove(String setNameWhichIsCacheName, String entryKey) {
         // TODO: later, avoid returning by using flag (or add option to call uri)
         CachedValue removed = (CachedValue) getCache(setNameWhichIsCacheName).remove(entryKey);
-        return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", removed.getJsonValueWrapper().getJson(), Response.Status.OK);
+        // TODO - ODATA standard, returning NO_CONTENT on successful deletion
+        return Responses.infinispanResponse(EdmSimpleType.STRING,
+                "jsonValue", removed.getJsonValueWrapper().getJson(), Response.Status.NO_CONTENT);
     }
 
     public BaseResponse callFunctionReplace(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue) {
