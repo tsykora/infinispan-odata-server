@@ -1,7 +1,3 @@
-import java.io.BufferedInputStream;
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 
 import org.apache.http.HttpResponse;
@@ -73,7 +69,7 @@ public class BasicODataCacheTest {
                 serviceUri + cacheName + "_get?key='personIGNORE'", httpPutResponse.getFirstHeader("location").getValue());
 
         // we have no return values here -- just message from FunctionResource class, callFunction() method (odata4j)
-        compareHttpResponseWithString(httpPutResponse, "Entry created -- ready for access here: " +
+        TestingUtils.compareHttpResponseWithString(httpPutResponse, "Entry created -- ready for access here: " +
                 serviceUri + cacheName + "_get?key='personIGNORE'");
 
         // check whether it's really stored in the cache
@@ -146,33 +142,5 @@ public class BasicODataCacheTest {
         assertEquals("Status code from GET without any flag was expected 200.", 200, statusCode);
 
         TestingUtils.compareHttpResponseWithJsonEntity(httpGetResponse, jsonPerson1);
-    }
-
-
-    /**
-     * This method tests whether expected plain string was returned by the service.
-     *
-     * @param httpResponse        - HTTP response of a service
-     * @param expectedPlainString - expected entity from client point of view
-     */
-    private void compareHttpResponseWithString(HttpResponse httpResponse, String expectedPlainString) {
-        BufferedReader br = null;
-        try {
-            StringBuilder sb = new StringBuilder();
-            br = new BufferedReader(new InputStreamReader(new BufferedInputStream(httpResponse.getEntity().getContent())));
-            String readLine;
-            while (((readLine = br.readLine()) != null)) {
-                sb.append(readLine);
-            }
-            assertEquals("Returned string from the service is not the same as expected.",
-                    expectedPlainString, sb.toString());
-        } catch (IOException e) {
-            e.printStackTrace();
-        } finally {
-            try {
-                if (br != null) br.close();
-            } catch (IOException e) {
-            }
-        }
     }
 }

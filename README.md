@@ -64,20 +64,62 @@ infinispan-odata-server-1.0-SNAPSHOT.jar file should by located in ./target fold
 
 java -jar ./target/infinispan-odata-server-1.0-SNAPSHOT.jar http://localhost:8887/ODataInfinispanEndpoint.svc/ infinispan-dist.xml
 
+The first parameter is URI where the service will be started,
+the second parameter is name of a Infinispan configuration file which will be used for starting Infinispan caches.
+
+It can be infinispan-dist.xml or indexing-perf.xml -- already defined as examples in server's resources,
+ or an absolute path for custom setting can be passed.
+
 suggested options:
 -Xms512m -Xmx512m
 -Djava.net.preferIPv4Stack=true
 -Dlog4j.configuration=file:///path/to/log4j.xml
 
 
-4) Practical usage examples
+---------------------
+4) Interface
+---------------------
+
+Consumers uses OData as a protocol for communicating with Infinispan OData server (producer).
+
+The service exposes metadata document which describes defined service operations.
+Accessible at: http://localhost:8887/ODataInfinispanEndpoint.svc/$metadata
+
+http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?[options]
+http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?[options]
+http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_remove?[options]
+http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_replace?[options]
+
+See next section for further details.
 
 
-4a) Putting data into cache
+---------------------
+5) Practical usage examples
+---------------------
 
-4b) Simple key-value based access
+This section introduces basic client-server communication with Infinispan OData server.
 
-4c) Document store (query based) access
+CURL tool is used for a few demonstration examples.
+Any HTTP client can be used as well.
+
+Example CURL commands are intentionally "one-liners" to be prepared for direct copy and paste into console/terminal.
+
+
+
+5a) Putting data into cache
+
+JSON documents are put into caches using POST method with specified "application/json; charset=UTF-8" HTTP content-type header.
+
+It is possible to set up IGNORE_RETURN_VALUES flag -- values are not being returned back to the client after put.
+
+
+
+5b) Simple key-value based access
+
+
+
+
+5c) Document store (query based) access
 
 
 
@@ -94,14 +136,32 @@ Example put into cache looks like:
 HTTP POST method
 http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?key='person1'
 
+
 "Content-Type", "application/json; charset=UTF-8"
+
+JSON payload:
+
+{"id":"person1",
+ "gender":"MALE",
+ "firstName":"John",
+ "lastName":"Smith",
+ "age":24}
+
+curl -X POST -H "Content-Type: application/json" -d '{"id":"person1","name":"Neo"}' http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_put?key=\'person1\'
+
+curl -X POST -H "Content-Type: application/json" -d '{"id":"person2","name":"Trinity"}' http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_put?key=\'person2\'
+
+
+
 
 Example get:
 
 HTTP GET method
 http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?key='person1'
 
+NOTE: it is needed to escape $ sign before 'filter' option and %20 code instead of common spaces
 
+curl -X GET -H "Accept: application/xml;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=name%20eq%20\'Neo\'%20or%20name%20eq%20\'trinity\'
 
 
 There are two approaches, how to obtain stored JSON document.

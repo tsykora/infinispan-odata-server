@@ -60,7 +60,7 @@ import org.odata4j.producer.inmemory.InMemoryTypeMapping;
 import org.odata4j.producer.inmemory.PropertyModel;
 
 /**
- * ODataProducer implementation with direct access to the Infinispan's caches.
+ * ODataProducer implementation providing OData service access to the Infinispan caches.
  *
  * @author Tomas Sykora <tomas@infinispan.org>
  *
@@ -73,7 +73,7 @@ public class InfinispanProducer implements ODataProducer {
     public static final String ID_PROPNAME = "EntityId";
     private final String namespace;
     private final String containerName;
-    private final int maxResults;
+
 
     // preserve the order of registration
 
@@ -137,8 +137,7 @@ public class InfinispanProducer implements ODataProducer {
                                               EdmDecorator decorator, InMemoryTypeMapping typeMapping,
                                               boolean flattenEdm, String ispnConfigFile) {
         this.namespace = namespace;
-        this.containerName = containerName != null && !containerName.isEmpty() ? containerName : "Container";
-        this.maxResults = maxResults;
+        this.containerName = containerName != null && !containerName.isEmpty() ? containerName : "InfinispanODataServer";
         this.decorator = decorator;
         this.metadataProducer = new MetadataProducer(this, decorator);
         this.typeMapping = typeMapping == null ? InMemoryTypeMapping.DEFAULT : typeMapping;

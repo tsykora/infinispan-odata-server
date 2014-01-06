@@ -1,5 +1,8 @@
+import java.io.BufferedInputStream;
+import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Map;
@@ -189,6 +192,33 @@ public class TestingUtils {
                     jsonEntity, jsonValueFromResponse);
         } catch (IOException e) {
             e.printStackTrace();
+        }
+    }
+
+    /**
+     * This method tests whether expected plain string was returned by the service.
+     *
+     * @param httpResponse        - HTTP response of a service
+     * @param expectedPlainString - expected entity from client point of view
+     */
+    public static void compareHttpResponseWithString(HttpResponse httpResponse, String expectedPlainString) {
+        BufferedReader br = null;
+        try {
+            StringBuilder sb = new StringBuilder();
+            br = new BufferedReader(new InputStreamReader(new BufferedInputStream(httpResponse.getEntity().getContent())));
+            String readLine;
+            while (((readLine = br.readLine()) != null)) {
+                sb.append(readLine);
+            }
+            assertEquals("Returned string from the service is not the same as expected.",
+                    expectedPlainString, sb.toString());
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if (br != null) br.close();
+            } catch (IOException e) {
+            }
         }
     }
 }

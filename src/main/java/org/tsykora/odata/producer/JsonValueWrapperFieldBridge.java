@@ -16,7 +16,7 @@ import org.hibernate.search.bridge.LuceneOptions;
  * This field bridge is used for extracting fields from JSON document which is being put
  * into Infinispan cache and for indexing those fields.
  *
- * TODO: find out how to index numeric values (for queries like <, > etc.)
+ * TODO: find out how to index numeric values (for queries like <, > etc., lt gt in OData)
  *
  * @author Tomas Sykora <tomas@infinispan.org>
  */
@@ -58,6 +58,12 @@ public final class JsonValueWrapperFieldBridge implements FieldBridge, Serializa
                     // Like this? How do we index numbers in the Infinispan?
 //                    Integer number = Integer.getInteger(entryAsMap.get(field).toString());
 //                    luceneOptions.addNumericFieldToDocument(field, number, document);
+
+//                    Like this???
+//                    if ( value != null ) {
+//                        Long indexedValue = Long.valueOf("24");
+//                        luceneOptions.addNumericFieldToDocument( name, indexedValue, document );
+//                    }
 
                     // Lucene is transforming it to some strings and then doing lexicographic ordering
 
