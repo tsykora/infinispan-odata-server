@@ -11,37 +11,8 @@ import org.hibernate.search.bridge.FieldBridge;
 import org.hibernate.search.bridge.LuceneOptions;
 
 /**
- * We use this field bridge for extracting actual fields from the JSON and indexing them with Lucene.
+ * This field bridge is used for extracting actual fields from the JSON and indexing them with Lucene.
  * TODO: find out how to index numeric values (for queries like <, > etc.)
- *
- *
- * TODO: BUG here!
- * TODO: it's expected that clients will call POST with only extracted jsonValue to pass. Without "d"
- * TODO: we need to prepare service for it.
- *
- *
- * Expected JSON format from client:
- *
- * {"d" : {"jsonValue" : {
- * "entityClass":"org.infinispan.odata.Person",
- * "id":"person1",
- * "gender":"MALE",
- * "firstName":"John",
- * "lastName":"Smith",
- * "age":24}
- * }}
- *
- * NOTE: only jsonValue is extracted in InfinispanProducer before put/replace entry into the cache.
- * We are putting and indexing actually only this section:
- *
- * {"entityClass":"org.infinispan.odata.Person",
- * "id":"person1",
- * "gender":"MALE",
- * "firstName":"John",
- * "lastName":"Smith",
- * "age":24}
- *
- * as this is the particular entry which we need to store in the cache and index.
  *
  * @author tsykora@redhat.com
  */
@@ -57,6 +28,8 @@ public final class JsonValueWrapperFieldBridge implements FieldBridge, Serializa
 
         // TODO: what to do when I have corrupted JSON as input???
 
+
+        // TODO: put it out of this method, don't create so much new objects, replace them
         JsonValueWrapper valueWrapper = (JsonValueWrapper) value;
         String json = valueWrapper.getJson();
 
@@ -68,6 +41,7 @@ public final class JsonValueWrapperFieldBridge implements FieldBridge, Serializa
         // + there will be probably needed to recognize type string, int etc. for making queries like "quantity>4"
 //       valueWrapper.getJson();
 
+        // TODO: put it out of this method, don't create so much new objects, replace them
         ObjectMapper mapper = new ObjectMapper();
         try {
             log.trace("Reading by Jackson mapper, json to read: " + json);

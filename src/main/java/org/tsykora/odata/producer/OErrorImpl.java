@@ -3,9 +3,9 @@ package org.tsykora.odata.producer;
 import org.odata4j.core.OError;
 
 /**
- * // TODO: Document this
+ * Another implementation of OError interface for needs of InfinispanProducer.
  *
- * @author tsykora
+ * @author Tomas Sykora <tomas@infinispan.org>
  */
 public class OErrorImpl implements OError {
 

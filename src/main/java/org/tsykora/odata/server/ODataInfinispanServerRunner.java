@@ -6,22 +6,28 @@ import org.tsykora.odata.facades.RuntimeFacade;
 import org.tsykora.odata.producer.InfinispanProducer;
 
 /**
- * @author tsykora
+ * Entry point for starting Infinispan OData server.
+ *
+ * @author Tomas Sykora <tomas@infinispan.org>
  */
 public class ODataInfinispanServerRunner {
 
     private final RuntimeFacade rtFacde = new JerseyRuntimeFacade();
 
     /**
-     * args[0] expecting endpoint URI, the main hosting point for service
-     * For example: http://localhost:8887/ODataInfinispanEndpoint.svc/
+     * Starts Infinispan OData server.
      *
-     * args[1] expecting name of Infinispan configuration file e.g. infinispan-dist.xml
+     * args[0]: expecting endpoint URI, the main hosting point for service
+     * For instance: http://localhost:8887/ODataInfinispanEndpoint.svc/
+     *
+     * args[1]: expecting name of Infinispan configuration file
+     * For instance: infinispan-dist.xml (or a path can be specified)
      *
      * mvn clean compile assembly:assembly
      * java -jar odata-infinispan-server-jar-with-dependencies.jar
      *
-     * @param args
+     * @param args -- endpoint URI as the first parameter,
+     *             path to desired Infinispan configuration file as the second parameter
      */
     public static void main(String[] args) {
         ODataInfinispanServerRunner oDataInfinispanServerRunner = new ODataInfinispanServerRunner();
@@ -30,7 +36,6 @@ public class ODataInfinispanServerRunner {
             throw new IllegalArgumentException("IllegalArgumentException: specify args[0]" +
                     " (e.g. http://localhost:8887/ODataInfinispanEndpoint.svc/)" +
                     " and args[1] (e.g. infinispan-dist.xml).");
-
         }
 
         oDataInfinispanServerRunner.run(args);
@@ -39,9 +44,8 @@ public class ODataInfinispanServerRunner {
     @SuppressWarnings({"unchecked", "rawtypes"})
     public void run(String[] args) {
 
-        String endpointUri = args[0];
-
         String containerName = "InfinispanODataContainer";
+        String endpointUri = args[0];
         String configFile = args[1];
 
         final InfinispanProducer infinispanProducer =
@@ -52,5 +56,4 @@ public class ODataInfinispanServerRunner {
         DefaultODataProducerProvider.setInstance(infinispanProducer);
         this.rtFacde.hostODataServer(endpointUri);
     }
-
 }

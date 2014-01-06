@@ -17,9 +17,7 @@ import org.odata4j.producer.resources.RootApplication;
 import org.odata4j.producer.server.ODataServer;
 
 /**
- *
- * Class changed from odata4j InMemoryProducer example.
- *
+ * Reused class from odata4j InMemoryProducer example.
  */
 public class JerseyRuntimeFacade implements RuntimeFacade {
 
@@ -32,20 +30,10 @@ public class JerseyRuntimeFacade implements RuntimeFacade {
 
     @Override
     public void hostODataServer(String baseUri) {
-//        try {
-            ODataServer server = startODataServer(baseUri);
-//          server.setHttpAuthenticator (need added classes + improvements later)
-
-            System.out.println("Infinispan OData server successfully started.");
-            System.out.println("-Dlog4j.configuration=file:///path/log4j.xml can be passed.");
-            System.out.println("Service listening at: " + baseUri);
-            System.out.println("Metadata ready for access at: " + baseUri + "$metadata");
-//            System.out.println("Press RETURN key to stop server and exit...");
-//            new BufferedReader(new InputStreamReader(System.in)).readLine();
-//            server.stop();
-//        } catch (IOException e) {
-//            throw Throwables.propagate(e);
-//        }
+        ODataServer server = startODataServer(baseUri);
+        System.out.println("Infinispan OData server successfully started.");
+        System.out.println("Service is listening at: " + baseUri);
+        System.out.println("Metadata document is ready for access at: " + baseUri + "$metadata");
     }
 
     @Override
@@ -73,9 +61,6 @@ public class JerseyRuntimeFacade implements RuntimeFacade {
         return new ODataJerseyServer(baseUri, DefaultODataApplication.class, RootApplication.class);
 //                .addJerseyResponseFilter(LoggingFilter.class).setJerseyTrace(true)
 //                .addJerseyRequestFilter(LoggingFilter.class).setJerseyTrace(true); // log all requests
-//        .addJerseyRequestFilter(LoggingFilter.class); // log all requests
-                //      .addHttpServerFilter(new WhitelistFilter("127.0.0.1","0:0:0:0:0:0:0:1%0")) // only allow local requests
-//                ;
     }
 
     @Override

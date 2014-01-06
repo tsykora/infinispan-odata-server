@@ -6,6 +6,9 @@ import org.odata4j.consumer.ODataConsumer;
 import org.odata4j.format.FormatType;
 import org.odata4j.producer.server.ODataServer;
 
+/**
+ * Reused interface from odata4j InMemoryProducer example.
+ */
 public interface RuntimeFacade {
 
   public void hostODataServer(String baseUri);

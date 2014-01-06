@@ -25,7 +25,7 @@ import static org.junit.Assert.assertEquals;
  * <p/>
  * TODO: ensure gets are called after puts
  *
- * TODO: ODATA4J client test -- via functions!!
+ * TODO: ODATA4J client test -- via functions!! -- TODO ODATA V3 -- check it now!
  *
  * @author Tomas Sykora <tomas@infinispan.org>
  */

@@ -1,5 +1,6 @@
 package org.tsykora.odata.producer;
 
+import org.apache.log4j.Logger;
 import org.apache.lucene.search.BooleanClause;
 import org.apache.lucene.search.BooleanQuery;
 import org.apache.lucene.search.Query;
@@ -66,11 +67,14 @@ import org.odata4j.expression.TrimMethodCallExpression;
 import org.odata4j.expression.YearMethodCallExpression;
 
 /**
- * Expression visitor capable of mapping OData queries (expressions) to Apache Lucene queries used for querying Infinispan cache
+ * Expression visitor capable of mapping OData queries (expressions) to Apache Lucene queries
+ * used for querying Infinispan cache.
  *
- * @author tsykora
+ * @author Tomas Sykora <tomas@infinispan.org>
  */
 public class MapQueryExpressionVisitor implements ExpressionVisitor {
+
+    private static final Logger log = Logger.getLogger(MapQueryExpressionVisitor.class.getName());
 
     private Query tmpQuery;
     private QueryBuilder queryBuilder;
@@ -81,7 +85,7 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
 
     public Query getBuiltLuceneQuery() {
         // tmpQuery has been built in the whole process of visiting expressions
-        System.out.println("From MapQueryExpressionVisitor.... built tmpQuery before returning: " + tmpQuery);
+        log.trace("From MapQueryExpressionVisitor: returning tmpQuery (to InfinispanProducer): " + tmpQuery);
         return (Query) tmpQuery;
     }
 
@@ -127,7 +131,7 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
 
         // TODO -- use setter and getter
         this.tmpQuery = booleanQuery;
-        System.out.println("tmpQuery set to: " + tmpQuery);
+        log.trace("End of AND expr -- tmpQuery set to: " + tmpQuery);
     }
 
 
@@ -140,7 +144,7 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
         booleanQuery.add(this.tmpQuery, BooleanClause.Occur.SHOULD);
 
         this.tmpQuery = booleanQuery;
-        System.out.println("tmpQuery set to: " + tmpQuery);
+        log.trace("End of OR expr -- tmpQuery set to: " + tmpQuery);
     }
 
 
@@ -149,20 +153,20 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
     public void visit(EqExpression expr) {
 
         EntitySimpleProperty espLhs = (EntitySimpleProperty) expr.getLHS();
-        System.out.println("eqExpression.getLHS() getPropertyName(): " + espLhs.getPropertyName());
+        log.trace("eqExpression.getLHS() getPropertyName(): " + espLhs.getPropertyName());
 
         // TODO: decide this dynamically too / what else can I get/obtain here?
         // Push it into some general resolver as well
         // For example Date-Time literal
         StringLiteral slRhs = (StringLiteral) expr.getRHS();
-        System.out.println("eqExpression.getRHS() getValue(): " + slRhs.getValue());
+        log.trace("eqExpression.getRHS() getValue(): " + slRhs.getValue());
 
         // TODO: do it by getter setter!!!
         this.tmpQuery = this.queryBuilder.phrase()
                 .onField(espLhs.getPropertyName())
                 .sentence(slRhs.getValue())
                 .createQuery();
-        System.out.println("tmpQuery set to: " + tmpQuery);
+        log.trace("End of EQ expr -- tmpQuery set to: " + tmpQuery);
     }
 
 

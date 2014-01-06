@@ -19,7 +19,6 @@
             caches. There is no added cost to defining a transport but not creating a cache that uses one,
             since the transport is created and initialized lazily. -->
 
-
         <!-- Note that the JGroups transport uses sensible defaults if no configuration
             property is defined. See the JGroupsTransport javadocs for more flags -->
         <!--<transport clusterName="OData-Cluster" >-->
@@ -27,7 +26,6 @@
 
         <transport clusterName="OData-Cluster" transportClass="org.infinispan.remoting.transport.jgroups.JGroupsTransport">
             <properties>
-                <!-- TOOD: get it from external source/path -->
                 <property name="configurationFile" value="jgroups-tcp.xml"/>
             </properties>
         </transport>
@@ -59,14 +57,8 @@
         </clustering>
 
         <jmxStatistics enabled="true"/>
-        <!--<eviction-->
-        <!--maxEntries="-1"-->
-        <!--strategy="NONE"/>-->
-        <!--<expiration-->
-        <!--maxIdle="-1"-->
-        <!--reaperEnabled="false"/>-->
 
-        <indexing enabled="false" indexLocalOnly="true">
+        <indexing enabled="true" indexLocalOnly="true"  >
             <properties>
 
                 <!--as simple as possible? -->
