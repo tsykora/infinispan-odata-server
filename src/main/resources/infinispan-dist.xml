@@ -3,6 +3,7 @@
             xsi:schemaLocation="urn:infinispan:config:6.0 http://www.infinispan.org/schemas/infinispan-config-6.0.xsd"
             xmlns="urn:infinispan:config:6.0">
 
+    <!-- Modified Infinispan configuration example -->
     <!-- *************************** -->
     <!-- System-wide global settings -->
     <!-- *************************** -->
@@ -21,15 +22,8 @@
 
         <!-- Note that the JGroups transport uses sensible defaults if no configuration
             property is defined. See the JGroupsTransport javadocs for more flags -->
-        <!--<transport clusterName="OData-Cluster" >-->
-        <!--</transport>-->
-
-        <transport clusterName="OData-Cluster" transportClass="org.infinispan.remoting.transport.jgroups.JGroupsTransport">
-            <properties>
-                <property name="configurationFile" value="jgroups-tcp.xml"/>
-            </properties>
+        <transport clusterName="OData-Cluster" >
         </transport>
-
     </global>
 
     <!-- *************************************** -->
@@ -60,10 +54,6 @@
 
         <indexing enabled="true" indexLocalOnly="true"  >
             <properties>
-
-                <!--as simple as possible? -->
-                <!--<property name="default.directory_provider" value="ram" />-->
-
                 <!-- Use our custom IndexManager; TODO autoinject by default? -->
                 <property name="hibernate.search.default.indexmanager"
                           value="org.infinispan.query.indexmanager.InfinispanIndexManager"/>
@@ -77,7 +67,7 @@
         </indexing>
     </default>
 
-    <namedCache name="defaultCache">
+    <namedCache name="odataCache">
         <clustering mode="distribution">
             <stateTransfer fetchInMemoryState="true"/>
             <sync replTimeout="25000"/>

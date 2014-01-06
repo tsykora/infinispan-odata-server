@@ -11,14 +11,22 @@ import org.hibernate.search.bridge.FieldBridge;
 import org.hibernate.search.bridge.LuceneOptions;
 
 /**
- * This field bridge is used for extracting actual fields from the JSON and indexing them with Lucene.
+ * Link between JSON document which is put into Infinispan cache and Lucene Document.
+ *
+ * This field bridge is used for extracting fields from JSON document which is being put
+ * into Infinispan cache and for indexing those fields.
+ *
  * TODO: find out how to index numeric values (for queries like <, > etc.)
  *
- * @author tsykora@redhat.com
+ * @author Tomas Sykora <tomas@infinispan.org>
  */
 public final class JsonValueWrapperFieldBridge implements FieldBridge, Serializable {
 
     private static final Logger log = Logger.getLogger(JsonValueWrapperFieldBridge.class.getName());
+
+    private JsonValueWrapper valueWrapper;
+    private String json;
+    private ObjectMapper mapper = new ObjectMapper();
 
     @Override
     public void set(String name, Object value, Document document, LuceneOptions luceneOptions) {
@@ -26,29 +34,16 @@ public final class JsonValueWrapperFieldBridge implements FieldBridge, Serializa
             throw new IllegalArgumentException("This FieldBridge can only be applied to a JsonValueWrapper");
         }
 
-        // TODO: what to do when I have corrupted JSON as input???
+        valueWrapper = (JsonValueWrapper) value;
+        json = valueWrapper.getJson();
 
-
-        // TODO: put it out of this method, don't create so much new objects, replace them
-        JsonValueWrapper valueWrapper = (JsonValueWrapper) value;
-        String json = valueWrapper.getJson();
-
-//       fieldName - The field name
-//       indexedString - The value to index
-//       document - the document to which to add the the new field
-
-        // we need to move through all JSON fields structure and add them one by one to the document for indexing
-        // + there will be probably needed to recognize type string, int etc. for making queries like "quantity>4"
-//       valueWrapper.getJson();
-
-        // TODO: put it out of this method, don't create so much new objects, replace them
-        ObjectMapper mapper = new ObjectMapper();
         try {
-            log.trace("Reading by Jackson mapper, json to read: " + json);
+
+            log.trace("Reading by Jackson mapper, incoming JSON document: " + json);
             Map<String, Object> entryAsMap = (Map<String, Object>) mapper.readValue(json, Object.class);
 
-            log.trace("Reading output ---> for storing into Lucene document: ");
             for (String field : entryAsMap.keySet()) {
+
                 log.trace(" * Field: " + field + " *");
                 log.trace("Class: " + entryAsMap.get(field).getClass());
                 log.trace("value: " + entryAsMap.get(field));
@@ -67,15 +62,13 @@ public final class JsonValueWrapperFieldBridge implements FieldBridge, Serializa
                     // Lucene is transforming it to some strings and then doing lexicographic ordering
 
                 } else {
-                    // not a number
-                    // TODO: how to deal with lists, LinkedHashMaps? (recursive addition?) (index lists somehow?)
-                    // Do the magic here... add it to the Lucene Document
                     luceneOptions.addFieldToDocument(field, entryAsMap.get(field).toString(), document);
                 }
             }
 
         } catch (IOException e) {
-            log.error("EXCEPTION occurred in JsonValueWrapperFieldBridge.... " + e.getMessage());
+            log.error("EXCEPTION occurred in JsonValueWrapperFieldBridge during adding fields into Lucene Document."
+                    + e.getMessage());
             e.printStackTrace();
         }
     }

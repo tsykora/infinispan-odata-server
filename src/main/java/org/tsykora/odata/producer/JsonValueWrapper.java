@@ -6,7 +6,7 @@ import java.io.Serializable;
  * Class is used to wrap JSON values coming from clients (OData consumers). JsonValueWrapperFieldBridge is used as
  * a bridge which allows indexing of the JSON payload.
  *
- * @author tsykora@redhat.com
+ * @author Tomas Sykora <tomas@infinispan.org>
  */
 public final class JsonValueWrapper implements Serializable {
 

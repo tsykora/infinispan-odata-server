@@ -29,12 +29,14 @@ Outline of this README file:
 5a) Simple key-value based access
 5b) Document store (query based) access
 
------------------
 
+---------------
 1) Dependencies
+---------------
 
-Currently, ISPN OData server is based on odata4j-actions project, version 0.8.0-SNAPSHOT,
-which was modified for implementation needs.
+Currently, ISPN OData server is based on modified odata4j libraries, version 0.8.0-SNAPSHOT.
+Originally, Samuel Vetsch implemented support for OData actions and functions
+(https://bitbucket.org/svetsch/odata4j-actions) and this branch was forked and modified.
 
 Obtain needed libraries from here (Mercurial):
 https://bitbucket.org/sykynx/odata4j-actions/
@@ -48,70 +50,80 @@ odata4j libraries (version 0.8.0-SNAPSHOT) should be installed in your Maven rep
 (odata4j-core, odata4j-cxf,  odata4j-dist,  odata4j-examples,  odata4j-fit, odata4j-jersey and odata4j-parent)
 
 
+----------------------
 2) Building the server
+----------------------
 
 mvn clean package assembly:assembly (-DskipTests=true)
 
+infinispan-odata-server-1.0-SNAPSHOT.jar file should by located in ./target folder.
 
-
-
+---------------------
 3) Running the server
+---------------------
 
-4) Communication with server (basics)
+java -jar ./target/infinispan-odata-server-1.0-SNAPSHOT.jar http://localhost:8887/ODataInfinispanEndpoint.svc/ infinispan-dist.xml
 
-5) Practical usage examples
-5a) Simple key-value based access
-5b) Document store (query based) access
-
-
-
-
+suggested options:
+-Xms512m -Xmx512m
+-Djava.net.preferIPv4Stack=true
+-Dlog4j.configuration=file:///path/to/log4j.xml
 
 
+4) Practical usage examples
+
+
+4a) Putting data into cache
+
+4b) Simple key-value based access
+
+4c) Document store (query based) access
 
 
 
 
-start like:
 
-java -Xms64m -Xmx512m -Djava.net.preferIPv4Stack=true
--Dlog4j.configuration=file:///home/user/log4j_odata.xml -jar
-./target/infinispan-odata-server-jar-with-dependencies.jar
-http://localhost:8887/ODataInfinispanEndpoint.svc/ infinispan-dist.xml
+
 
 
 -----------------
 
-For now: Endpoint is ODataJerseyServer which hosts embedded Infinispan cache manager inside.
-It is sufficient to run Runner.java class.
-It starts producer thread (starting OData server) and consumer thread for issuing a few basic operations.
 
 Example put into cache looks like:
 
-http://localhost:8887/ODataInfinispanEndpoint.svc/myNamedCache_put?value='simpleValue1'&key='simpleKey1'
+HTTP POST method
+http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?key='person1'
+
+"Content-Type", "application/json; charset=UTF-8"
 
 Example get:
 
-http://localhost:8887/ODataInfinispanEndpoint.svc/myNamedCache_get?key='simpleKey1'
+HTTP GET method
+http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?key='person1'
 
-Pretty easy, isn't it?
 
 
-There are two approaches, how to get a document.
 
-Straight -- using it's key
+There are two approaches, how to obtain stored JSON document.
 
-http://localhost:8887/ODataInfinispanEndpoint.svc/myNamedCache_get?key='person1'
+Direct key-value approach:
 
-Document, indexing, searching one, using filter and other query options
+http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?key='person1'
 
-http://localhost:8887/ODataInfinispanEndpoint.svc/myNamedCache_get?$filter=firstName eq 'John'
+
+Document approach, using filter and other query options (cache needs to be configured with indexing enabled)
+
+http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?$filter=firstName eq 'John'
+
+
 
 this HTTP GET request on this address will filter all JSON documents stored in the myNamedCache
-and will return documents which meets specified criteria, i.e. where field firstName is equal to string John.
+and will return documents which meets specified criteria, i.e. where field "firstName" is equal to "John".
 
 
-Following OData specification:
+
+
+OData specification:
 
 Event -- HTTP Response code | special
 

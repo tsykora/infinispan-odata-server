@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Map;
@@ -14,16 +15,21 @@ import org.apache.http.message.BasicHeader;
 import org.apache.http.protocol.HTTP;
 import org.codehaus.jackson.map.ObjectMapper;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 /**
- * @author tsykora
+ * Utils class for Infinispan OData server functional test suite.
+ *
+ * @author Tomas Sykora <tomas@infinispan.org>
  */
 public class TestingUtils {
 
+    private static ObjectMapper mapper = new ObjectMapper();
+
     public static HttpResponse httpPostPutJsonEntry(String serviceUri, String cacheName,
-                                                    String entryKey, String jsonValue, boolean ignoreReturnValues) throws UnsupportedEncodingException{
+                                                    String entryKey, String jsonValue, boolean ignoreReturnValues) throws UnsupportedEncodingException {
 
         HttpClient httpClient = new DefaultHttpClient();
         String post = "";
@@ -45,9 +51,7 @@ public class TestingUtils {
             se.setContentType("application/json; charset=UTF-8");
             httpPost.setEntity(se);
 
-            System.out.println("Executing HTTP POST...");
             return httpClient.execute(httpPost);
-
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         } catch (ClientProtocolException e) {
@@ -70,7 +74,6 @@ public class TestingUtils {
         httpGet.setHeader("Accept", "application/json; charset=UTF-8");
 
         try {
-            System.out.println("Executing HTTP GET...");
             return httpClient.execute(httpGet);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
@@ -92,8 +95,6 @@ public class TestingUtils {
             HttpGet httpGet = new HttpGet(get);
             httpGet.setHeader("Content-Type", "application/json; charset=UTF-8");
             httpGet.setHeader("Accept", "application/json; charset=UTF-8");
-
-            System.out.println("Executing HTTP GET...");
             return httpClient.execute(httpGet);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
@@ -136,7 +137,7 @@ public class TestingUtils {
 
     /**
      * This method extracts raw jsonValue from standardized service response.
-     *
+     * <p/>
      * Standardized format
      * <p/>
      * {"d" : {
@@ -150,10 +151,9 @@ public class TestingUtils {
      *
      * @param standardizedJson - can be obtained like: <p> Object standardizedJson = mapper.readValue(jsonInStream, Object.class);
      *                         where InputStream jsonInStream = httpResponse.getEntity().getContent();
-     *
      * @return returns value of field jsonValue as String (i.e. raw JSON entity which was stored into the cache)
      */
-public static String extractJsonValueFromStandardizedODataJsonAsString(Object standardizedJson) {
+    public static String extractJsonValueFromStandardizedODataJsonAsString(Object standardizedJson) {
 
         String returnedJsonValueAsString = null;
         Map<String, Object> entryAsMap = null;
@@ -171,5 +171,24 @@ public static String extractJsonValueFromStandardizedODataJsonAsString(Object st
         }
         assertTrue("ReturnedJsonValueAsString should not be null", returnedJsonValueAsString != null);
         return returnedJsonValueAsString;
+    }
+
+    /**
+     * This method tests that we got back exactly the same JSON String entity (value of field jsonValue)
+     * as was put earlier into the cache
+     *
+     * @param httpResponse - HTTP response of a service
+     * @param jsonEntity   - expected entity from client point of view
+     */
+    public static void compareHttpResponseWithJsonEntity(HttpResponse httpResponse, String jsonEntity) {
+        try {
+            InputStream jsonInStream = httpResponse.getEntity().getContent();
+            Object jsonObjectFromResponse = mapper.readValue(jsonInStream, Object.class);
+            String jsonValueFromResponse = TestingUtils.extractJsonValueFromStandardizedODataJsonAsString(jsonObjectFromResponse);
+            assertEquals("Returned jsonValue under \"d\" in JSON string is not the same as original stored JSON string.",
+                    jsonEntity, jsonValueFromResponse);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 }
