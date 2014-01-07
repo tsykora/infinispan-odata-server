@@ -8,7 +8,7 @@ Clients are allowed to use OData standard query language and OData service opera
 for communication with the server, storing and obtaining requested JSON documents.
 
 Infinispan OData server understands an internal structure of JSON document,
-and therefore, it is possible to query the cache and ask for a~collection
+and therefore, it is possible to query the cache and ask for a collection
 of results in dependence on specified expression operators.
 
 Infinispan OData server also supports common, key-value access approach
@@ -63,7 +63,7 @@ odata4j libraries (version 0.8.0-SNAPSHOT) should be installed in your Maven rep
 
 mvn clean package assembly:assembly (-DskipTests=true) from main project directory.
 
-infinispan-odata-server-1.0-SNAPSHOT.jar file should by located in ./target folder.
+infinispan-odata-server-1.0-SNAPSHOT.jar file should by located in ./target folder now.
 
 ---------------------
 3) Running the server
@@ -75,7 +75,7 @@ The first parameter is URI where the service will be started,
 the second parameter is name of a Infinispan configuration file which will be used for starting Infinispan caches.
 
 It can be infinispan-dist.xml or indexing-perf.xml -- already defined as examples in server's resources,
- or an absolute path for custom setting can be passed.
+ or an absolute path for custom xml Infinispan configuration file can be passed.
 
 You should see console message:
 
@@ -83,7 +83,7 @@ You should see console message:
 
 Service is listening at: http://localhost:8887/ODataInfinispanEndpoint.svc/
 
-Metadata document is ready for access at: http://localhost:8887/ODataInfinispanEndpoint.svc/$metadata"
+Metadata document is ready for access at: http://localhost:8887/ODataInfinispanEndpoint.svc/$metadata" (EDM in XML format)
 
 Other suggested options:
 -Xms512m -Xmx512m
@@ -116,9 +116,9 @@ NOTE: OData Entity sets, thus, caches, thus first parts of service operation nam
 
 Supported system query options:
 
-$filter=<expression>
+$filter=\<expression\>
 
-<expression> is built from OData query operators.
+\<expression\> is built from OData query operators.
 
 Supported OData query operators:
 

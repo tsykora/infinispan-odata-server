@@ -17,7 +17,7 @@ import org.odata4j.producer.resources.RootApplication;
 import org.odata4j.producer.server.ODataServer;
 
 /**
- * Reused class from odata4j InMemoryProducer example.
+ * Reused and modified class from odata4j InMemoryProducer example.
  */
 public class JerseyRuntimeFacade implements RuntimeFacade {
 
@@ -59,6 +59,7 @@ public class JerseyRuntimeFacade implements RuntimeFacade {
     private ODataServer createODataServer(String baseUri) {
 
         return new ODataJerseyServer(baseUri, DefaultODataApplication.class, RootApplication.class);
+                  // if needed, use from package: com.sun.jersey.api.container.filter.LoggingFilter;
 //                .addJerseyResponseFilter(LoggingFilter.class).setJerseyTrace(true)
 //                .addJerseyRequestFilter(LoggingFilter.class).setJerseyTrace(true); // log all requests
     }

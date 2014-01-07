@@ -730,7 +730,7 @@ public class InfinispanProducer implements ODataProducer {
                 fbPut.setDocumentation(new EdmDocumentation("Use this function for putting JSON documents into the Infinispan cache. " +
                         "Specify the key of the entry and set BODY of the HTTP POST.",
                         "FLAG parameter IGNORE_RETURN_VALUES can be set up. " +
-                                "Usage: serviceUri.svc/" + entitySetNameCacheName + "_put?IGNORE_RETURN_VALUES='false'&key='key1'"));
+                                "Usage: serviceUri.svc/" + entitySetNameCacheName + "_put?IGNORE_RETURN_VALUES='true'&key='key1'"));
 
 
                 fbGet.setName(entitySetNameCacheName + "_get")
