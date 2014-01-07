@@ -16,6 +16,11 @@ import org.hibernate.search.annotations.TermVector;
  *
  * Not necessary Hibernate search options of @Field annotation are disabled.
  *
+ * Hibernate search documentation tip:
+ * Whether or not you want to analyze a property depends on whether you wish to search
+ * the element as is, or by the words it contains.
+ * It make sense to analyze a text field, but probably not a date field.
+ *
  * @author Tomas Sykora <tomas@infinispan.org>
  */
 @Indexed

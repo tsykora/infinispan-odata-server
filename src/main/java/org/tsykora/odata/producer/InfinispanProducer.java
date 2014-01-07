@@ -384,11 +384,8 @@ public class InfinispanProducer implements ODataProducer {
         log.trace("Replacing in " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
         getCache(setNameWhichIsCacheName).replace(entryKey, cachedValue);
 
-        // TODO: avoid this when FLAG don't return when put = true
-//        if (flag) {
-//            TODO: prepare BaseResponse? and FunctionResource.java for it!
-//            return null; // clients will get NO_CONTENT response (It is successful kind of response!)
-//        }
+//      [ODATA SPEC]
+//      The message body MUST contain the desired new value.
         return callFunctionGet(setNameWhichIsCacheName, entryKey, null);
     }
 
