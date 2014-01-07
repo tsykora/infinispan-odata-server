@@ -164,6 +164,15 @@
         <indexing enabled="false" />
     </namedCache>
 
+    <!-- Infinispan OData server specific cache for example purposes -->
+    <namedCache name="odataCache">
+        <clustering mode="distribution">
+            <stateTransfer fetchInMemoryState="true"/>
+            <sync replTimeout="25000"/>
+            <hash numOwners="2"/>
+        </clustering>
+    </namedCache>
+
     <!-- Added for Infinispan cakery performance benchmarking of Infinispan OData server -->
     <namedCache name="mySpecialNamedCache">
         <clustering mode="distribution">
