@@ -1,9 +1,7 @@
-OData-ISPN-playground
-=====================
-
 Infinispan OData server
+======================
 
-is a server based on odata4j framework (its core is running on OData Jersey server) and using Infinispan
+is a standalone server based on odata4j framework (its core is running on OData Jersey server) and using Infinispan
 as underlying JSON document cache store.
 
 Clients are allowed to use OData standard query language and OData service operation
