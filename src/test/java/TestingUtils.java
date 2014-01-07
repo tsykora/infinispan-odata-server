@@ -10,8 +10,10 @@ import java.util.Map;
 import org.apache.http.HttpResponse;
 import org.apache.http.client.ClientProtocolException;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.methods.HttpDelete;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
+import org.apache.http.client.methods.HttpPut;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicHeader;
@@ -78,6 +80,55 @@ public class TestingUtils {
 
         try {
             return httpClient.execute(httpGet);
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (ClientProtocolException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        fail("HttpResponse for return expected");
+        return null;
+    }
+
+    public static HttpResponse httpPutReplaceJsonEntry(String serviceUri, String cacheName,
+                                                    String entryKey, String jsonValue, boolean ignoreReturnValues) throws UnsupportedEncodingException {
+        HttpClient httpClient = new DefaultHttpClient();
+        String put = "";
+
+        put = serviceUri + "" + cacheName + "_replace?key=%27" + entryKey + "%27";
+
+        HttpPut httpPut = new HttpPut(put);
+
+        try {
+            StringEntity se = new StringEntity(jsonValue, HTTP.UTF_8);
+            se.setContentEncoding(new BasicHeader(HTTP.CONTENT_TYPE, "application/json; charset=UTF-8"));
+            se.setContentType("application/json; charset=UTF-8");
+            httpPut.setEntity(se);
+
+            return httpClient.execute(httpPut);
+        } catch (UnsupportedEncodingException e) {
+            e.printStackTrace();
+        } catch (ClientProtocolException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        fail("HttpResponse for return expected");
+        return null;
+    }
+
+    public static HttpResponse httpDeleteRemoveJsonEntryByEntryKey(String serviceUri, String cacheName, String entryKey) {
+
+        HttpClient httpClient = new DefaultHttpClient();
+
+        String delete = serviceUri + "" + cacheName + "_remove?key=%27" + entryKey + "%27";
+        HttpDelete httpDelete = new HttpDelete(delete);
+        httpDelete.setHeader("Content-Type", "application/json; charset=UTF-8");
+        httpDelete.setHeader("Accept", "application/json; charset=UTF-8");
+
+        try {
+            return httpClient.execute(httpDelete);
         } catch (UnsupportedEncodingException e) {
             e.printStackTrace();
         } catch (ClientProtocolException e) {

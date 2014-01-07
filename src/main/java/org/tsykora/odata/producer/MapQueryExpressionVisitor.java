@@ -90,24 +90,11 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
     }
 
     /**
-     * This method acts as a resolver for calling responsible visitor method
+     * This method acts as a resolver for calling responsible visitor method.
      *
      * @param expr - general expression
      */
     public void visit(BoolCommonExpression expr) {
-        // recursive function for translating queries
-
-        // TODO: Use switch to retype? - we don't need this
-
-        // TODO: IMPORTANT: Do it top -> down according to the highest precedence
-
-        // () PARENTHESES expressions here? As the first? The highest precedence?
-        // Look into OData specification
-
-        // TODO: how to do it better?
-        // Is it UNDER??? if yes, then it's ok.... like if its already in producer and expr and going to and, that's ok
-        // Query.info is simply BoolCommonExp .... I simply need to distribute it here....
-
         if(expr.getClass().getInterfaces()[0] == AndExpression.class) {
             visit((AndExpression) expr);
         }
@@ -117,9 +104,8 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
         if(expr.getClass().getInterfaces()[0] == EqExpression.class) {
             visit((EqExpression) expr);
         }
-
+        log.trace("End of the main BoolCommonExpression -- actual value of tmpQuery: " + tmpQuery);
     }
-
 
     @Override
     public void visit(AndExpression expr) {
@@ -129,11 +115,9 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
         visit(expr.getRHS());
         booleanQuery.add(this.tmpQuery, BooleanClause.Occur.MUST);
 
-        // TODO -- use setter and getter
         this.tmpQuery = booleanQuery;
         log.trace("End of AND expr -- tmpQuery set to: " + tmpQuery);
     }
-
 
     @Override
     public void visit(OrExpression expr) {
@@ -147,28 +131,21 @@ public class MapQueryExpressionVisitor implements ExpressionVisitor {
         log.trace("End of OR expr -- tmpQuery set to: " + tmpQuery);
     }
 
-
-
     @Override
     public void visit(EqExpression expr) {
 
         EntitySimpleProperty espLhs = (EntitySimpleProperty) expr.getLHS();
         log.trace("eqExpression.getLHS() getPropertyName(): " + espLhs.getPropertyName());
-
-        // TODO: decide this dynamically too / what else can I get/obtain here?
-        // Push it into some general resolver as well
-        // For example Date-Time literal
+        // Some other literals can be obtained here (support it in 1.1)
         StringLiteral slRhs = (StringLiteral) expr.getRHS();
         log.trace("eqExpression.getRHS() getValue(): " + slRhs.getValue());
 
-        // TODO: do it by getter setter!!!
         this.tmpQuery = this.queryBuilder.phrase()
                 .onField(espLhs.getPropertyName())
                 .sentence(slRhs.getValue())
                 .createQuery();
         log.trace("End of EQ expr -- tmpQuery set to: " + tmpQuery);
     }
-
 
     @Override
     public void beforeDescend() {

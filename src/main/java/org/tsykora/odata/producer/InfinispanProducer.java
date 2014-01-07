@@ -13,6 +13,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.transaction.NotSupportedException;
 import javax.ws.rs.core.Response;
 
 import org.apache.log4j.Logger;
@@ -63,7 +64,6 @@ import org.odata4j.producer.inmemory.PropertyModel;
  * ODataProducer implementation providing OData service access to the Infinispan caches.
  *
  * @author Tomas Sykora <tomas@infinispan.org>
- *
  */
 public class InfinispanProducer implements ODataProducer {
 
@@ -143,8 +143,6 @@ public class InfinispanProducer implements ODataProducer {
         this.typeMapping = typeMapping == null ? InMemoryTypeMapping.DEFAULT : typeMapping;
         this.flattenEdm = flattenEdm;
 
-
-        // TODO add possibility for passing configurations (global, local)
         try {
             // true = start it + start defined caches
 
@@ -201,12 +199,6 @@ public class InfinispanProducer implements ODataProducer {
     @Override
     public EdmDataServices getMetadata() {
         if (metadata == null) {
-
-            // TODO -- decide entity type of entity set properly
-            // TODO -- change this <edmx:DataServices m:DataServiceVersion="2.0"> to 3.0
-
-            // TODO -- how to generate appropriate WADL (or is it by JERSEY -- hard set?)
-
             metadata = newEdmGenerator(namespace, typeMapping, ID_PROPNAME, eis, complexTypes).generateEdm(decorator).build();
         }
         return metadata;
@@ -252,8 +244,33 @@ public class InfinispanProducer implements ODataProducer {
     }
 
 
+    /**
+     *
+     * Get the entry.
+     * Method supports both key-value approach or query approach.
+     *
+     * Decision logic is driven by passed parameters (entryKey is specified, or queryInfo.filter is specified)
+     *
+     * [ODATA SPEC]
+     * signs marked as "---" are standardized by standardizeJSONresponse() function
+     * part market as "/xxxx/", "/" including will be passed to standardizeJSONresponse() function
+     * result of standardizeJSONresponse() will be directly returned to clients
+     * <p/>
+     * for more results, create array
+     * --------/xxxxxxxxxxxxxxxxxxxxxxxxx/-
+     * { "d" : [{ ... }, { ... }, { ... }] }
+     * <p/>
+     * for one result, return just one stored JSON document
+     * --------/xxxxx/-
+     * { "d" : { ... }}
+     *
+     * @param setNameWhichIsCacheName - cache name
+     * @param entryKey - key of desired entry
+     * @param queryInfo - queryInfo object from odata4j layer
+     * @return
+     */
     public BaseResponse callFunctionGet(String setNameWhichIsCacheName, String entryKey,
-                                        QueryInfo queryInfo) {
+                                        QueryInfo queryInfo) throws NotSupportedException {
 
         List<Object> queryResult = null;
 
@@ -273,9 +290,6 @@ public class InfinispanProducer implements ODataProducer {
         } else {
             // NO ENTRY KEY -- query on document store expected
 
-            // I need some filter
-            // TODO: don't process filters when cache is not Queryable (Log warning + serve only direct gets) !!! perf+
-
             if (queryInfo.filter == null) {
                 return Responses.error(new OErrorImpl("Parameter 'key' is not specified, therefore we want to get entries using query filter." +
                         " \n However, $filter is not specified as well."));
@@ -294,7 +308,8 @@ public class InfinispanProducer implements ODataProducer {
             // pass query result to the function final response
             queryResult = queryFromVisitor.list();
 
-            log.trace(" \n\n SEARCH RESULTS GOT BY VISITOR!!! APPROACH: size:" + queryResult.size() + ":");
+            log.trace(" \n Search results (obtained from search manager," +
+                    " used visitor for query translation) size:" + queryResult.size() + ":");
 
             for (Object one_result : queryResult) {
                 log.trace(one_result);
@@ -306,18 +321,16 @@ public class InfinispanProducer implements ODataProducer {
 
             if (queryInfo.top != null) {
                 // client wants to only a specified count of first "top" results
-                // use it for collections of objects??
+                throw new NotSupportedException("top is not supported yet. Planned for version 1.1.");
             }
 
             if (queryInfo.skip != null) {
                 // client wants to skip particular number of results -- skip them and return only what's requested
-                // use it for collections of objects??
-
+                throw new NotSupportedException("skip is not supported yet. Planned for version 1.1.");
             }
 
             if (queryInfo.orderBy != null) {
-                // TODO: I hope this can be definitely added into LUCENE QUERY builder and we can get back
-                // already ordered objects
+                throw new NotSupportedException("orderBy is not supported yet. Planned for version 1.1.");
             }
         }
 
@@ -326,23 +339,9 @@ public class InfinispanProducer implements ODataProducer {
             StringBuilder sb = new StringBuilder();
             // build response
 
-            // [ODATA SPEC]
-            // signs marked as "---" are standardized by standardizeJSONresponse() function
-            // part market as "/****/", "/" including will be passed to standardizeJSONresponse() function
-            // result of standardizeJSONresponse() will be directly returned to clients
-
-            // for more results, create array
-            // --------/*************************/-
-            // { "d" : [{ ... }, { ... }, { ... }] }
-
-            // for one result, return just one stored JSON document
-            // --------/*****/-
-            // { "d" : { ... }}
-
             if (resultsCount > 1) {
                 sb.append("["); // start array of results
             }
-
 
             int counter = 0;
             for (Object one_result : queryResult) {
@@ -372,14 +371,17 @@ public class InfinispanProducer implements ODataProducer {
     }
 
     public BaseResponse callFunctionRemove(String setNameWhichIsCacheName, String entryKey) {
-        // TODO: later, avoid returning by using flag (or add option to call uri)
+        log.trace("Removing entry from cache. EntryKey = " + entryKey);
         CachedValue removed = (CachedValue) getCache(setNameWhichIsCacheName).remove(entryKey);
-        // TODO - ODATA standard, returning NO_CONTENT on successful deletion
+        // [ODATA SPEC]
+        // NO_CONTENT is returned after successful deletion.
         return Responses.infinispanResponse(EdmSimpleType.STRING,
-                "jsonValue", removed.getJsonValueWrapper().getJson(), Response.Status.NO_CONTENT);
+                "jsonValue", standardizeJSONresponse(new StringBuilder().append(
+                removed.getJsonValueWrapper().getJson())).toString(), Response.Status.NO_CONTENT);
     }
 
-    public BaseResponse callFunctionReplace(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue) {
+    public BaseResponse callFunctionReplace(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue)
+            throws NotSupportedException {
 
         log.trace("Replacing in " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
         getCache(setNameWhichIsCacheName).replace(entryKey, cachedValue);
@@ -475,7 +477,11 @@ public class InfinispanProducer implements ODataProducer {
             }
 
             if (function.getHttpMethod().equals("GET") && function.getName().endsWith("_get")) {
-                return callFunctionGet(setNameWhichIsCacheName, entryKey, queryInfo);
+                try {
+                    return callFunctionGet(setNameWhichIsCacheName, entryKey, queryInfo);
+                } catch (NotSupportedException nse) {
+                    return Responses.error(new OErrorImpl(nse.getMessage()));
+                }
             }
 
             if (function.getHttpMethod().equals("DELETE") && function.getName().endsWith("_remove")) {
@@ -483,7 +489,11 @@ public class InfinispanProducer implements ODataProducer {
             }
 
             if (function.getHttpMethod().equals("PUT") && function.getName().endsWith("_replace")) {
-                callFunctionReplace(setNameWhichIsCacheName, entryKey, cachedValue);
+                try {
+                    return callFunctionReplace(setNameWhichIsCacheName, entryKey, cachedValue);
+                } catch (NotSupportedException nse) {
+                    return Responses.error(new OErrorImpl(nse.getMessage()));
+                }
             }
 
             return Responses.error(new OErrorImpl(
@@ -492,7 +502,6 @@ public class InfinispanProducer implements ODataProducer {
                             " HTTP DELETE method AND cache method ending _remove\n" +
                             " OR HTTP PUT method AND cache method ending _replace was expected.\n" +
                             " Function name was: " + function.getName() + " HTTP method was: " + function.getHttpMethod()));
-
         }
 
         return Responses.error(new OErrorImpl("Parameter 'key' or $filter needs to be specified."));
@@ -507,7 +516,7 @@ public class InfinispanProducer implements ODataProducer {
     /**
      * TODO: Do we really need this?
      * TODO: Is there any simpler way of registering entities so we can drop this?
-     *
+     * <p/>
      * TODO: YES, it is not used as this is NULL in eis.
      * <p/>
      * This class gathers info about registered entity sets.
@@ -567,9 +576,8 @@ public class InfinispanProducer implements ODataProducer {
 
     /**
      * TODO: Can we simplify this even more?
-     *
+     * <p/>
      * InMemoryEdmGenerator is used for generating OData EDM schema of exposed service.
-     *
      */
     public class InMemoryEdmGenerator implements EdmGenerator {
 
