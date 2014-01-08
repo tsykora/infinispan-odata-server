@@ -63,6 +63,8 @@ import org.odata4j.producer.inmemory.PropertyModel;
 /**
  * ODataProducer implementation providing OData service access to the Infinispan caches.
  *
+ * InfinispanProducer class (together with OData Jersey server) is heart of Infinispan OData server.
+ *
  * @author Tomas Sykora <tomas@infinispan.org>
  */
 public class InfinispanProducer implements ODataProducer {
@@ -74,45 +76,32 @@ public class InfinispanProducer implements ODataProducer {
     private final String namespace;
     private final String containerName;
 
-
     // preserve the order of registration
-
     // TODO: I do not need InMemoryEntityInfo!!
     // TODO: rename !! to more descriptive
     private final Map<String, InMemoryEntityInfo<?>> eis = new LinkedHashMap<String, InMemoryEntityInfo<?>>();
 
     // TODO: rename to more descriptive and decide what to use / what not
     private final Map<String, InMemoryComplexTypeInfo<?>> complexTypes = new LinkedHashMap<String, InMemoryComplexTypeInfo<?>>();
-    private EdmDataServices metadata;
-    private final EdmDecorator decorator;
 
     private final MetadataProducer metadataProducer;
     private final InMemoryTypeMapping typeMapping;
-    private final boolean flattenEdm;
-    private static final int DEFAULT_MAX_RESULTS = 100;
 
+    private final EdmDecorator decorator;
+    private final boolean flattenEdm;
+
+    private EdmDataServices metadata;
     private DefaultCacheManager defaultCacheManager = null;
     // for faster cache access
     private HashMap<String, AdvancedCache> caches = new HashMap<String, AdvancedCache>();
-
-
-    /**
-     * Creates a new instance of an in-memory POJO producer.
-     *
-     * @param namespace the namespace of the schema registrations
-     */
-    public InfinispanProducer(String namespace, String ispnConfigFile) {
-        this(namespace, DEFAULT_MAX_RESULTS, ispnConfigFile);
-    }
 
     /**
      * Creates a new instance of an in-memory POJO producer.
      *
      * @param namespace  the namespace of the schema registrations
-     * @param maxResults the maximum number of entities to return in a single call
      */
-    public InfinispanProducer(String namespace, int maxResults, String ispnConfigFile) {
-        this(namespace, null, maxResults, null, null, ispnConfigFile);
+    public InfinispanProducer(String namespace, String ispnConfigFile) {
+        this(namespace, null, null, null, ispnConfigFile);
     }
 
     /**
@@ -120,20 +109,19 @@ public class InfinispanProducer implements ODataProducer {
      *
      * @param namespace     the namespace of the schema registrations
      * @param containerName the container name for generated metadata
-     * @param maxResults    the maximum number of entities to return in a single call
      * @param decorator     a decorator to use for edm customizations
      * @param typeMapping   optional mapping between java types and edm types, null for default
      */
-    public InfinispanProducer(String namespace, String containerName, int maxResults, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
+    public InfinispanProducer(String namespace, String containerName, EdmDecorator decorator, InMemoryTypeMapping typeMapping,
                               String ispnConfigFile) {
-        this(namespace, containerName, maxResults, decorator, typeMapping,
+        this(namespace, containerName, decorator, typeMapping,
                 true, ispnConfigFile); // legacy: flatten edm
     }
 
     /**
      * Do everything important here while creating new producer instance.
      */
-    public <TEntity, TKey> InfinispanProducer(String namespace, String containerName, int maxResults,
+    public <TEntity, TKey> InfinispanProducer(String namespace, String containerName,
                                               EdmDecorator decorator, InMemoryTypeMapping typeMapping,
                                               boolean flattenEdm, String ispnConfigFile) {
         this.namespace = namespace;
@@ -245,12 +233,11 @@ public class InfinispanProducer implements ODataProducer {
 
 
     /**
-     *
      * Get the entry.
      * Method supports both key-value approach or query approach.
-     *
+     * <p/>
      * Decision logic is driven by passed parameters (entryKey is specified, or queryInfo.filter is specified)
-     *
+     * <p/>
      * [ODATA SPEC]
      * signs marked as "---" are standardized by standardizeJSONresponse() function
      * part market as "/xxxx/", "/" including will be passed to standardizeJSONresponse() function
@@ -265,12 +252,12 @@ public class InfinispanProducer implements ODataProducer {
      * { "d" : { ... }}
      *
      * @param setNameWhichIsCacheName - cache name
-     * @param entryKey - key of desired entry
-     * @param queryInfo - queryInfo object from odata4j layer
+     * @param entryKey                - key of desired entry
+     * @param queryInfo               - queryInfo object from odata4j layer
      * @return
      */
     public BaseResponse callFunctionGet(String setNameWhichIsCacheName, String entryKey,
-                                        QueryInfo queryInfo) throws NotSupportedException {
+                                        QueryInfo queryInfo) throws Exception {
 
         List<Object> queryResult = null;
 
@@ -310,7 +297,6 @@ public class InfinispanProducer implements ODataProducer {
 
             log.trace(" \n Search results (obtained from search manager," +
                     " used visitor for query translation) size:" + queryResult.size() + ":");
-
             for (Object one_result : queryResult) {
                 log.trace(one_result);
             }
@@ -319,19 +305,38 @@ public class InfinispanProducer implements ODataProducer {
             // We have set queryResult object containing list of results from querying the cache
             // Now apply other filters/order by/top/skip etc. requests
 
-            if (queryInfo.top != null) {
-                // client wants to only a specified count of first "top" results
-                throw new NotSupportedException("top is not supported yet. Planned for version 1.1.");
-            }
+            try {
+                // return first n results
+                if (queryInfo.top != null) {
+                    int n = queryInfo.top.intValue();
+                    if (n < queryResult.size()) {
+                        queryResult = queryResult.subList(0, n);
+                    }
+                    log.trace("TOP query filter option applied, value: " + n);
+                }
 
-            if (queryInfo.skip != null) {
-                // client wants to skip particular number of results -- skip them and return only what's requested
-                throw new NotSupportedException("skip is not supported yet. Planned for version 1.1.");
+                // skip first n results
+                if (queryInfo.skip != null) {
+                    int n = queryInfo.skip.intValue();
+                    if (n < queryResult.size()) {
+                        queryResult = queryResult.subList(n, queryResult.size());
+                        log.trace("SKIP query filter option applied, value: " + n);
+                    } else {
+                        // skip all
+                        queryResult = queryResult.subList(queryResult.size(), queryResult.size());
+                        log.trace("SKIP query filter option applied, skipped all values as n = " +
+                                n + " and results size = " + queryResult.size());
+                    }
+                }
+
+            } catch (Exception e) {
+                throw new Exception("TOP or SKIP query option failed: " + e.getMessage());
             }
 
             if (queryInfo.orderBy != null) {
                 throw new NotSupportedException("orderBy is not supported yet. Planned for version 1.1.");
             }
+
         }
 
         int resultsCount = queryResult.size();
@@ -376,12 +381,11 @@ public class InfinispanProducer implements ODataProducer {
         // [ODATA SPEC]
         // NO_CONTENT is returned after successful deletion.
         return Responses.infinispanResponse(EdmSimpleType.STRING,
-                "jsonValue", standardizeJSONresponse(new StringBuilder().append(
-                removed.getJsonValueWrapper().getJson())).toString(), Response.Status.NO_CONTENT);
+                "jsonValue", null, Response.Status.NO_CONTENT);
     }
 
     public BaseResponse callFunctionReplace(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue)
-            throws NotSupportedException {
+            throws Exception {
 
         log.trace("Replacing in " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
         getCache(setNameWhichIsCacheName).replace(entryKey, cachedValue);
@@ -479,8 +483,8 @@ public class InfinispanProducer implements ODataProducer {
             if (function.getHttpMethod().equals("GET") && function.getName().endsWith("_get")) {
                 try {
                     return callFunctionGet(setNameWhichIsCacheName, entryKey, queryInfo);
-                } catch (NotSupportedException nse) {
-                    return Responses.error(new OErrorImpl(nse.getMessage()));
+                } catch (Exception e) {
+                    return Responses.error(new OErrorImpl(e.getMessage()));
                 }
             }
 
@@ -491,8 +495,8 @@ public class InfinispanProducer implements ODataProducer {
             if (function.getHttpMethod().equals("PUT") && function.getName().endsWith("_replace")) {
                 try {
                     return callFunctionReplace(setNameWhichIsCacheName, entryKey, cachedValue);
-                } catch (NotSupportedException nse) {
-                    return Responses.error(new OErrorImpl(nse.getMessage()));
+                } catch (Exception e) {
+                    return Responses.error(new OErrorImpl(e.getMessage()));
                 }
             }
 

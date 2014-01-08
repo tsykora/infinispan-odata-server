@@ -108,9 +108,7 @@ public class BasicODataCacheTest {
         TestingUtils.compareHttpResponseWithJsonEntity(httpPutResponse, jsonPerson1);
     }
 
-
     public void testBasicJsonGet() {
-
         String jsonPerson1 = TestingUtils.createJsonPersonString(
                 "org.infinispan.odata.Person", "person1", "MALE", "John", "Smith", 24);
 
@@ -122,9 +120,6 @@ public class BasicODataCacheTest {
 
         TestingUtils.compareHttpResponseWithJsonEntity(httpGetResponse, jsonPerson1);
     }
-
-
-
 
     @Test
     public void testReplaceAndDelete() throws UnsupportedEncodingException {
@@ -158,6 +153,9 @@ public class BasicODataCacheTest {
         // delete it
         final HttpResponse httpDeleteResponse = TestingUtils.httpDeleteRemoveJsonEntryByEntryKey(
                 serviceUri, cacheName, "person1");
+
+        assertEquals("DELETE response should return NO_CONTENT.",
+                204, httpDeleteResponse.getStatusLine().getStatusCode());
 
         // get it -- NOT FOUND 404 needed
         final HttpResponse httpGet2Response = TestingUtils.httpGetJsonEntryByEntryKey(

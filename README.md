@@ -122,7 +122,7 @@ $filter=\<expression\>
 
 Supported OData query operators:
 
-eq, and, or, () - precedence grouping operator
+eq, and, or
 
 NOTE: operators has to be used lowercase!
 
@@ -190,6 +190,36 @@ Neo is returned ("d" stands for a "data"):
 { "d" : {"id":"person1","name":"Neo","lastname":"Matrix"}}
 
 
+Now add agent Smith:
+
+curl -X POST -H "Content-Type: application/json; charset=UTF-8" -d '{"id":"smith1","name":"Agent","lastname":"Smith"}' http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?key=\'smith1\'
+
+And look at him:
+
+curl -X GET -H "Accept: application/json; charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?key=\'smith1\'
+
+It is needed to replace him:
+
+(NOTE: HTTP method PUT and appendix _replace is used in this case)
+
+curl -X PUT -H "Content-Type: application/json; charset=UTF-8" -d '{"id":"smith1","name":"AgentXXX","lastname":"SmithXXX"}' http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_replace?key=\'smith1\'
+
+New Smith agent should be returned:
+
+{ "d" : {"id":"smith1","name":"AgentXXX","lastname":"SmithXXX"}}
+
+We don't like him, so we will delete him, right?
+
+(NOTE: HTTP method DELETE and appendix _remove is used, operation returns NO_CONTENT status)
+
+curl -X DELETE -H "Accept: application/json; charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_remove?key=\'smith1\'
+
+Try to find him out!
+
+curl -X GET -H "Accept: application/json; charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?key=\'smith1\'
+
+Entry was not found. -- yup he's gone :)
+
 -------------------------------------------
 5c) Document store (query based) access
 ---------------------------------------
@@ -225,13 +255,32 @@ Just Neo is returned:
 { "d" : {"id":"person1","name":"Neo","lastname":"Matrix"}}
 
 
+$top and $skip query options can be appended to $filter option in order to return only a desired portion of results.
+
+This filter query will return all three heroes:
+
+NOTE: without encoded stuff, pure OData query looks like this
+
+$filter=lastname eq 'Matrix' or name eq 'Morpheus'
+
+curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=lastname%20eq%20\'Matrix\'%20or%20name%20eq%20\'Morpheus\'
 
 
-Try out precedence operators () -- need to be encoded: %28 and %29
-TODO TODO TODO -- here -- finish the guide
+Now let's try out $top and $filter query options. They needs to be appended after $filter expression with use of &
 
+Select only 2 top results:
 
+curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=lastname%20eq%20\'Matrix\'%20or%20name%20eq%20\'Morpheus\'\&\$top=2
 
+Skip just the first result:
+
+curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=lastname%20eq%20\'Matrix\'%20or%20name%20eq%20\'Morpheus\'\&\$skip=1
+
+Pure OData queries look like this:
+
+$filter=lastname eq 'Matrix' or name eq 'Morpheus'&top=2
+
+$filter=lastname eq 'Matrix' or name eq 'Morpheus'&skip=1
 
 -----------------
 OData standards
@@ -252,3 +301,13 @@ or
 Entry created -- 201 (user IGNORE_RETURN_VALUES) | "location" header with link for getting the entry back |
 
 returns back string "Entry created -- ready for access here: " + content of "location" header
+
+
+Supported $filter query option with eq, and, or expression operators for querying JSON text fields.
+
+Supported $top and $skip query options (can be appended to $filter option to select only a potion of results)
+
+Collections of JSON documents can be returned, general format:
+
+{ d“ : [{ ... }, { ... }, { ... }]}
+
