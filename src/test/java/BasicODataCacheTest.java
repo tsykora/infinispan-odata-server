@@ -14,12 +14,6 @@ import static org.junit.Assert.assertEquals;
  * This is basic test suite for OData producer + server. We are using apache http client for
  * client-server interaction.
  * <p/>
- * TODO: add test for ignore_return_values
- * TODO: + follow OData standard for 201 created + our build up for return values + 201
- * <p/>
- * TODO: ensure gets are called after puts
- * <p/>
- * TODO: ODATA4J client test -- via functions!! -- TODO ODATA V3 -- check it now!
  *
  * @author Tomas Sykora <tomas@infinispan.org>
  */

@@ -17,8 +17,6 @@ import javax.transaction.NotSupportedException;
 import javax.ws.rs.core.Response;
 
 import org.apache.log4j.Logger;
-import org.core4j.Func;
-import org.core4j.Func1;
 import org.infinispan.AdvancedCache;
 import org.infinispan.Cache;
 import org.infinispan.context.Flag;
@@ -56,37 +54,26 @@ import org.odata4j.producer.ODataProducer;
 import org.odata4j.producer.QueryInfo;
 import org.odata4j.producer.Responses;
 import org.odata4j.producer.edm.MetadataProducer;
-import org.odata4j.producer.inmemory.InMemoryComplexTypeInfo;
 import org.odata4j.producer.inmemory.InMemoryTypeMapping;
-import org.odata4j.producer.inmemory.PropertyModel;
 
 /**
  * ODataProducer implementation providing OData service access to the Infinispan caches.
- *
+ * <p/>
  * InfinispanProducer class (together with OData Jersey server) is heart of Infinispan OData server.
  *
  * @author Tomas Sykora <tomas@infinispan.org>
  */
 public class InfinispanProducer implements ODataProducer {
 
-
     private static final Logger log = Logger.getLogger(InfinispanProducer.class.getName());
 
-    public static final String ID_PROPNAME = "EntityId";
     private final String namespace;
     private final String containerName;
 
-    // preserve the order of registration
-    // TODO: I do not need InMemoryEntityInfo!!
-    // TODO: rename !! to more descriptive
-    private final Map<String, InMemoryEntityInfo<?>> eis = new LinkedHashMap<String, InMemoryEntityInfo<?>>();
-
-    // TODO: rename to more descriptive and decide what to use / what not
-    private final Map<String, InMemoryComplexTypeInfo<?>> complexTypes = new LinkedHashMap<String, InMemoryComplexTypeInfo<?>>();
+    private final Map<String, String> eis = new LinkedHashMap<String, String>();
 
     private final MetadataProducer metadataProducer;
     private final InMemoryTypeMapping typeMapping;
-
     private final EdmDecorator decorator;
     private final boolean flattenEdm;
 
@@ -96,16 +83,16 @@ public class InfinispanProducer implements ODataProducer {
     private HashMap<String, AdvancedCache> caches = new HashMap<String, AdvancedCache>();
 
     /**
-     * Creates a new instance of an in-memory POJO producer.
+     * Creates a new instance of InfinispanProducer.
      *
-     * @param namespace  the namespace of the schema registrations
+     * @param namespace the namespace of the schema registrations
      */
     public InfinispanProducer(String namespace, String ispnConfigFile) {
         this(namespace, null, null, null, ispnConfigFile);
     }
 
     /**
-     * Creates a new instance of an in-memory POJO producer.
+     * Creates a new instance of InfinispanProducer.
      *
      * @param namespace     the namespace of the schema registrations
      * @param containerName the container name for generated metadata
@@ -141,7 +128,7 @@ public class InfinispanProducer implements ODataProducer {
             // default cache is not included in this Set
             Set<String> cacheNames = defaultCacheManager.getCacheNames();
 
-            // TODO: add default cache explicitly? check whether exist? created every time?
+            // add default cache explicitly?
 //            cacheNames.add("default");
 
             for (String cacheName : cacheNames) {
@@ -151,18 +138,21 @@ public class InfinispanProducer implements ODataProducer {
             }
 
         } catch (IOException e) {
-            log.error("PROBLEMS WITH CREATING DEFAULT CACHE MANAGER!");
+            log.error("PROBLEMS WITH CREATING DEFAULT CACHE MANAGER! " + e.getMessage());
             e.printStackTrace();
         }
     }
 
     /**
+     *
+     * Get embedded Infinispan cache which acts as an underlying store for JSON documents.
+     *
      * Look into global map for registered cache. Avoiding multiple asking CacheManager.
      * <p/>
      * If there is no cache with the given name, get it from CacheManager and put.
      *
-     * @param cacheName
-     * @return
+     * @param cacheName -- name of cache, AdvancedCache is returned.
+     * @return AdvancedCache instance in dependence on a given name.
      */
     private AdvancedCache getCache(String cacheName) {
         if (caches.get(cacheName) != null) {
@@ -187,14 +177,13 @@ public class InfinispanProducer implements ODataProducer {
     @Override
     public EdmDataServices getMetadata() {
         if (metadata == null) {
-            metadata = newEdmGenerator(namespace, typeMapping, ID_PROPNAME, eis, complexTypes).generateEdm(decorator).build();
+            metadata = newEdmGenerator(namespace, typeMapping, eis).generateEdm(decorator).build();
         }
         return metadata;
     }
 
-    protected InMemoryEdmGenerator newEdmGenerator(String namespace, InMemoryTypeMapping typeMapping, String idPropName, Map<String, InMemoryEntityInfo<?>> eis,
-                                                   Map<String, InMemoryComplexTypeInfo<?>> complexTypesInfo) {
-        return new InMemoryEdmGenerator(namespace, containerName, typeMapping, ID_PROPNAME, eis, complexTypesInfo, this.flattenEdm);
+    protected InMemoryEdmGenerator newEdmGenerator(String namespace, InMemoryTypeMapping typeMapping, Map<String, String> eis) {
+        return new InMemoryEdmGenerator(namespace, containerName, typeMapping, eis, this.flattenEdm);
     }
 
     @Override
@@ -212,16 +201,12 @@ public class InfinispanProducer implements ODataProducer {
                                          boolean ignoreReturnValues) {
         log.trace("Putting into " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
 
-        // TODO -- what to do in PUT when cache has indexing disabled??? Does it even reach JACKson and/or field bridge?
-        // TODO -- or when indexing disabled, this is just ignored?
-
         if (ignoreReturnValues) {
             getCache(setNameWhichIsCacheName).withFlags(Flag.IGNORE_RETURN_VALUES).put(entryKey, cachedValue);
             log.trace("Put with IGNORE_RETURN_VALUES");
             return Responses.infinispanResponse(null, null, null, Response.Status.CREATED);
         } else {
 
-            // TODO: one liner
             getCache(setNameWhichIsCacheName).put(entryKey, cachedValue);
             CachedValue resultOfPutForResponse = (CachedValue) getCache(setNameWhichIsCacheName).get(entryKey);
 
@@ -396,12 +381,10 @@ public class InfinispanProducer implements ODataProducer {
     }
 
     /**
-     * The heart of our producer.
+     * The heart function of InfinispanProducer.
+     *
      * We can go the way of having cacheName_get/put/delete/update and call particular aforementioned methods
      * (i.e. create, delete, update, get entity)
-     * <p/>
-     * TODO: implement cache management related functions like: Start, Stop etc. probably cacheName_stop
-     * <p/>
      * <p/>
      * Use it like: http://localhost:8887/ODataInfinispanEndpoint.svc/mySpecialNamedCache_get?key=%27jsonKey1%27"
      * Use HTTP POST for create / PUT entity into the cache
@@ -418,8 +401,6 @@ public class InfinispanProducer implements ODataProducer {
 
 
         // every function call need to have key or queryInfo specified
-        // TODO: modify condition to not only .filter (but also other constraints?) queryInfo != null is not enough
-        // TODO: it's not null for every case I think
 
         if (params.get("key") != null || queryInfo.filter != null) {
 
@@ -516,72 +497,8 @@ public class InfinispanProducer implements ODataProducer {
         return null;
     }
 
-
     /**
-     * TODO: Do we really need this?
-     * TODO: Is there any simpler way of registering entities so we can drop this?
-     * <p/>
-     * TODO: YES, it is not used as this is NULL in eis.
-     * <p/>
-     * This class gathers info about registered entity sets.
-     *
-     * @param <TEntity>
-     */
-    public class InMemoryEntityInfo<TEntity> {
-
-        // we are maintaining collection of these entities - they are mapped to EntitySetName in [eis] hash map
-        String entitySetName;
-        String entityTypeName;
-        String[] keys;
-        Class<TEntity> entityClass;
-        Func<Iterable<TEntity>> get; // is returning defined apply()
-
-        Func1<Object, HashMap<String, Object>> id;
-        PropertyModel properties;
-        boolean hasStream;
-
-        public String getEntitySetName() {
-            return entitySetName;
-        }
-
-        public String getEntityTypeName() {
-            return entityTypeName;
-        }
-
-        public String[] getKeys() {
-            return keys;
-        }
-
-        public Class<TEntity> getEntityClass() {
-            return entityClass;
-        }
-
-        public Func<Iterable<TEntity>> getGet() {
-            return get;
-        }
-
-        public Func1<Object, HashMap<String, Object>> getId() {
-            return id;
-        }
-
-        public PropertyModel getPropertyModel() {
-            return properties;
-        }
-
-        public boolean getHasStream() {
-            return hasStream;
-        }
-
-        public Class<?> getSuperClass() {
-            return entityClass.getSuperclass() != null && !entityClass.getSuperclass().equals(Object.class) ? entityClass.getSuperclass() : null;
-        }
-    }
-
-
-    /**
-     * TODO: Can we simplify this even more?
-     * <p/>
-     * InMemoryEdmGenerator is used for generating OData EDM schema of exposed service.
+     * InMemoryEdmGenerator class is used for generating OData EDM schema of exposed service.
      */
     public class InMemoryEdmGenerator implements EdmGenerator {
 
@@ -589,30 +506,17 @@ public class InfinispanProducer implements ODataProducer {
         private final String namespace;
         private final String containerName;
         protected final InMemoryTypeMapping typeMapping;
-        protected final Map<String, InMemoryEntityInfo<?>> eis; // key: EntitySet name
-        protected final Map<String, InMemoryComplexTypeInfo<?>> complexTypeInfo; // key complex type edm type name
+        protected final Map<String, String> eis; // key: EntitySet name
         protected final List<EdmComplexType.Builder> edmComplexTypes = new ArrayList<EdmComplexType.Builder>();
-        // Note, assumes each Java type will only have a single Entity Set defined for it.
-        protected final Map<Class<?>, String> entitySetNameByClass = new HashMap<Class<?>, String>();
-        // build these as we go now.
-        protected Map<String, EdmEntityType.Builder> entityTypesByName = new HashMap<String, EdmEntityType.Builder>();
         protected Map<String, EdmEntitySet.Builder> entitySetsByName = new HashMap<String, EdmEntitySet.Builder>();
         protected final boolean flatten;
 
         public InMemoryEdmGenerator(String namespace, String containerName, InMemoryTypeMapping typeMapping,
-                                    String idPropertyName, Map<String, InfinispanProducer.InMemoryEntityInfo<?>> eis,
-                                    Map<String, InMemoryComplexTypeInfo<?>> complexTypes) {
-            this(namespace, containerName, typeMapping, idPropertyName, eis, complexTypes, true);
-        }
-
-        public InMemoryEdmGenerator(String namespace, String containerName, InMemoryTypeMapping typeMapping,
-                                    String idPropertyName, Map<String, InfinispanProducer.InMemoryEntityInfo<?>> eis,
-                                    Map<String, InMemoryComplexTypeInfo<?>> complexTypes, boolean flatten) {
+                                    Map<String, String> eis, boolean flatten) {
             this.namespace = namespace;
             this.containerName = containerName;
             this.typeMapping = typeMapping;
             this.eis = eis;
-            this.complexTypeInfo = complexTypes;
             this.flatten = flatten;
         }
 

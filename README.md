@@ -134,7 +134,7 @@ See next section for practical examples.
 
 This section introduces basic client-server communication with Infinispan OData server.
 
-CURL tool is used for a few demonstration examples -- it's not entirely user-friendly but this is a middleware solution, not end-user GUI :)
+CURL tool is used for a few demonstration examples -- it's not entirely user-friendly but the server is a middleware solution, not end-user GUI :)
 
 Any HTTP client can be used as well.
 
