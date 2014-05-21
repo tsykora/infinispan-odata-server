@@ -1,9 +1,9 @@
-package org.tsykora.odata.server;
+package org.infinispan.odata.server;
 
 import org.odata4j.producer.resources.DefaultODataProducerProvider;
-import org.tsykora.odata.facades.JerseyRuntimeFacade;
-import org.tsykora.odata.facades.RuntimeFacade;
-import org.tsykora.odata.producer.InfinispanProducer;
+import org.infinispan.odata.facades.JerseyRuntimeFacade;
+import org.infinispan.odata.facades.RuntimeFacade;
+import org.infinispan.odata.producer.InfinispanProducer;
 
 /**
  * Entry point for starting Infinispan OData server.

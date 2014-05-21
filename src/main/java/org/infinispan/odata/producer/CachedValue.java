@@ -1,4 +1,4 @@
-package org.tsykora.odata.producer;
+package org.infinispan.odata.producer;
 
 import java.io.Serializable;
 
@@ -29,14 +29,14 @@ public class CachedValue implements Serializable {
     @Field(analyze = Analyze.YES, store = Store.NO,
             norms = Norms.NO, termVector = TermVector.NO)
     @FieldBridge(impl = JsonValueWrapperFieldBridge.class)
-    JsonValueWrapper json;
+    JsonValueWrapper jsonWrapper;
 
     public CachedValue(String json) {
-        this.json = new JsonValueWrapper(json);
+        this.jsonWrapper = new JsonValueWrapper(json);
     }
 
     public JsonValueWrapper getJsonValueWrapper() {
-        return json;
+        return jsonWrapper;
     }
 
     @Override
@@ -44,19 +44,17 @@ public class CachedValue implements Serializable {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         CachedValue that = (CachedValue) o;
-        if (!json.equals(that.json)) return false;
+        if (!jsonWrapper.equals(that.jsonWrapper)) return false;
         return true;
     }
 
     @Override
     public int hashCode() {
-        return json.hashCode();
+        return jsonWrapper.hashCode();
     }
 
     @Override
     public String toString() {
-        return "CachedValue{" +
-                "json=" + json +
-                '}';
+        return "CachedValue{" + jsonWrapper + "}";
     }
 }

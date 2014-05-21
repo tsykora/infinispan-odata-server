@@ -14,6 +14,9 @@ of results in dependence on specified expression operators.
 Infinispan OData server also supports common, key-value access approach
 for accessing JSON documents.
 
+Current plans: This is prototype version in odata4j branch -- based on odata4j framework. This will be probably
+deferred later on as we are working on a migration to Apache Olingo.
+
 
 Outline of this README file:
 

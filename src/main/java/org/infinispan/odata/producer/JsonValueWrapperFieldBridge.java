@@ -1,6 +1,5 @@
-package org.tsykora.odata.producer;
+package org.infinispan.odata.producer;
 
-import java.io.IOException;
 import java.io.Serializable;
 import java.util.Map;
 
@@ -36,23 +35,16 @@ public final class JsonValueWrapperFieldBridge implements FieldBridge, Serializa
 
         try {
             Map<String, Object> entryAsMap = (Map<String, Object>) mapper.readValue(json, Object.class);
-
             for (String field : entryAsMap.keySet()) {
-                log.trace("field: " + field );
-                log.trace("value: " + entryAsMap.get(field));
-
                 if (entryAsMap.get(field) instanceof Number) {
-                    log.trace("Number field recognized. " +
-                            "Indexing will be supported in JsonValueWrapperFieldBridge version 1.1.");
+                    log.warn("Number field recognized. Field: " + field + " value: " + entryAsMap.get(field) +
+                            " Indexing of number fields will be supported in later versions.");
                 } else {
                     luceneOptions.addFieldToDocument(field, entryAsMap.get(field).toString(), document);
                 }
             }
-
-        } catch (IOException e) {
-            log.error("EXCEPTION occurred in JsonValueWrapperFieldBridge during adding fields into Lucene Document."
-                    + e.getMessage());
-            e.printStackTrace();
+        } catch (Exception e) {
+            log.error("EXCEPTION occurred in JsonValueWrapperFieldBridge during adding fields into Lucene Document.", e);
         }
     }
 }

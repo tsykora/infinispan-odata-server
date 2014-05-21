@@ -7,7 +7,7 @@ import org.junit.AfterClass;
 import org.junit.Before;
 import org.junit.BeforeClass;
 import org.junit.Test;
-import org.tsykora.odata.server.ODataInfinispanServerRunner;
+import org.infinispan.odata.server.ODataInfinispanServerRunner;
 
 import static org.junit.Assert.assertEquals;
 

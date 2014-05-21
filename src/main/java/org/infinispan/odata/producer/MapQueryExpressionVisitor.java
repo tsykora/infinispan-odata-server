@@ -1,4 +1,4 @@
-package org.tsykora.odata.producer;
+package org.infinispan.odata.producer;
 
 import org.apache.log4j.Logger;
 import org.apache.lucene.search.BooleanClause;

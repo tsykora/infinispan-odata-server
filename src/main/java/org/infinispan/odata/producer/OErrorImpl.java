@@ -1,4 +1,4 @@
-package org.tsykora.odata.producer;
+package org.infinispan.odata.producer;
 
 import org.odata4j.core.OError;
 

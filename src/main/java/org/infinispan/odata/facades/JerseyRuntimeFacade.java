@@ -1,4 +1,4 @@
-package org.tsykora.odata.facades;
+package org.infinispan.odata.facades;
 
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.ext.RuntimeDelegate;

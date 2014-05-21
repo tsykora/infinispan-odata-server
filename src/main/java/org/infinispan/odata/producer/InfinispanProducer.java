@@ -1,4 +1,4 @@
-package org.tsykora.odata.producer;
+package org.infinispan.odata.producer;
 
 import java.io.BufferedInputStream;
 import java.io.BufferedReader;
@@ -117,29 +117,22 @@ public class InfinispanProducer implements ODataProducer {
         this.metadataProducer = new MetadataProducer(this, decorator);
         this.typeMapping = typeMapping == null ? InMemoryTypeMapping.DEFAULT : typeMapping;
         this.flattenEdm = flattenEdm;
+        log.info("Infinispan config file: " + ispnConfigFile);
 
         try {
             // true = start it + start defined caches
-
-            log.info("Infinispan config file: " + ispnConfigFile);
-
             defaultCacheManager = new DefaultCacheManager(ispnConfigFile, true);
-
-            // default cache is not included in this Set
+            // immutable collection + note that default cache is not included in this Set
             Set<String> cacheNames = defaultCacheManager.getCacheNames();
-
-            // add default cache explicitly?
-//            cacheNames.add("default");
 
             for (String cacheName : cacheNames) {
                 log.info("Registering cache with name " + cacheName + " in OData InfinispanProducer...");
                 // cacheName = entitySetName
                 eis.put(cacheName, null);
             }
-
-        } catch (IOException e) {
-            log.error("PROBLEMS WITH CREATING DEFAULT CACHE MANAGER! " + e.getMessage());
+        } catch (Exception e) {
             e.printStackTrace();
+            log.error("PROBLEMS WITH CREATING DEFAULT CACHE MANAGER! ", e);
         }
     }
 
@@ -159,16 +152,13 @@ public class InfinispanProducer implements ODataProducer {
             return this.caches.get(cacheName);
         } else {
             try {
-                log.info("Starting cache with name " + cacheName +
-                        " on defaultCacheManager inside of OData InfinispanProducer");
                 defaultCacheManager.startCache(cacheName);
-                log.info("Cache " + cacheName + " started!");
                 Cache cache = defaultCacheManager.getCache(cacheName);
                 this.caches.put(cacheName, cache.getAdvancedCache());
                 return cache.getAdvancedCache();
             } catch (Exception e) {
-                log.error("ERROR DURING STARTING CACHE " + cacheName + " " + e.getMessage());
                 e.printStackTrace();
+                log.error("ERROR DURING STARTING CACHE " + cacheName, e);
             }
         }
         return this.caches.get(cacheName);
@@ -199,18 +189,15 @@ public class InfinispanProducer implements ODataProducer {
      */
     private BaseResponse callFunctionPut(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue,
                                          boolean ignoreReturnValues) {
-        log.trace("Putting into " + setNameWhichIsCacheName + " cache, entryKey: " + entryKey + " value: " + cachedValue.toString());
+        log.trace("Putting into " + setNameWhichIsCacheName + " cache, entryKey: " +
+                entryKey + " value: " + cachedValue.toString() + " ignoreReturnValues=" + ignoreReturnValues);
 
         if (ignoreReturnValues) {
             getCache(setNameWhichIsCacheName).withFlags(Flag.IGNORE_RETURN_VALUES).put(entryKey, cachedValue);
-            log.trace("Put with IGNORE_RETURN_VALUES");
             return Responses.infinispanResponse(null, null, null, Response.Status.CREATED);
         } else {
-
             getCache(setNameWhichIsCacheName).put(entryKey, cachedValue);
             CachedValue resultOfPutForResponse = (CachedValue) getCache(setNameWhichIsCacheName).get(entryKey);
-
-            log.trace("Put function, ignoring return values false, returning full get after put");
             return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", standardizeJSONresponse(
                     new StringBuilder(resultOfPutForResponse.getJsonValueWrapper().getJson())).toString(), Response.Status.CREATED);
         }
@@ -224,16 +211,19 @@ public class InfinispanProducer implements ODataProducer {
      * Decision logic is driven by passed parameters (entryKey is specified, or queryInfo.filter is specified)
      * <p/>
      * [ODATA SPEC]
-     * signs marked as "---" are standardized by standardizeJSONresponse() function
-     * part market as "/xxxx/", "/" including will be passed to standardizeJSONresponse() function
+     *
+     * TODO: better description of standardizeJSONresponse() function
+     *
+     * signs marked as "------" are standardized by standardizeJSONresponse() function
+     * part marked as "xxxxxx" will be passed to standardizeJSONresponse() function
      * result of standardizeJSONresponse() will be directly returned to clients
      * <p/>
      * for more results, create array
-     * --------/xxxxxxxxxxxxxxxxxxxxxxxxx/-
-     * { "d" : [{ ... }, { ... }, { ... }] }
+     * --------xxxxxxxxxxxxxxxxxxxxxxxxxxx-
+     * { "d" : [{ ... }, { ... }, { ... }]}
      * <p/>
      * for one result, return just one stored JSON document
-     * --------/xxxxx/-
+     * --------xxxxxxx-
      * { "d" : { ... }}
      *
      * @param setNameWhichIsCacheName - cache name
@@ -251,11 +241,13 @@ public class InfinispanProducer implements ODataProducer {
             CachedValue value = (CachedValue) getCache(setNameWhichIsCacheName).get(entryKey);
             if (value != null) {
                 log.trace("CallFunctionGet entry with key " + entryKey + " was found. Returning response with status 200.");
+
                 return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", standardizeJSONresponse(
                         new StringBuilder(value.getJsonValueWrapper().getJson())).toString(), Response.Status.OK);
             } else {
                 // no results found, clients will get 404 response
                 log.trace("CallFunctionGet entry with key " + entryKey + " was not found. Returning response with status 404.");
+
                 return Responses.infinispanResponse(null, null, null, Response.Status.NOT_FOUND);
             }
 
@@ -274,7 +266,7 @@ public class InfinispanProducer implements ODataProducer {
                     new MapQueryExpressionVisitor(searchManager.buildQueryBuilderForClass(CachedValue.class).get());
             mapQueryExpressionVisitor.visit(queryInfo.filter);
 
-            // Query cache here adn get results based on constructed Lucene query
+            // Query cache here and get results based on constructed Lucene query
             CacheQuery queryFromVisitor = searchManager.getQuery(mapQueryExpressionVisitor.getBuiltLuceneQuery(),
                     CachedValue.class);
             // pass query result to the function final response
@@ -365,8 +357,7 @@ public class InfinispanProducer implements ODataProducer {
         CachedValue removed = (CachedValue) getCache(setNameWhichIsCacheName).remove(entryKey);
         // [ODATA SPEC]
         // NO_CONTENT is returned after successful deletion.
-        return Responses.infinispanResponse(EdmSimpleType.STRING,
-                "jsonValue", null, Response.Status.NO_CONTENT);
+        return Responses.infinispanResponse(EdmSimpleType.STRING, "jsonValue", null, Response.Status.NO_CONTENT);
     }
 
     public BaseResponse callFunctionReplace(String setNameWhichIsCacheName, String entryKey, CachedValue cachedValue)
@@ -399,9 +390,7 @@ public class InfinispanProducer implements ODataProducer {
     public BaseResponse callFunction(ODataContext context, EdmFunctionImport function, Map<String, OFunctionParameter> params,
                                      QueryInfo queryInfo) {
 
-
-        // every function call need to have key or queryInfo specified
-
+        // every function call HAS TO have key OR queryInfo.filter specified
         if (params.get("key") != null || queryInfo.filter != null) {
 
             String setNameWhichIsCacheName = function.getEntitySet().getName();
@@ -442,7 +431,7 @@ public class InfinispanProducer implements ODataProducer {
                         if (jsonInputStream != null) jsonInputStream.close();
                         if (br != null) br.close();
                     } catch (IOException e) {
-                        log.error("Closing streams in InfinispanProducer failed. Method callFunction()." + e.getMessage());
+                        log.error("Closing streams in InfinispanProducer failed. Method callFunction().", e);
                         e.printStackTrace();
                     }
                 }
