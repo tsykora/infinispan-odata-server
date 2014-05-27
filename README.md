@@ -14,11 +14,11 @@ of results in dependence on specified expression operators.
 Infinispan OData server also supports common, key-value access approach
 for accessing JSON documents.
 
-Current plans: This is prototype version in odata4j branch -- based on odata4j framework. This will be probably
+Current plans: This is prototype version in odata4j branch -- based on **odata4j** framework. This will be probably
 deferred later on as we are working on a migration to Apache Olingo.
 
 
-Outline of this README file:
+**Outline of this README file:**
 
 1) Dependencies
 
@@ -51,7 +51,7 @@ https://bitbucket.org/sykynx/odata4j-actions/
 
 And install (Apache Maven is needed):
 
-mvn clean install -DskipTest=true
+**mvn clean install -DskipTest=true**
 
 (skip tests as there is a problem with missing dependencies in odata4j framework)
 
@@ -64,7 +64,7 @@ odata4j libraries (version 0.8.0-SNAPSHOT) should be installed in your Maven rep
 2) Building the server
 ----------------------
 
-mvn clean package assembly:assembly (-DskipTests=true) from main project directory.
+**mvn clean package assembly:assembly** (-DskipTests=true) from main project directory.
 
 infinispan-odata-server-1.0-SNAPSHOT.jar file should by located in ./target folder now.
 
@@ -72,7 +72,7 @@ infinispan-odata-server-1.0-SNAPSHOT.jar file should by located in ./target fold
 3) Running the server
 ---------------------
 
-java -jar ./target/infinispan-odata-server-1.0-SNAPSHOT.jar http://localhost:8887/ODataInfinispanEndpoint.svc/ infinispan-dist.xml
+**java -jar ./target/infinispan-odata-server-1.0-SNAPSHOT.jar http://localhost:8887/ODataInfinispanEndpoint.svc/ infinispan-dist.xml**
 
 The first parameter is URI where the service will be started,
 the second parameter is name of a Infinispan configuration file which will be used for starting Infinispan caches.
@@ -105,29 +105,29 @@ Consumers uses OData as a protocol for communicating with Infinispan OData serve
 
 The service exposes metadata document which describes defined service operations.
 
-Accessible at: http://localhost:8887/ODataInfinispanEndpoint.svc/$metadata
+Accessible at: *http://localhost:8887/ODataInfinispanEndpoint.svc/$metadata*
 
-http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?[options]
+*http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?[options]*
 
-http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?[options]
+*http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?[options]*
 
-http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_remove?[options]
+*http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_remove?[options]*
 
-http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_replace?[options]
+*http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_replace?[options]*
 
 NOTE: OData Entity sets, thus, caches, thus first parts of service operation names (i.e. odataCache) are CaSe SeNsItIvE.
 
 Supported system query options:
 
-$filter=\<expression\>
+**$filter=\<expression\>**
 
 \<expression\> is built from OData query operators.
 
 Supported OData query operators:
 
-eq, and, or
+**eq, and, or**
 
-NOTE: operators has to be used lowercase!
+NOTE: operators has to be used **lowercase!**
 
 See next section for practical examples.
 
@@ -167,15 +167,15 @@ Put Neo and Trinity into the cache:
 
 (The first put takes around 4 seconds because cache is being started.)
 
-curl -X POST -H "Content-Type: application/json; charset=UTF-8" -d '{"id":"person1","name":"Neo","lastname":"Matrix"}' http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?key=\'person1\'
+*curl -X POST -H "Content-Type: application/json; charset=UTF-8" -d '{"id":"person1","name":"Neo","lastname":"Matrix"}' http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?key=\'person1\'*
 
-curl -X POST -H "Content-Type: application/json; charset=UTF-8" -d '{"id":"person2","name":"Trinity","lastname":"Matrix"}' http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?key=\'person2\'
+*curl -X POST -H "Content-Type: application/json; charset=UTF-8" -d '{"id":"person2","name":"Trinity","lastname":"Matrix"}' http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?key=\'person2\'*
 
 stored values are returned immediately to the client.
 
 And put Morpheus with IGNORE_RETURN_VALUES flag:
 
-curl -X POST -H "Content-Type: application/json; charset=UTF-8" -d '{"id":"person3","name":"Morpheus","lastname":"Mc the coolest"}' http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?key=\'person3\'\&IGNORE_RETURN_VALUES=\'true\'
+*curl -X POST -H "Content-Type: application/json; charset=UTF-8" -d '{"id":"person3","name":"Morpheus","lastname":"Mc the coolest"}' http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?key=\'person3\'\&IGNORE_RETURN_VALUES=\'true\'*
 
 
 Now it's time to obtain heroes back from the cache.
@@ -186,7 +186,7 @@ Now it's time to obtain heroes back from the cache.
 
 HTTP header "Accept", "application/json; charset=UTF-8" needs to be specified properly.
 
-curl -X GET -H "Accept: application/json; charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?key=\'person1\'
+*curl -X GET -H "Accept: application/json; charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?key=\'person1\'*
 
 Neo is returned ("d" stands for a "data"):
 
@@ -195,17 +195,17 @@ Neo is returned ("d" stands for a "data"):
 
 Now add agent Smith:
 
-curl -X POST -H "Content-Type: application/json; charset=UTF-8" -d '{"id":"smith1","name":"Agent","lastname":"Smith"}' http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?key=\'smith1\'
+*curl -X POST -H "Content-Type: application/json; charset=UTF-8" -d '{"id":"smith1","name":"Agent","lastname":"Smith"}' http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_put?key=\'smith1\'*
 
 And look at him:
 
-curl -X GET -H "Accept: application/json; charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?key=\'smith1\'
+*curl -X GET -H "Accept: application/json; charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?key=\'smith1\'*
 
 It is needed to replace him:
 
 (NOTE: HTTP method PUT and appendix _replace is used in this case)
 
-curl -X PUT -H "Content-Type: application/json; charset=UTF-8" -d '{"id":"smith1","name":"AgentXXX","lastname":"SmithXXX"}' http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_replace?key=\'smith1\'
+*curl -X PUT -H "Content-Type: application/json; charset=UTF-8" -d '{"id":"smith1","name":"AgentXXX","lastname":"SmithXXX"}' http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_replace?key=\'smith1\'*
 
 New Smith agent should be returned:
 
@@ -215,11 +215,11 @@ We don't like him, so we will delete him, right?
 
 (NOTE: HTTP method DELETE and appendix _remove is used, operation returns NO_CONTENT status)
 
-curl -X DELETE -H "Accept: application/json; charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_remove?key=\'smith1\'
+*curl -X DELETE -H "Accept: application/json; charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_remove?key=\'smith1\'*
 
 Try to find him out!
 
-curl -X GET -H "Accept: application/json; charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?key=\'smith1\'
+*curl -X GET -H "Accept: application/json; charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?key=\'smith1\'*
 
 Entry was not found. -- yup he's gone :)
 
@@ -242,7 +242,7 @@ Now obtain JSON documents from document store using OData query operators:
 
 Neo or Trinity:
 
-curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=name%20eq%20\'Neo\'%20or%20name%20eq%20\'Trinity\'
+*curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=name%20eq%20\'Neo\'%20or%20name%20eq%20\'Trinity\'*
 
 A collection of documents is returned:
 
@@ -251,7 +251,7 @@ A collection of documents is returned:
 
 name Neo and lastname Matrix:
 
-curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=name%20eq%20\'Neo\'%20and%20lastname%20eq%20\'Matrix\'
+*curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=name%20eq%20\'Neo\'%20and%20lastname%20eq%20\'Matrix\'*
 
 Just Neo is returned:
 
@@ -266,18 +266,18 @@ NOTE: without encoded stuff, pure OData query looks like this
 
 $filter=lastname eq 'Matrix' or name eq 'Morpheus'
 
-curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=lastname%20eq%20\'Matrix\'%20or%20name%20eq%20\'Morpheus\'
+*curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=lastname%20eq%20\'Matrix\'%20or%20name%20eq%20\'Morpheus\'*
 
 
 Now let's try out $top and $filter query options. They needs to be appended after $filter expression with use of &
 
 Select only 2 top results:
 
-curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=lastname%20eq%20\'Matrix\'%20or%20name%20eq%20\'Morpheus\'\&\$top=2
+*curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=lastname%20eq%20\'Matrix\'%20or%20name%20eq%20\'Morpheus\'\&\$top=2*
 
 Skip just the first result:
 
-curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=lastname%20eq%20\'Matrix\'%20or%20name%20eq%20\'Morpheus\'\&\$skip=1
+*curl -X GET -H "Accept: application/json;charset=UTF-8" http://localhost:8887/ODataInfinispanEndpoint.svc/odataCache_get?\$filter=lastname%20eq%20\'Matrix\'%20or%20name%20eq%20\'Morpheus\'\&\$skip=1*
 
 Pure OData queries look like this:
 
@@ -291,24 +291,26 @@ OData standards
 
 OData specification related:
 
-Event -- HTTP Response code | special
+Format:
+**Event** -- HTTP Response code + notes below
 
-Successful GET request -- 200
+**Successful GET request** -- 200
 
-Entry not found -- 404
+**Entry not found** -- 404
 
-Entry created -- 201 | "location" header with link for getting the entry back | returns back whole stored JSON document
+**Entry created** -- 201
+note1: "location" header with link for getting the entry back or returns back whole stored JSON document
 
 or
 
-Entry created -- 201 (user IGNORE_RETURN_VALUES) | "location" header with link for getting the entry back |
+**Entry created** -- 201 (user IGNORE_RETURN_VALUES)
+note1: "location" header with link for getting the entry back or returns back string:
+*"Entry created -- ready for access here: " + content of "location" header*
 
-returns back string "Entry created -- ready for access here: " + content of "location" header
 
+Supported **$filter** query option with **eq**, **and** and **or** expression operators for querying JSON text fields.
 
-Supported $filter query option with eq, and, or expression operators for querying JSON text fields.
-
-Supported $top and $skip query options (can be appended to $filter option to select only a potion of results)
+Supported **$top** and **$skip** query options (can be appended to **$filter** option to select only a potion of results)
 
 Collections of JSON documents can be returned, general format:
 
